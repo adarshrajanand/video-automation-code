@@ -835,6 +835,41 @@ def test_one_to_one_rejects_multiple_stage_instances(wf) -> None:
     assert "root" not in result.accepted_node_ids
 
 
+def test_ready_instance_with_active_attempt_is_blocked(wf) -> None:
+    workflow = wf.root_workflow()
+    run = wf.run(workflow)
+    instance = wf.instance(
+        run,
+        "root",
+        execution=StageExecutionStatus.READY,
+        acceptance=AcceptanceStatus.NOT_REQUIRED,
+        active_attempt_id="attempt_01",
+    )
+
+    result = evaluate_readiness(wf.context(workflow, run, stage_instances=(instance,)))
+
+    assert result.ready_node_ids == ()
+    assert result.ready_instance_ids == ()
+    assert ReadinessReason.ACTIVE_ATTEMPT in reasons(result)
+
+
+def test_terminal_run_has_no_ready_work(wf) -> None:
+    workflow = wf.chain(2)
+
+    for status in (
+        RunStatus.COMPLETED,
+        RunStatus.FAILED,
+        RunStatus.CANCELLED,
+    ):
+        run = wf.run(workflow, status=status)
+        result = evaluate_readiness(wf.context(workflow, run))
+
+        assert result.next_status is status
+        assert result.ready_node_ids == ()
+        assert result.ready_instance_ids == ()
+        assert result.planned_items == ()
+
+
 def test_readiness_is_idempotent_and_does_not_mutate_inputs(wf) -> None:
     workflow = wf.workflow(
         [

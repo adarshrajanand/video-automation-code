@@ -232,6 +232,19 @@ def _instance_state(
     accepted = False
     execution_ready = False
 
+    if instance.active_attempt_id is not None and instance.execution_status in (
+        StageExecutionStatus.PENDING,
+        StageExecutionStatus.READY,
+    ):
+        reasons.append(
+            _reason(
+                ReadinessReason.ACTIVE_ATTEMPT,
+                "stage instance is ready but already has an active attempt",
+                stage_instance_id=instance.stage_instance_id,
+                logical_item_key=instance.logical_item_key,
+            )
+        )
+
     if instance.execution_status is StageExecutionStatus.WAITING_HUMAN:
         waiting_human = True
         reasons.append(
@@ -507,6 +520,8 @@ def _instance_state(
         terminal_failure = False
         waiting_human = instance.acceptance_status is AcceptanceStatus.HUMAN_REVIEW
         waiting_retry = False
+        execution_ready = False
+    elif waiting_human or waiting_retry or terminal_failure:
         execution_ready = False
 
     return _InstanceState(
