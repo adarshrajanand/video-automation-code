@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sqlite3
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -14,7 +15,9 @@ from pipeline.contracts.schema_export import (
     default_schema_dir,
     export_schemas,
 )
+from pipeline.paths import default_database_path
 from pipeline.setup_checks import CheckStatus, SetupReport, collect_checks
+from pipeline.storage import Database, MigrationError, MigrationRunner
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -72,6 +75,38 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="schema directory (defaults to the repository schemas/ directory)",
     )
+    db = subparsers.add_parser(
+        "db",
+        help="local SQLite repository tooling",
+        description="Inspect or migrate the local SQLite repository schema.",
+    )
+    db_subparsers = db.add_subparsers(dest="db_command", metavar="ACTION")
+    for action, help_text, description in (
+        (
+            "migrate",
+            "apply pending schema migrations",
+            "Apply every pending migration once. A second run is a no-op.",
+        ),
+        (
+            "status",
+            "show applied and pending migrations",
+            "Report the current schema version and pending migrations.",
+        ),
+    ):
+        action_parser = db_subparsers.add_parser(
+            action,
+            help=help_text,
+            description=description,
+        )
+        action_parser.add_argument(
+            "--database",
+            type=Path,
+            default=None,
+            help=(
+                "SQLite database path "
+                "(defaults to PIPELINE_HOME/state/pipeline.sqlite3)"
+            ),
+        )
     return parser
 
 
@@ -119,6 +154,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0 if report.ok else 1
     if arguments.command == "contracts":
         return _run_contracts_command(arguments)
+    if arguments.command == "db":
+        return _run_db_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
 
@@ -157,6 +194,60 @@ def _run_contracts_command(arguments: argparse.Namespace) -> int:
     result = export_schemas(output_dir)
     print(f"Exported {len(result.written)} schema files to {output_dir}")
     return 0
+
+
+def _run_db_command(arguments: argparse.Namespace) -> int:
+    if arguments.db_command is None:
+        print("Usage: python -m pipeline db {migrate,status} [--database PATH]")
+        return 0
+    database_path = arguments.database or default_database_path()
+    database = Database(database_path)
+    runner = MigrationRunner(database)
+    try:
+        if arguments.db_command == "migrate":
+            result = runner.migrate()
+            if result.changed:
+                versions = ", ".join(
+                    f"{migration.version:04d}_{migration.name}"
+                    for migration in result.applied
+                )
+                print(
+                    f"Applied {len(result.applied)} migration(s): {versions}. "
+                    f"Schema version: {result.current_version}."
+                )
+            else:
+                print(
+                    f"No pending migrations. Schema version: {result.current_version}."
+                )
+            print(f"Database: {database.path}")
+            return 0
+        if arguments.db_command == "status":
+            status = runner.status()
+            print(f"Database: {status.database_path}")
+            print(f"Current version: {status.current_version}")
+            print("Applied migrations:")
+            if status.applied:
+                for applied in status.applied:
+                    print(
+                        f"  {applied.version:04d}_{applied.name} "
+                        f"({applied.checksum}) applied at {applied.applied_at}"
+                    )
+            else:
+                print("  (none)")
+            print("Pending migrations:")
+            if status.pending:
+                for pending in status.pending:
+                    print(f"  {pending.version:04d}_{pending.name}")
+            else:
+                print("  (none)")
+            return 0
+    except (MigrationError, sqlite3.Error) as error:
+        print(
+            f"Database command failed: {type(error).__name__}: {error}", file=sys.stderr
+        )
+        return 1
+    print(f"Unknown db action: {arguments.db_command}", file=sys.stderr)
+    return 2
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -1,8 +1,8 @@
 """Local runtime path resolution.
 
 Runtime state lives outside version-controlled source files and may be deleted
-or archived as one unit. This module only resolves and describes the layout;
-later work packages will add migrations, artifact storage, and databases.
+or archived as one unit. This module resolves and describes the layout; feature
+packages own migrations, repositories, and artifact bytes.
 """
 
 from __future__ import annotations
@@ -40,3 +40,31 @@ def resolve_pipeline_home(environ: Mapping[str, str] | None = None) -> Path:
     home = env.get("HOME", "").strip()
     base = Path(home).expanduser() if home else Path.home()
     return (base / ".local" / "share" / "video-automation-pipeline").resolve()
+
+
+def default_database_path(environ: Mapping[str, str] | None = None) -> Path:
+    """Return the default local SQLite database path under ``PIPELINE_HOME``."""
+
+    return resolve_pipeline_home(environ) / "state" / "pipeline.sqlite3"
+
+
+def default_artifact_root(environ: Mapping[str, str] | None = None) -> Path:
+    """Return the default immutable artifact root under ``PIPELINE_HOME``."""
+
+    return resolve_pipeline_home(environ) / "artifacts"
+
+
+def default_tmp_root(environ: Mapping[str, str] | None = None) -> Path:
+    """Return the default disposable workspace root under ``PIPELINE_HOME``."""
+
+    return resolve_pipeline_home(environ) / "tmp"
+
+
+__all__ = [
+    "PIPELINE_DIRECTORIES",
+    "PIPELINE_HOME_ENV",
+    "default_artifact_root",
+    "default_database_path",
+    "default_tmp_root",
+    "resolve_pipeline_home",
+]
