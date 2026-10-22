@@ -218,10 +218,11 @@ Typed repositories cover effective config, workflow runs, stage instances,
 stage attempts, jobs, leases, idempotency records, budget reservations,
 artifacts, artifact dependencies, artifact pointers, and the editorial hierarchy
 (content package, episode, cut, sequence, scene, shot, layer, composition ref).
-Tables also exist for input manifests, quality records, human review and
-publication, events and outbox/inbox delivery, routing/provider/capability and
-usage records, and recovery decisions. Those families deliberately do not have
-typed repositories yet; later work packages add them.
+Tables also exist for input manifests, artifact invalidation requests/results,
+quality records, human review and publication, events and outbox/inbox delivery,
+routing/provider/capability and usage records, and recovery decisions. Those
+families deliberately do not have typed repositories yet; later work packages
+add them.
 
 ### Immutable artifact store
 

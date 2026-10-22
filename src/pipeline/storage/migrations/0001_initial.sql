@@ -629,3 +629,30 @@ CREATE TABLE composition_refs (
 
 CREATE INDEX idx_composition_refs_cut
     ON composition_refs (cut_id);
+
+CREATE TABLE artifact_invalidation_requests (
+    request_id TEXT PRIMARY KEY,
+    scope TEXT NOT NULL,
+    requested_by TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    payload TEXT NOT NULL
+);
+
+CREATE INDEX idx_artifact_invalidation_requests_scope
+    ON artifact_invalidation_requests (scope, requested_by);
+
+CREATE TABLE artifact_invalidation_results (
+    request_id TEXT PRIMARY KEY,
+    invalidated_count INTEGER NOT NULL,
+    retained_count INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    schema_version TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    CHECK (invalidated_count > 0),
+    CHECK (retained_count >= 0),
+    FOREIGN KEY (request_id)
+        REFERENCES artifact_invalidation_requests (request_id)
+);
+
+CREATE INDEX idx_artifact_invalidation_results_created
+    ON artifact_invalidation_results (created_at);

@@ -308,6 +308,8 @@ class ArtifactStore:
         """Remove one workspace after proving it is under the temporary root."""
 
         path = Path(workspace).expanduser().resolve()
+        if path == self.workspace_root:
+            raise ValueError(f"refusing to remove the temporary root itself: {path}")
         try:
             path.relative_to(self.workspace_root)
         except ValueError as error:

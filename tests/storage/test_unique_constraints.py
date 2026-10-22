@@ -273,6 +273,58 @@ def test_outbox_event_and_inbox_consumer_receipts_are_unique(database) -> None:
         )
 
 
+def test_invalidation_requests_and_results_are_unique_and_linked(database) -> None:
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO artifact_invalidation_requests "
+            "(request_id, scope, requested_by, schema_version, payload) VALUES "
+            "('invalidation_01', 'subgraph', 'operator', "
+            "'invalidation-request.v1', '{}')",
+        )
+        connection.execute(
+            "INSERT INTO artifact_invalidation_results "
+            "(request_id, invalidated_count, retained_count, created_at, "
+            "schema_version, payload) VALUES "
+            "('invalidation_01', 1, 0, ?, 'invalidation-result.v1', '{}')",
+            ("2026-10-21T09:00:00Z",),
+        )
+
+    with (
+        pytest.raises(sqlite3.IntegrityError),
+        database.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO artifact_invalidation_requests "
+            "(request_id, scope, requested_by, schema_version, payload) VALUES "
+            "('invalidation_01', 'artifact', 'operator', "
+            "'invalidation-request.v1', '{}')",
+        )
+
+    with (
+        pytest.raises(sqlite3.IntegrityError),
+        database.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO artifact_invalidation_results "
+            "(request_id, invalidated_count, retained_count, created_at, "
+            "schema_version, payload) VALUES "
+            "('invalidation_01', 1, 0, ?, 'invalidation-result.v1', '{}')",
+            ("2026-10-21T09:00:00Z",),
+        )
+
+    with (
+        pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY"),
+        database.transaction() as connection,
+    ):
+        connection.execute(
+            "INSERT INTO artifact_invalidation_results "
+            "(request_id, invalidated_count, retained_count, created_at, "
+            "schema_version, payload) VALUES "
+            "('missing_request', 1, 0, ?, 'invalidation-result.v1', '{}')",
+            ("2026-10-21T09:00:00Z",),
+        )
+
+
 def test_raw_sqlite_constraint_is_visible_to_callers(database) -> None:
     with (
         pytest.raises(sqlite3.IntegrityError),

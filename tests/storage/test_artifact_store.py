@@ -190,6 +190,19 @@ def test_workspace_names_cannot_escape_the_temp_root(
         artifact_store.cleanup_workspace(artifact_store.workspace_root.parent)
 
 
+def test_cleanup_refuses_to_remove_the_temporary_root(
+    artifact_store: ArtifactStore,
+) -> None:
+    artifact_store.workspace_root.mkdir(parents=True, exist_ok=True)
+    marker = artifact_store.workspace_root / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="temporary root"):
+        artifact_store.cleanup_workspace(artifact_store.workspace_root)
+
+    assert marker.is_file()
+
+
 def test_cleanup_workspace_removes_an_explicit_workspace(
     artifact_store: ArtifactStore,
 ) -> None:

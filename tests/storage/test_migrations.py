@@ -88,6 +88,8 @@ def test_initial_schema_contains_every_durable_family(tmp_path: Path) -> None:
         "artifacts",
         "artifact_dependencies",
         "artifact_pointers",
+        "artifact_invalidation_requests",
+        "artifact_invalidation_results",
         "input_manifests",
         "quality_checks",
         "quality_gate_policies",
