@@ -1,0 +1,53 @@
+{
+  "attempt": 0,
+  "budget_remaining_minor": 400,
+  "capability_request": {
+    "capability": "speech_generation",
+    "capability_execution_id": "capexec_speech_scene_01",
+    "idempotency_key": "idem_speech_generation_scene_01",
+    "input_artifact_ids": [
+      "artifact_script_v1"
+    ],
+    "operation_version": "1.0",
+    "payload": {
+      "narration": "A deterministic narration fixture.",
+      "scene_id": "scene_01",
+      "voice_id": "voice_local_en_us"
+    },
+    "payload_fingerprint": "cda1d55138ab47c3fb1dba9d96b183163184c5d7f579445c44ebe757844e9e89",
+    "payload_schema_version": "speech-request.v1",
+    "requirements": {
+      "capability": "speech_generation",
+      "cost_limit_minor": 100,
+      "data_classification": "INTERNAL",
+      "latency_requirement": "interactive",
+      "locale": "en-US",
+      "quality_requirement": "experimental",
+      "required_features": [
+        "scene_timing",
+        "word_timestamps"
+      ],
+      "schema_version": "capability-requirements.v1"
+    },
+    "runtime_context": {
+      "timeout_seconds": 60
+    },
+    "schema_version": "capability-request.v1"
+  },
+  "effective_config_hash": "3b732827d3067c4965bf37e239d39635a86a110e0632b8898634c29ff0270e42",
+  "previous_results": [
+    {
+      "attempt": 0,
+      "status": "FAILED_TRANSIENT"
+    }
+  ],
+  "provider_health": {
+    "local_speech_fixture": "HEALTHY"
+  },
+  "provider_usage": {
+    "local_speech_fixture": {
+      "minute_units": 12
+    }
+  },
+  "schema_version": "routing-context.v1"
+}

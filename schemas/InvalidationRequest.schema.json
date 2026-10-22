@@ -1,0 +1,71 @@
+{
+  "$defs": {
+    "InvalidationScope": {
+      "enum": [
+        "artifact",
+        "scene",
+        "subgraph",
+        "workflow"
+      ],
+      "title": "InvalidationScope",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:InvalidationRequest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Scoped request to invalidate a set of root artifacts and descendants.",
+  "properties": {
+    "reason": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Reason",
+      "type": "string"
+    },
+    "request_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "requested_by": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Requested By",
+      "type": "string"
+    },
+    "root_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Root Artifact Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "invalidation-request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/InvalidationScope"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "root_artifact_ids",
+    "reason",
+    "scope",
+    "requested_by"
+  ],
+  "title": "InvalidationRequest",
+  "type": "object",
+  "x-contract-schema-version": "invalidation-request.v1"
+}

@@ -1,0 +1,12 @@
+{
+  "attempt_id": "attempt_speech_01",
+  "available_at": "2026-10-21T12:00:00Z",
+  "claimed_by": null,
+  "delivery_count": 0,
+  "idempotency_key": "idem_speech_generation_scene_01",
+  "job_id": "job_speech_scene_01",
+  "lease_expires_at": null,
+  "queue_name": "capability_default",
+  "schema_version": "job.v1",
+  "status": "READY"
+}

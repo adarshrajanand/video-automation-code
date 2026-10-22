@@ -1,0 +1,10 @@
+{
+  "allowed_data_classification": "INTERNAL",
+  "attempt_id": "attempt_speech_01",
+  "correlation_id": "corr_run_01",
+  "effective_config_id": "cfg_01",
+  "run_id": "run_01",
+  "schema_version": "execution-context.v1",
+  "stage_instance_id": "stage_speech_scene_01",
+  "timeout_seconds": 60
+}

@@ -1,0 +1,24 @@
+{
+  "asset_policy_id": "mixed_media_v1",
+  "claim_policy_id": "technical_claims_v1",
+  "content_mode": "factual_explainer",
+  "default_locale": "en-US",
+  "human_review_policy_id": "software_human_review_v1",
+  "optional_stages": [
+    "short_derivative",
+    "publishing"
+  ],
+  "profile_id": "software_engineering_explainer_v1",
+  "quality_profile_id": "software_explainer_high_bar_v1",
+  "required_stages": [
+    "research",
+    "script_generation",
+    "visual_planning",
+    "composition",
+    "rendering",
+    "assembly"
+  ],
+  "schema_version": "domain-profile.v1",
+  "source_policy_id": "technical_sources_v1",
+  "version": "1.0"
+}

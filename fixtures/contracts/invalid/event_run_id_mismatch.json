@@ -1,0 +1,20 @@
+{
+  "attempt_id": "attempt_speech_01",
+  "causation_id": "event_00",
+  "correlation_id": "corr_run_01",
+  "created_at": "2026-10-21T12:02:00Z",
+  "event_id": "event_01",
+  "event_type": "stage.succeeded",
+  "payload": {
+    "artifact_ids": [
+      "artifact_audio_scene_01_v1"
+    ],
+    "attempt_id": "attempt_speech_01",
+    "run_id": "run_other",
+    "stage_instance_id": "stage_speech_scene_01"
+  },
+  "payload_schema_version": "stage-succeeded.v1",
+  "run_id": "run_01",
+  "schema_version": "event-envelope.v1",
+  "stage_instance_id": "stage_speech_scene_01"
+}

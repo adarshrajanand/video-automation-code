@@ -1,0 +1,29 @@
+{
+  "completed_at": "2026-10-21T11:06:00Z",
+  "created_at": "2026-10-21T11:05:00Z",
+  "decision": "PASS",
+  "evaluation_ids": [
+    "eval_script_01"
+  ],
+  "gate_id": "script_gate_v1",
+  "gate_version": "1.0",
+  "hard_failure_codes": [],
+  "logical_item_key": "episode",
+  "policy_version": "1.0",
+  "quality_gate_result_id": "qgr_script_01",
+  "repair_scope": "STAGE",
+  "required_check_ids": [
+    "script_schema_v1",
+    "claim_reference_integrity_v1",
+    "script_claim_evidence_v1",
+    "script_editorial_clarity_v1"
+  ],
+  "schema_version": "quality-gate-result.v1",
+  "stage_instance_id": "stage_script_episode",
+  "target_artifact_ids": [
+    "artifact_script_v1"
+  ],
+  "target_hashes": {
+    "artifact_script_v1": "d4fd7efaaf9fde5f2e32c5d13d5d900d9bf7592c60a601cece8addf1b3b234f7"
+  }
+}

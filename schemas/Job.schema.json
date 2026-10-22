@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "JobStatus": {
+      "enum": [
+        "READY",
+        "CLAIMED",
+        "ACKED",
+        "RETRY",
+        "DEAD_LETTER",
+        "CANCELLED"
+      ],
+      "title": "JobStatus",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:Job",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One claimable delivery record associated with one stage attempt.",
+  "properties": {
+    "attempt_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "available_at": {
+      "format": "date-time",
+      "title": "Available At",
+      "type": "string"
+    },
+    "claimed_by": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Claimed By"
+    },
+    "delivery_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Delivery Count",
+      "type": "integer"
+    },
+    "idempotency_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "job_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Job Id",
+      "type": "string"
+    },
+    "lease_expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lease Expires At"
+    },
+    "queue_name": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Queue Name",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "job.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/JobStatus"
+    }
+  },
+  "required": [
+    "schema_version",
+    "job_id",
+    "attempt_id",
+    "queue_name",
+    "status",
+    "idempotency_key",
+    "available_at"
+  ],
+  "title": "Job",
+  "type": "object",
+  "x-contract-schema-version": "job.v1"
+}

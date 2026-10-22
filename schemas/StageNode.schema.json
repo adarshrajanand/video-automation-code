@@ -1,0 +1,320 @@
+{
+  "$defs": {
+    "CardinalityMode": {
+      "enum": [
+        "one_to_one",
+        "one_to_many",
+        "many_to_one",
+        "many_to_many"
+      ],
+      "title": "CardinalityMode",
+      "type": "string"
+    },
+    "CardinalityPolicy": {
+      "additionalProperties": false,
+      "description": "Declared expansion/fan-in behavior for one workflow node.",
+      "properties": {
+        "count": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Count"
+        },
+        "expected_manifest_id": {
+          "anyOf": [
+            {
+              "maxLength": 256,
+              "minLength": 1,
+              "pattern": "^\\S+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Manifest Id"
+        },
+        "mode": {
+          "$ref": "#/$defs/CardinalityMode"
+        },
+        "schema_version": {
+          "const": "cardinality.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "selection_policy": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Policy"
+        }
+      },
+      "required": [
+        "schema_version",
+        "mode"
+      ],
+      "title": "CardinalityPolicy",
+      "type": "object"
+    },
+    "ConditionExpression": {
+      "additionalProperties": false,
+      "description": "A bounded static condition; operands are scalar JSON values only.",
+      "properties": {
+        "operands": {
+          "items": {
+            "$ref": "#/$defs/ConditionOperand"
+          },
+          "title": "Operands",
+          "type": "array"
+        },
+        "operator": {
+          "$ref": "#/$defs/ConditionOperator"
+        },
+        "schema_version": {
+          "const": "condition-expression.v1",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "operator"
+      ],
+      "title": "ConditionExpression",
+      "type": "object"
+    },
+    "ConditionOperand": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ConditionOperator": {
+      "enum": [
+        "ALWAYS",
+        "ALL",
+        "ANY",
+        "EQUALS",
+        "IN",
+        "GREATER_THAN",
+        "EXISTS"
+      ],
+      "title": "ConditionOperator",
+      "type": "string"
+    },
+    "InputSelector": {
+      "additionalProperties": false,
+      "description": "Where a node obtains eligible inputs; not the resolved runtime manifest.",
+      "properties": {
+        "artifact_types": {
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^\\S(?:.*\\S)?$",
+            "type": "string"
+          },
+          "title": "Artifact Types",
+          "type": "array"
+        },
+        "dependency_node_ids": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Dependency Node Ids",
+          "type": "array"
+        },
+        "kind": {
+          "$ref": "#/$defs/InputSelectorKind"
+        },
+        "schema_version": {
+          "const": "input-selector.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "selection_policy": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Selection Policy"
+        }
+      },
+      "required": [
+        "schema_version",
+        "kind"
+      ],
+      "title": "InputSelector",
+      "type": "object"
+    },
+    "InputSelectorKind": {
+      "enum": [
+        "RUN_INPUT",
+        "DEPENDENCY_OUTPUTS",
+        "MANIFEST",
+        "POINTERS"
+      ],
+      "title": "InputSelectorKind",
+      "type": "string"
+    },
+    "StageName": {
+      "description": "Canonical stage names from ``registries/stages.yaml``.",
+      "enum": [
+        "manual_topic",
+        "topic_discovery",
+        "idea_development",
+        "research",
+        "script_generation",
+        "visual_planning",
+        "asset_acquisition",
+        "speech_generation",
+        "composition",
+        "rendering",
+        "assembly",
+        "short_derivative",
+        "technical_content_review",
+        "human_approval",
+        "publishing",
+        "analytics_learning"
+      ],
+      "title": "StageName",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:StageNode",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One node in one immutable workflow definition revision.",
+  "properties": {
+    "cardinality": {
+      "$ref": "#/$defs/CardinalityPolicy"
+    },
+    "depends_on": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Depends On",
+      "type": "array"
+    },
+    "enabled_when": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ConditionExpression"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "implementation_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Implementation Version",
+      "type": "string"
+    },
+    "input_selector": {
+      "$ref": "#/$defs/InputSelector"
+    },
+    "node_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "quality_gate_id": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Quality Gate Id"
+    },
+    "recovery_policy_id": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recovery Policy Id"
+    },
+    "schema_version": {
+      "const": "stage-node.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage_name": {
+      "$ref": "#/$defs/StageName"
+    }
+  },
+  "required": [
+    "schema_version",
+    "node_id",
+    "stage_name",
+    "input_selector",
+    "cardinality",
+    "implementation_version"
+  ],
+  "title": "StageNode",
+  "type": "object",
+  "x-contract-schema-version": "stage-node.v1"
+}

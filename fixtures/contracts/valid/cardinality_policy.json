@@ -1,0 +1,7 @@
+{
+  "count": 2,
+  "expected_manifest_id": "manifest_assets_01",
+  "mode": "one_to_many",
+  "schema_version": "cardinality.v1",
+  "selection_policy": "manifest_children"
+}

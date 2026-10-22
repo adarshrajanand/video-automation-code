@@ -1,0 +1,118 @@
+{
+  "$defs": {
+    "BudgetReservationStatus": {
+      "enum": [
+        "RESERVED",
+        "SETTLED",
+        "RELEASED",
+        "UNKNOWN"
+      ],
+      "title": "BudgetReservationStatus",
+      "type": "string"
+    },
+    "BudgetScopeType": {
+      "enum": [
+        "SYSTEM",
+        "MONTH",
+        "RUN",
+        "STAGE",
+        "CAPABILITY"
+      ],
+      "title": "BudgetScopeType",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:BudgetReservation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Reserved and settled cost at one budget scope.",
+  "properties": {
+    "actual_cost_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Actual Cost Minor"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "estimated_cost_minor": {
+      "minimum": 0,
+      "title": "Estimated Cost Minor",
+      "type": "integer"
+    },
+    "idempotency_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "reservation_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Reservation Id",
+      "type": "string"
+    },
+    "reserved_cost_minor": {
+      "minimum": 0,
+      "title": "Reserved Cost Minor",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "budget-reservation.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Scope Id",
+      "type": "string"
+    },
+    "scope_type": {
+      "$ref": "#/$defs/BudgetScopeType"
+    },
+    "settled_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Settled At"
+    },
+    "status": {
+      "$ref": "#/$defs/BudgetReservationStatus"
+    }
+  },
+  "required": [
+    "schema_version",
+    "reservation_id",
+    "scope_type",
+    "scope_id",
+    "idempotency_key",
+    "estimated_cost_minor",
+    "reserved_cost_minor",
+    "status",
+    "created_at"
+  ],
+  "title": "BudgetReservation",
+  "type": "object",
+  "x-contract-schema-version": "budget-reservation.v1"
+}

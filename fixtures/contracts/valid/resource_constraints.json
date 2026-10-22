@@ -1,0 +1,9 @@
+{
+  "allowed_placement_classes": [
+    "LOCAL_CPU"
+  ],
+  "max_cost_minor": 100,
+  "max_runtime_seconds": 300,
+  "network_required": false,
+  "schema_version": "resource-constraints.v1"
+}

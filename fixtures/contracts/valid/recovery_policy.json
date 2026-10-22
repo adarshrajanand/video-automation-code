@@ -1,0 +1,8 @@
+{
+  "on_quality_failure": "REGENERATE",
+  "on_repeated_failure": "HUMAN_REVIEW",
+  "on_unknown_outcome": "RECONCILE",
+  "policy_id": "default_recovery_v1",
+  "retry_policy_id": "default_retry_v1",
+  "schema_version": "recovery-policy.v1"
+}

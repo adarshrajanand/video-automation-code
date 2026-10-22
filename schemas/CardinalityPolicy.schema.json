@@ -1,0 +1,78 @@
+{
+  "$defs": {
+    "CardinalityMode": {
+      "enum": [
+        "one_to_one",
+        "one_to_many",
+        "many_to_one",
+        "many_to_many"
+      ],
+      "title": "CardinalityMode",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:CardinalityPolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Declared expansion/fan-in behavior for one workflow node.",
+  "properties": {
+    "count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Count"
+    },
+    "expected_manifest_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Manifest Id"
+    },
+    "mode": {
+      "$ref": "#/$defs/CardinalityMode"
+    },
+    "schema_version": {
+      "const": "cardinality.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selection_policy": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Selection Policy"
+    }
+  },
+  "required": [
+    "schema_version",
+    "mode"
+  ],
+  "title": "CardinalityPolicy",
+  "type": "object",
+  "x-contract-schema-version": "cardinality.v1"
+}

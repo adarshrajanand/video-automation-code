@@ -1,0 +1,206 @@
+{
+  "$defs": {
+    "AttemptStatus": {
+      "description": "Lifecycle of one claimable execution attempt.",
+      "enum": [
+        "CREATED",
+        "CLAIMED",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "UNKNOWN",
+        "CANCELLED"
+      ],
+      "title": "AttemptStatus",
+      "type": "string"
+    },
+    "FailureCode": {
+      "description": "Namespaced failure codes registered for recovery decisions.",
+      "enum": [
+        "EXEC.VALIDATION",
+        "EXEC.AUTHENTICATION",
+        "EXEC.AUTHORIZATION",
+        "EXEC.RATE_LIMIT",
+        "EXEC.QUOTA",
+        "EXEC.TRANSIENT_PROVIDER",
+        "EXEC.PERMANENT_PROVIDER",
+        "EXEC.INTERNAL",
+        "EXEC.TIMEOUT_UNKNOWN",
+        "MEDIA.DECODE_ERROR",
+        "MEDIA.OUTPUT_PROFILE",
+        "MEDIA.TIMELINE_INVALID",
+        "MEDIA.TECHNICAL_INTEGRITY",
+        "QUALITY.SCHEMA_INVALID",
+        "QUALITY.GENERIC",
+        "QUALITY.UNSUPPORTED_CLAIM",
+        "QUALITY.NUMERIC_CONTRADICTION",
+        "QUALITY.TTS_OMISSION",
+        "QUALITY.TTS_PRONUNCIATION",
+        "QUALITY.VISUAL_MISMATCH",
+        "QUALITY.MISSING_ASSET",
+        "QUALITY.PROVENANCE_MISSING",
+        "QUALITY.CAPTION_OVERFLOW",
+        "QUALITY.AUDIO_DECODE",
+        "MEDIA.RENDER_CORRUPT",
+        "MEDIA.AUDIO_VIDEO_DRIFT",
+        "QUALITY.REPEATED_FAILURE",
+        "RIGHTS.LICENSE_UNCERTAIN",
+        "HUMAN.REVIEW_REQUIRED",
+        "POLICY.BUDGET_EXCEEDED",
+        "POLICY.PROHIBITED_CONTENT",
+        "CONFIG.UNKNOWN_STAGE"
+      ],
+      "title": "FailureCode",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:StageAttempt",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One claimable execution attempt for a logical stage instance.",
+  "properties": {
+    "attempt_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "attempt_number": {
+      "minimum": 1,
+      "title": "Attempt Number",
+      "type": "integer"
+    },
+    "failure_code": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FailureCode"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "failure_message": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure Message"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "input_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Input Artifact Ids",
+      "type": "array"
+    },
+    "lease_expires_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Lease Expires At"
+    },
+    "output_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Output Artifact Ids",
+      "type": "array"
+    },
+    "quality_regeneration_number": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Quality Regeneration Number",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "stage-attempt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage_instance_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Stage Instance Id",
+      "type": "string"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "status": {
+      "$ref": "#/$defs/AttemptStatus"
+    },
+    "worker_id": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Worker Id"
+    }
+  },
+  "required": [
+    "schema_version",
+    "attempt_id",
+    "stage_instance_id",
+    "attempt_number",
+    "status"
+  ],
+  "title": "StageAttempt",
+  "type": "object",
+  "x-contract-schema-version": "stage-attempt.v1"
+}

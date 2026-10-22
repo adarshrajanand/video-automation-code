@@ -1,0 +1,13 @@
+{
+  "actual_cost_minor": 2,
+  "estimated_cost_minor": 3,
+  "input_units": 40,
+  "metadata": {
+    "cache_hit": false
+  },
+  "model": "fixture-tts-v1",
+  "output_units": 600,
+  "provider": "local_speech_fixture",
+  "runtime_seconds": 1.5,
+  "schema_version": "usage.v1"
+}

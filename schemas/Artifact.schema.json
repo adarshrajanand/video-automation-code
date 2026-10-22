@@ -1,0 +1,170 @@
+{
+  "$defs": {
+    "ArtifactState": {
+      "description": "Lifecycle of an immutable artifact version.",
+      "enum": [
+        "GENERATED",
+        "ACCEPTED",
+        "SUPERSEDED",
+        "INVALIDATED",
+        "DELETED"
+      ],
+      "title": "ArtifactState",
+      "type": "string"
+    },
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:Artifact",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One immutable output version and its exact content hash.",
+  "properties": {
+    "artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Artifact Id",
+      "type": "string"
+    },
+    "artifact_type": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Artifact Type",
+      "type": "string"
+    },
+    "config_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Config Hash",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "input_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Input Artifact Ids",
+      "type": "array"
+    },
+    "logical_slot": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Logical Slot",
+      "type": "string"
+    },
+    "media_metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "media_type": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Media Type"
+    },
+    "producer_attempt_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Producer Attempt Id",
+      "type": "string"
+    },
+    "producer_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "retention_class": {
+      "default": "intermediate",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Retention Class",
+      "type": "string"
+    },
+    "run_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "artifact.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Sha256",
+      "type": "string"
+    },
+    "size_bytes": {
+      "minimum": 0,
+      "title": "Size Bytes",
+      "type": "integer"
+    },
+    "state": {
+      "$ref": "#/$defs/ArtifactState"
+    },
+    "uri": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Uri",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "artifact_id",
+    "run_id",
+    "logical_slot",
+    "artifact_type",
+    "version",
+    "uri",
+    "sha256",
+    "size_bytes",
+    "producer_attempt_id",
+    "producer_version",
+    "config_hash",
+    "state",
+    "created_at"
+  ],
+  "title": "Artifact",
+  "type": "object",
+  "x-contract-schema-version": "artifact.v1"
+}

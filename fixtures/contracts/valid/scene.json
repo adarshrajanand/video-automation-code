@@ -1,0 +1,13 @@
+{
+  "claim_ids": [
+    "claim_01"
+  ],
+  "narration_artifact_id": "artifact_audio_scene_01_v1",
+  "order_index": 0,
+  "scene_id": "scene_01",
+  "schema_version": "scene.v1",
+  "sequence_id": "seq_01",
+  "shot_ids": [
+    "shot_01_01"
+  ]
+}

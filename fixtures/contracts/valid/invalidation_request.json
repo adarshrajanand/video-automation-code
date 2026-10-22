@@ -1,0 +1,10 @@
+{
+  "reason": "speech regeneration",
+  "request_id": "invalidation_01",
+  "requested_by": "quality_engine",
+  "root_artifact_ids": [
+    "artifact_audio_scene_01_v1"
+  ],
+  "schema_version": "invalidation-request.v1",
+  "scope": "scene"
+}

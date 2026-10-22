@@ -1,13 +1,13 @@
 # AI Video Automation Pipeline
 
 Bootstrap shell for a local-first, modular-monolith video pipeline. This
-repository currently implements FV-01 only: the Python package skeleton, CLI
-entry point, local setup diagnostics, and the empty `PIPELINE_HOME` workspace
-layout.
+repository currently implements FV-01 and FV-02: the Python package skeleton,
+CLI entry point, local setup diagnostics, versioned Pydantic contracts,
+deterministic fingerprint/ID helpers, and committed JSON Schemas with fixtures.
 
-It does **not** implement workflow state, durable contracts, SQLite
-repositories, provider adapters, or media stage logic. There are no provider
-SDKs, credentials, network calls, or real media generation.
+It does **not** implement workflow execution, SQLite repositories, artifact
+storage, provider adapters, or media stage logic. There are no provider SDKs,
+credentials, network calls, or real media generation.
 
 ## Prerequisites
 
@@ -121,6 +121,46 @@ is deferred. It inspects a local manifest only; it never runs `npx`, installs
 packages, or contacts the network. A missing renderer is surfaced as a warning,
 not as a passing required check.
 
+## Contracts
+
+FV-02 adds strict Pydantic v2 contract models under `src/pipeline/contracts/`.
+The public surface covers:
+
+- configuration, workflow graphs, runs, stage instances, attempts, and manifests;
+- jobs, leases, capabilities, budgets, routing, and provider invocation records;
+- artifacts, lineage, pointers, invalidation, quality gates, and repair plans;
+- human review, publication boundaries, events, outbox/inbox delivery, and profiles;
+- minimal editorial references for packages, episodes, cuts, sequences, scenes,
+  shots, layers, and composition references.
+
+Contract records reject unknown core fields, require timezone-aware timestamps,
+normalize them to UTC, require lowercase SHA-256 digests, and validate cross-field
+references and workflow graph invariants. Free-form JSON is accepted only in
+declared extension fields such as `payload`, `metadata`, `properties`, and
+`safe_details`.
+
+Synthetic editorial/research/script/speech/render stage payloads are deferred to
+later work packages. The contracts here define only the references and control
+plane needed to persist and validate them.
+
+Deterministic helpers live in `src/pipeline/ids.py` and
+`src/pipeline/fingerprints.py`. Canonical JSON sorts keys, normalizes UTC
+datetimes and decimals, and redacts common secret-bearing keys for fingerprints.
+Prefixed IDs, run keys, and idempotency keys are opaque; callers must not parse
+semantics back out of them.
+
+JSON Schemas are committed under `schemas/` with a content-hash manifest. Do not
+edit generated schema files by hand. Verify or regenerate them with:
+
+```bash
+uv run python -m pipeline contracts export-schemas --check
+uv run python -m pipeline contracts export-schemas
+```
+
+Valid and invalid fixtures live under `fixtures/contracts/`. Every public
+contract has one valid fixture; `fixtures/contracts/invalid_manifest.json`
+records the expected validation error for each invalid fixture.
+
 ## Development checks
 
 Run from the repository root:
@@ -136,16 +176,17 @@ Use `uv run ruff format .` to apply formatting.
 ## Repository layout
 
 ```text
-src/pipeline/          Python package and CLI
-tests/                 Unit and CLI tests with fake local toolchains
-fixtures/              Reserved for deterministic fast-validation fixtures
+src/pipeline/          Python package, CLI, and versioned contracts
+tests/                 Unit, contract, and CLI tests with fake local toolchains
+fixtures/contracts/    Deterministic valid and invalid contract fixtures
+schemas/               Generated JSON Schemas and content-hash manifest
 ```
 
 ## Scope boundaries
 
 - Local modular monolith only; no remote infrastructure or service split.
 - No provider SDKs, API keys, paid calls, or network access from setup checks.
-- No workflow state, contracts, SQLite repositories, or stage logic yet.
+- No workflow execution, SQLite repositories, artifact storage, or stage logic yet.
 - Artifacts and runtime data stay under `PIPELINE_HOME`, never in Git.
 - The canonical architecture and implementation plans live in the separate
   documentation repository; this README covers the code bootstrap only.

@@ -1,0 +1,16 @@
+{
+  "details": {
+    "normalization": "text-v1"
+  },
+  "evidence_refs": [
+    "evidence_01"
+  ],
+  "failure_codes": [
+    "QUALITY.UNSUPPORTED_CLAIM"
+  ],
+  "name": "claim_support",
+  "schema_version": "evaluation-dimension.v1",
+  "score": 0.91,
+  "severity": "MAJOR",
+  "threshold": 0.8
+}

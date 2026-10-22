@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "FailureCategory": {
+      "description": "Stable failure categories from the canonical failure-code registry.",
+      "enum": [
+        "VALIDATION",
+        "AUTHENTICATION",
+        "AUTHORIZATION",
+        "RATE_LIMIT",
+        "QUOTA",
+        "TRANSIENT",
+        "PERMANENT",
+        "UNKNOWN_OUTCOME",
+        "MEDIA",
+        "QUALITY",
+        "BUDGET",
+        "CONFIGURATION",
+        "HUMAN_REVIEW",
+        "POLICY",
+        "INTERNAL"
+      ],
+      "title": "FailureCategory",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:RetryPolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Bounded transport retry policy owned by configuration.",
+  "properties": {
+    "initial_backoff_seconds": {
+      "minimum": 0,
+      "title": "Initial Backoff Seconds",
+      "type": "number"
+    },
+    "jitter_ratio": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Jitter Ratio",
+      "type": "number"
+    },
+    "max_attempts": {
+      "minimum": 1,
+      "title": "Max Attempts",
+      "type": "integer"
+    },
+    "max_backoff_seconds": {
+      "minimum": 0,
+      "title": "Max Backoff Seconds",
+      "type": "number"
+    },
+    "policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "retryable_categories": {
+      "items": {
+        "$ref": "#/$defs/FailureCategory"
+      },
+      "title": "Retryable Categories",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "retry-policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "max_attempts",
+    "initial_backoff_seconds",
+    "max_backoff_seconds",
+    "jitter_ratio"
+  ],
+  "title": "RetryPolicy",
+  "type": "object",
+  "x-contract-schema-version": "retry-policy.v1"
+}

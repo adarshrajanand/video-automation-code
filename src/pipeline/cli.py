@@ -6,8 +6,14 @@ import argparse
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from pipeline import __version__
+from pipeline.contracts.schema_export import (
+    check_schemas,
+    default_schema_dir,
+    export_schemas,
+)
 from pipeline.setup_checks import CheckStatus, SetupReport, collect_checks
 
 
@@ -37,6 +43,34 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="emit the same results as machine-readable JSON",
+    )
+    contracts = subparsers.add_parser(
+        "contracts",
+        help="contract tooling",
+        description="Export or verify the committed JSON Schemas.",
+    )
+    contracts_subparsers = contracts.add_subparsers(
+        dest="contracts_command", metavar="ACTION"
+    )
+    export_schemas_parser = contracts_subparsers.add_parser(
+        "export-schemas",
+        help="write JSON Schemas and the manifest, or check for drift",
+        description=(
+            "Write one JSON Schema per public contract plus schemas/manifest.json. "
+            "With --check, compare committed files against freshly rendered schemas "
+            "and exit non-zero when they differ."
+        ),
+    )
+    export_schemas_parser.add_argument(
+        "--check",
+        action="store_true",
+        help="verify committed schemas without writing any files",
+    )
+    export_schemas_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        default=None,
+        help="schema directory (defaults to the repository schemas/ directory)",
     )
     return parser
 
@@ -83,8 +117,46 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             _print_report(report)
         return 0 if report.ok else 1
+    if arguments.command == "contracts":
+        return _run_contracts_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
+
+
+def _run_contracts_command(arguments: argparse.Namespace) -> int:
+    if arguments.contracts_command is None:
+        print("Usage: python -m pipeline contracts export-schemas [--check]")
+        return 0
+    output_dir = arguments.output_dir or default_schema_dir()
+    if arguments.check:
+        result = check_schemas(output_dir)
+        if result.ok:
+            print(f"Contract schemas are up to date: {output_dir}")
+            return 0
+        print(f"Contract schema drift detected in {output_dir}:", file=sys.stderr)
+        if result.missing:
+            print(
+                "  missing: " + ", ".join(result.missing),
+                file=sys.stderr,
+            )
+        if result.drifted:
+            print(
+                "  drifted: " + ", ".join(result.drifted),
+                file=sys.stderr,
+            )
+        if result.extra:
+            print(
+                "  stale: " + ", ".join(result.extra),
+                file=sys.stderr,
+            )
+        print(
+            "Run 'python -m pipeline contracts export-schemas' to regenerate.",
+            file=sys.stderr,
+        )
+        return 1
+    result = export_schemas(output_dir)
+    print(f"Exported {len(result.written)} schema files to {output_dir}")
+    return 0
 
 
 if __name__ == "__main__":  # pragma: no cover
