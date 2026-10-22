@@ -7,17 +7,28 @@ import json
 import sqlite3
 import sys
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 from pipeline import __version__
+from pipeline.contracts.execution import WorkflowRun
 from pipeline.contracts.schema_export import (
     check_schemas,
     default_schema_dir,
     export_schemas,
 )
+from pipeline.contracts.vocabularies import RunStatus
+from pipeline.contracts.workflow import WorkflowDefinition
 from pipeline.paths import default_database_path
 from pipeline.setup_checks import CheckStatus, SetupReport, collect_checks
 from pipeline.storage import Database, MigrationError, MigrationRunner
+from pipeline.workflow import (
+    ReadinessContext,
+    WorkflowLoadError,
+    evaluate_readiness,
+    load_workflow,
+)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -107,6 +118,52 @@ def build_parser() -> argparse.ArgumentParser:
                 "(defaults to PIPELINE_HOME/state/pipeline.sqlite3)"
             ),
         )
+    workflow = subparsers.add_parser(
+        "workflow",
+        help="workflow definition validation and readiness inspection",
+        description=(
+            "Validate a versioned YAML workflow definition or evaluate pure "
+            "readiness from an explicit JSON context."
+        ),
+    )
+    workflow_subparsers = workflow.add_subparsers(
+        dest="workflow_command", metavar="ACTION"
+    )
+    workflow_validate = workflow_subparsers.add_parser(
+        "validate",
+        help="parse and statically validate a workflow YAML file",
+        description=(
+            "Parse a workflow file with yaml.safe_load and validate it through "
+            "the canonical WorkflowDefinition contract."
+        ),
+    )
+    workflow_validate.add_argument(
+        "path",
+        type=Path,
+        help="workflow definition YAML file",
+    )
+    workflow_readiness = workflow_subparsers.add_parser(
+        "readiness",
+        help="evaluate pure readiness and print a JSON result",
+        description=(
+            "Evaluate workflow readiness from explicit durable records supplied "
+            "in a JSON context. With no context, only root readiness is planned."
+        ),
+    )
+    workflow_readiness.add_argument(
+        "path",
+        type=Path,
+        help="workflow definition YAML file",
+    )
+    workflow_readiness.add_argument(
+        "--context",
+        type=Path,
+        default=None,
+        help=(
+            "JSON readiness context file, or - for stdin "
+            "(defaults to an empty synthetic run)"
+        ),
+    )
     return parser
 
 
@@ -156,6 +213,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_contracts_command(arguments)
     if arguments.command == "db":
         return _run_db_command(arguments)
+    if arguments.command == "workflow":
+        return _run_workflow_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
 
@@ -194,6 +253,125 @@ def _run_contracts_command(arguments: argparse.Namespace) -> int:
     result = export_schemas(output_dir)
     print(f"Exported {len(result.written)} schema files to {output_dir}")
     return 0
+
+
+_CLI_RUN_TIME = datetime(2026, 1, 1, tzinfo=UTC)
+_CLI_CONTEXT_KEYS = frozenset(
+    {
+        "run",
+        "run_status",
+        "stage_instances",
+        "input_manifests",
+        "accepted_artifact_ids",
+        "accepted_artifact_pointers",
+        "quality_gate_results",
+        "human_reviews",
+        "run_input_artifact_ids",
+        "artifact_states",
+        "condition_context",
+        "recoverable_stage_instance_ids",
+    }
+)
+
+
+def _synthetic_run(workflow: WorkflowDefinition, status: RunStatus) -> WorkflowRun:
+    return WorkflowRun(
+        schema_version="workflow-run.v1",
+        run_id="run_cli",
+        run_key=f"cli:{workflow.workflow_id}:{workflow.version}",
+        workflow_id=workflow.workflow_id,
+        workflow_version=workflow.version,
+        effective_config_id="cfg_cli",
+        effective_config_hash="0" * 64,
+        status=status,
+        content_package_id="package_cli",
+        created_at=_CLI_RUN_TIME,
+        updated_at=_CLI_RUN_TIME,
+    )
+
+
+def _readiness_context(
+    workflow: WorkflowDefinition, context_path: Path | None
+) -> ReadinessContext:
+    if context_path is None:
+        payload: dict[str, Any] = {}
+    else:
+        if str(context_path) == "-":
+            document = sys.stdin.read()
+            source = "<stdin>"
+        else:
+            document = context_path.read_text(encoding="utf-8")
+            source = str(context_path)
+        payload = json.loads(document)
+        if not isinstance(payload, dict):
+            raise ValueError(f"{source}: readiness context must be a JSON object")
+        unknown = set(payload) - _CLI_CONTEXT_KEYS
+        if unknown:
+            raise ValueError(
+                f"{source}: unknown readiness context key(s): "
+                + ", ".join(sorted(unknown))
+            )
+
+    if "run" in payload and "run_status" in payload:
+        raise ValueError("provide either 'run' or 'run_status', not both")
+    if "run" in payload:
+        run = WorkflowRun.model_validate(payload["run"])
+    else:
+        run = _synthetic_run(
+            workflow, RunStatus(str(payload.get("run_status", "CREATED")))
+        )
+
+    data = {"run": run, "workflow": workflow}
+    for key in _CLI_CONTEXT_KEYS - {"run", "run_status"}:
+        if key in payload:
+            data[key] = payload[key]
+    return ReadinessContext.model_validate(data)
+
+
+def _run_workflow_command(arguments: argparse.Namespace) -> int:
+    if arguments.workflow_command is None:
+        print("Usage: python -m pipeline workflow {validate,readiness} PATH")
+        return 0
+    try:
+        workflow = load_workflow(arguments.path)
+    except WorkflowLoadError as error:
+        print(f"Invalid workflow: {error}", file=sys.stderr)
+        return 1
+
+    if arguments.workflow_command == "validate":
+        root_ids = [node.node_id for node in workflow.nodes if not node.depends_on]
+        terminal_ids = [
+            node.node_id
+            for node in workflow.nodes
+            if not any(
+                node.node_id in candidate.depends_on for candidate in workflow.nodes
+            )
+        ]
+        print(
+            f"Workflow {workflow.workflow_id!r} version {workflow.version!r} is "
+            f"valid: {len(workflow.nodes)} node(s), {len(root_ids)} root(s), "
+            f"{len(terminal_ids)} terminal node(s)."
+        )
+        return 0
+
+    if arguments.workflow_command == "readiness":
+        try:
+            context = _readiness_context(workflow, arguments.context)
+            result = evaluate_readiness(context)
+        except (OSError, ValueError, json.JSONDecodeError) as error:
+            print(f"Readiness evaluation failed: {error}", file=sys.stderr)
+            return 1
+        sys.stdout.write(
+            json.dumps(result.model_dump(mode="json"), indent=2, sort_keys=True)
+        )
+        sys.stdout.write("\n")
+        return 0
+
+    print(
+        f"Unknown workflow action: {arguments.workflow_command}",
+        file=sys.stderr,
+    )
+    return 2
 
 
 def _run_db_command(arguments: argparse.Namespace) -> int:
