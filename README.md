@@ -447,6 +447,139 @@ explicit database path when needed.
 - Validation/permanent failures do not create a replacement attempt.
 - Timeout/unknown outcomes go to reconciliation state rather than blind retry.
 
+## Capability registry and fake provider layer (FV-06)
+
+FV-06 adds the provider-independent capability boundary under
+`src/pipeline/capabilities/`. Stages and workflow code must call this boundary;
+they must not import provider SDKs, HTTP clients, or vendor packages directly.
+The implementation is fully local, deterministic, and injectable for testing.
+
+### Capability registry
+
+`CapabilityRegistry` maps `(capability, operation_version)` to registered
+`CapabilityImplementation` records. Each registration declares:
+
+- capability name and operation version
+- implementation identifier and version
+- provider and optional model
+- declared features, supported locales, data classification
+- estimated cost and latency bounds
+- configuration hash for reproducibility
+
+The registry returns a matching implementation or raises
+`CapabilityNotFoundError` / `CapabilityRequirementMismatchError` when no
+candidate satisfies the request's requirements. A `FakeCapabilityProvider` can
+be attached to the registry for deterministic local execution.
+
+### Normalized error factory
+
+`create_normalized_error` derives `FailureCategory`, `retryable`, and
+`reconciliation_required` from the canonical `FAILURE_CODE_CATEGORIES` map in
+`pipeline.contracts.vocabularies`. It never hand-maintains a conflicting
+code-to-category map. Categories that are retryable by default:
+`TRANSIENT`, `RATE_LIMIT`, `QUOTA`. Categories requiring reconciliation:
+`UNKNOWN_OUTCOME` (and `TIMEOUT_UNKNOWN` specifically). All other categories are
+non-retryable by default.
+
+### Deterministic fake capability provider
+
+`FakeCapabilityProvider` returns scripted `CapabilityResult` outcomes without
+any network calls, real credentials, or provider SDK dependencies. It covers
+success and every `FailureCategory`/`FailureCode` family used by recovery:
+validation, authentication, authorization, rate limit, quota, transient,
+permanent, timeout/unknown, media, quality, budget, configuration, human
+review, policy, and internal. A scripted outcome may also carry synthetic
+artifacts and usage records, or raise a configured exception that the executor
+normalizes.
+
+Pre-defined outcome factories:
+
+```python
+from pipeline.capabilities import (
+    create_success_outcome,
+    outcome_validation_failure,
+    outcome_authentication_failure,
+    outcome_authorization_failure,
+    outcome_rate_limit,
+    outcome_quota_exceeded,
+    outcome_transient_provider,
+    outcome_permanent_provider,
+    outcome_timeout_unknown,
+    outcome_media_integrity,
+    outcome_quality_failure,
+    outcome_budget_exceeded,
+    outcome_configuration,
+    outcome_human_review,
+    outcome_policy,
+    outcome_internal,
+)
+```
+
+### Capability executor
+
+`CapabilityExecutor` accepts a `CapabilityRequest`, `ExecutionContext`, and an
+explicit `RoutingDecision`/`ResourceAssignment`. It:
+
+- Checks the durable idempotency record before invoking anything; a completed
+  replay returns the prior result without a second invocation; an in-flight or
+  unknown record is not blindly re-invoked.
+- Records `RoutingDecision`, `CapabilityExecution`, `ProviderInvocation`,
+  `CapabilityResult`, and `UsageRecord` in SQLite using typed repositories.
+- On success records artifact IDs and usage.
+- On normalized failure records the error and updates idempotency status
+  (`FAILED` or `UNKNOWN`).
+- On unknown outcome marks execution/idempotency `UNKNOWN` with reconciliation
+  required and does not retry.
+- Enforces `CapabilityRequirements.cost_limit_minor`/budget guard before
+  invocation when a limit is supplied; no paid fallback is authorized by default.
+- Uses explicit transactions and never holds a write transaction open across the
+  fake invocation.
+
+Typed repositories for `routing_decisions`, `capability_executions`,
+`provider_invocations`, and `usage_records` are exported from
+`pipeline.storage.repositories`. `UsageRecord` has no ID field; the repository
+generates a deterministic `usage_id` for the durable row and persists the
+canonical contract JSON plus extracted columns.
+
+### CLI
+
+```bash
+# List registered implementations (empty by default)
+uv run python -m pipeline capabilities list \
+  --database /path/to/pipeline.sqlite3
+
+# Invoke a fake capability with a scripted outcome
+uv run python -m pipeline capabilities invoke \
+  --database /path/to/pipeline.sqlite3 \
+  --capability speech_generation \
+  --operation-version v1 \
+  --fake-outcome success \
+  [--fake-outcome validation|authentication|authorization|rate_limit|quota|transient|permanent|timeout_unknown|media|quality|budget|configuration|human_review|policy|internal]
+```
+
+The `--fake-outcome` parameter exercises every recovery branch. The invoke
+command requires an explicit database path for persistence and creates the
+minimal durable records (workflow run, effective config, stage instance,
+attempt) to satisfy foreign keys.
+
+### Fault guarantees covered by tests
+
+- Registry lookup succeeds for registered capability/version pairs.
+- Unknown capability/version raises `CapabilityNotFoundError` with a
+  `NormalizedError` mapping to `CONFIG_UNKNOWN_STAGE`.
+- Requirement mismatch raises `CapabilityRequirementMismatchError` mapping to
+  `VALIDATION`.
+- Deterministic fake success persists artifacts and usage records.
+- Completed idempotent replay returns prior result without second invocation.
+- In-flight/unknown idempotency is not blindly re-invoked.
+- Routing decision and capability/provider invocation records are persisted.
+- Parameterized mapping for every `FailureCode`/`FailureCategory`, retryable
+  flags, and unknown reconciliation.
+- Scripted transient, rate-limit, authentication, validation, permanent, media,
+  quality, budget, and human-review outcomes.
+- Budget-limit rejection before invocation.
+- No network/provider SDK usage (static import-boundary test).
+
 ## Development checks
 
 Run from the repository root:

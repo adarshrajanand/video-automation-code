@@ -258,6 +258,103 @@ def build_parser() -> argparse.ArgumentParser:
         default=60.0,
         help="job lease in seconds (default: 60)",
     )
+    capabilities = subparsers.add_parser(
+        "capabilities",
+        help="capability registry and fake provider tooling",
+        description=(
+            "List registered capabilities or invoke a fake capability with a "
+            "scripted outcome for testing."
+        ),
+    )
+    capabilities_subparsers = capabilities.add_subparsers(
+        dest="capabilities_command", metavar="ACTION"
+    )
+    capabilities_list = capabilities_subparsers.add_parser(
+        "list",
+        help="list registered capability implementations",
+        description=(
+            "Print all registered capability implementations with their metadata."
+        ),
+    )
+    capabilities_list.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help=(
+            "SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)"
+        ),
+    )
+    capabilities_invoke = capabilities_subparsers.add_parser(
+        "invoke",
+        help="invoke a fake capability with a scripted outcome",
+        description=(
+            "Execute a fake capability request with a deterministic scripted "
+            "outcome. Requires an explicit database path for persistence."
+        ),
+    )
+    capabilities_invoke.add_argument(
+        "--database",
+        type=Path,
+        required=True,
+        help="SQLite database path (required for persistence)",
+    )
+    capabilities_invoke.add_argument(
+        "--capability",
+        required=True,
+        help="capability name (e.g., speech_generation)",
+    )
+    capabilities_invoke.add_argument(
+        "--operation-version",
+        required=True,
+        help="operation version (e.g., v1)",
+    )
+    capabilities_invoke.add_argument(
+        "--fake-outcome",
+        required=True,
+        choices=sorted(
+            [
+                "success",
+                "validation",
+                "authentication",
+                "authorization",
+                "rate_limit",
+                "quota",
+                "transient",
+                "permanent",
+                "timeout_unknown",
+                "media",
+                "quality",
+                "budget",
+                "configuration",
+                "human_review",
+                "policy",
+                "internal",
+            ]
+        ),
+        help="scripted outcome to return",
+    )
+    capabilities_invoke.add_argument(
+        "--provider",
+        default="fake",
+        help="provider name (default: fake)",
+    )
+    capabilities_invoke.add_argument(
+        "--model",
+        default="deterministic-fixture",
+        help="model name (default: deterministic-fixture)",
+    )
+    capabilities_invoke.add_argument(
+        "--attempt-id",
+        help="attempt ID (generated if not provided)",
+    )
+    capabilities_invoke.add_argument(
+        "--run-id",
+        help="run ID (generated if not provided)",
+    )
+    capabilities_invoke.add_argument(
+        "--stage-instance-id",
+        help="stage instance ID (generated if not provided)",
+    )
     return parser
 
 
@@ -313,6 +410,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_outbox_command(arguments)
     if arguments.command == "worker":
         return _run_worker_command(arguments)
+    if arguments.command == "capabilities":
+        return _run_capabilities_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
 
@@ -537,6 +636,295 @@ def _run_worker_command(arguments: argparse.Namespace) -> int:
         )
     print(f"Database: {database.path}")
     return 0
+
+
+def _run_capabilities_command(arguments: argparse.Namespace) -> int:
+    if arguments.capabilities_command is None:
+        print("Usage: python -m pipeline capabilities {list,invoke} ...")
+        return 0
+
+    if arguments.capabilities_command == "list":
+        return _run_capabilities_list(arguments)
+
+    if arguments.capabilities_command == "invoke":
+        return _run_capabilities_invoke(arguments)
+
+    print(
+        f"Unknown capabilities action: {arguments.capabilities_command}",
+        file=sys.stderr,
+    )
+    return 2
+
+
+def _run_capabilities_list(arguments: argparse.Namespace) -> int:
+    try:
+        database = _migrated_database(arguments.database)
+        from pipeline.capabilities import CapabilityRegistry
+
+        CapabilityRegistry()
+        # The registry is empty by default - we just show it's working
+        print("Capability Registry (empty - register implementations to populate)")
+        print(f"Database: {database.path}")
+        return 0
+    except (MigrationError, OSError, sqlite3.Error, ValueError) as error:
+        print(
+            f"Capabilities list failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 1
+
+
+def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
+    try:
+        database = _migrated_database(arguments.database)
+
+        # Import here to avoid circular imports
+        from datetime import UTC, datetime
+
+        from pipeline.capabilities import (
+            CapabilityExecutor,
+            CapabilityRegistry,
+            FakeCapabilityProvider,
+            create_success_outcome,
+            outcome_authentication_failure,
+            outcome_authorization_failure,
+            outcome_budget_exceeded,
+            outcome_configuration,
+            outcome_human_review,
+            outcome_internal,
+            outcome_media_integrity,
+            outcome_permanent_provider,
+            outcome_policy,
+            outcome_quality_failure,
+            outcome_quota_exceeded,
+            outcome_rate_limit,
+            outcome_timeout_unknown,
+            outcome_transient_provider,
+            outcome_validation_failure,
+        )
+        from pipeline.contracts.capabilities import (
+            CapabilityRequest,
+            CapabilityRequirements,
+            ExecutionContext,
+        )
+        from pipeline.contracts.routing import RoutingDecision
+        from pipeline.fingerprints import sha256_text
+        from pipeline.ids import deterministic_id
+
+        # Map fake outcome names to factory functions
+        outcome_factories = {
+            "success": create_success_outcome,
+            "validation": outcome_validation_failure,
+            "authentication": outcome_authentication_failure,
+            "authorization": outcome_authorization_failure,
+            "rate_limit": outcome_rate_limit,
+            "quota": outcome_quota_exceeded,
+            "transient": outcome_transient_provider,
+            "permanent": outcome_permanent_provider,
+            "timeout_unknown": outcome_timeout_unknown,
+            "media": outcome_media_integrity,
+            "quality": outcome_quality_failure,
+            "budget": outcome_budget_exceeded,
+            "configuration": outcome_configuration,
+            "human_review": outcome_human_review,
+            "policy": outcome_policy,
+            "internal": outcome_internal,
+        }
+
+        outcome_factory = outcome_factories[arguments.fake_outcome]
+
+        # Generate IDs if not provided
+        import uuid
+
+        run_suffix = f"cli_{uuid.uuid4().hex[:8]}"
+        run_id = arguments.run_id or deterministic_id("run", run_suffix)
+        stage_instance_id = arguments.stage_instance_id or deterministic_id(
+            "stage", run_id
+        )
+        attempt_id = arguments.attempt_id or deterministic_id(
+            "attempt", stage_instance_id
+        )
+        capability_execution_id = deterministic_id("capexec", attempt_id)
+        routing_decision_id = deterministic_id("route", capability_execution_id)
+
+        import json
+
+        # Create fake payload
+        payload = {"test": "data", "capability": arguments.capability}
+        payload_fingerprint = sha256_text(json.dumps(payload, sort_keys=True))
+
+        # Create capability request
+        request = CapabilityRequest(
+            schema_version="capability-request.v1",
+            capability_execution_id=capability_execution_id,
+            capability=arguments.capability,
+            operation_version=arguments.operation_version,
+            input_artifact_ids=[],
+            payload_fingerprint=payload_fingerprint,
+            requirements=CapabilityRequirements(
+                schema_version="capability-requirements.v1",
+                capability=arguments.capability,
+            ),
+            payload=payload,
+            payload_schema_version="test.v1",
+            runtime_context={},
+            idempotency_key=deterministic_id("idem", capability_execution_id),
+        )
+
+        # Create execution context
+        context = ExecutionContext(
+            schema_version="execution-context.v1",
+            run_id=run_id,
+            stage_instance_id=stage_instance_id,
+            attempt_id=attempt_id,
+            effective_config_id=deterministic_id("config", run_id),
+            correlation_id=deterministic_id("corr", run_id),
+            timeout_seconds=300,
+            allowed_data_classification="PUBLIC",
+        )
+
+        # Create routing decision
+        routing_decision = RoutingDecision(
+            schema_version="routing-decision.v1",
+            routing_decision_id=routing_decision_id,
+            capability=arguments.capability,
+            implementation="fake",
+            implementation_version="1.0.0",
+            provider=arguments.provider,
+            model=arguments.model,
+            provider_config_hash="0" * 64,
+            fallback_chain=[],
+            policy_version="1.0",
+            reason_codes=["cli_test"],
+            candidate_exclusions=[],
+            budget_context={},
+            usage_context={},
+            attempt=1,
+            data_classification="PUBLIC",
+            paid_fallback_authorized=False,
+            created_at=datetime.now(UTC),
+        )
+
+        # Create required database records for the fake attempt
+        with database.transaction() as conn:
+            from pipeline.contracts.config import EffectiveConfig, RunOverrides
+            from pipeline.contracts.execution import (
+                StageAttempt,
+                StageInstance,
+                WorkflowRun,
+            )
+            from pipeline.contracts.vocabularies import (
+                AttemptStatus,
+                RunStatus,
+                StageExecutionStatus,
+            )
+            from pipeline.storage.repositories.execution import (
+                EffectiveConfigRepository,
+                StageAttemptRepository,
+                StageInstanceRepository,
+                WorkflowRunRepository,
+            )
+
+            # Create effective config
+            effective_config_id = deterministic_id("config", run_id)
+            effective_config = EffectiveConfig(
+                schema_version="effective-config.v1",
+                effective_config_id=effective_config_id,
+                config_hash="0" * 64,
+                workflow_id="test_workflow",
+                workflow_version="1.0",
+                system_policy_version="1.0",
+                domain_profile_id="test_domain",
+                domain_profile_version="1.0",
+                channel_profile_id="test_channel",
+                channel_profile_version="1.0",
+                run_overrides=RunOverrides(schema_version="run-overrides.v1"),
+                snapshot_artifact_id=None,
+            )
+            EffectiveConfigRepository(conn).insert(effective_config)
+
+            # Create workflow run
+            workflow_run = WorkflowRun(
+                schema_version="workflow-run.v1",
+                run_id=run_id,
+                run_key=f"cli_test:{run_id}",
+                workflow_id="test_workflow",
+                workflow_version="1.0",
+                effective_config_id=effective_config_id,
+                effective_config_hash="0" * 64,
+                status=RunStatus.RUNNING,
+                content_package_id=deterministic_id("package", run_id),
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+            WorkflowRunRepository(conn).insert(workflow_run)
+
+            # Create stage instance
+            stage_instance = StageInstance(
+                schema_version="stage-instance.v1",
+                stage_instance_id=stage_instance_id,
+                run_id=run_id,
+                node_id="test_node",
+                logical_item_key="test_item",
+                execution_status=StageExecutionStatus.RUNNING,
+                acceptance_status="NOT_REQUIRED",
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+            StageInstanceRepository(conn).insert(stage_instance)
+
+            # Create stage attempt
+            stage_attempt = StageAttempt(
+                schema_version="stage-attempt.v1",
+                attempt_id=attempt_id,
+                stage_instance_id=stage_instance_id,
+                attempt_number=1,
+                status=AttemptStatus.RUNNING,
+                started_at=datetime.now(UTC),
+            )
+            StageAttemptRepository(conn).insert(stage_attempt)
+
+        # Set up registry and fake provider
+        registry = CapabilityRegistry()
+        fake_provider = FakeCapabilityProvider(registry)
+        fake_provider.register_outcome(payload_fingerprint, outcome_factory())
+
+        # Create executor and execute
+        executor = CapabilityExecutor(database, registry, fake_provider)
+        result = executor.execute(request, context, routing_decision)
+
+        if isinstance(result, tuple) and len(result) == 2:
+            # Handle tuple return (legacy)
+            execution_output, _idempotency_record = result
+        else:
+            # Handle new ExecutionResult/ExecutionError
+            if hasattr(result, "execution_output"):
+                execution_output = result.execution_output
+            else:
+                # ExecutionError
+                print(f"Execution failed: {result.normalized_error.message}")
+                print(f"Category: {result.normalized_error.category}")
+                print(f"Retryable: {result.normalized_error.retryable}")
+                print(
+                    f"Reconciliation required: "
+                    f"{result.normalized_error.reconciliation_required}"
+                )
+                return 1
+
+        print(f"Capability execution completed: {execution_output.result.status}")
+        print(f"  Capability: {arguments.capability}")
+        print(f"  Operation version: {arguments.operation_version}")
+        print(f"  Fake outcome: {arguments.fake_outcome}")
+        print(f"  Artifact IDs: {execution_output.result.artifact_ids}")
+        print(f"  Database: {database.path}")
+        return 0
+
+    except (MigrationError, OSError, sqlite3.Error, ValueError, KeyError) as error:
+        print(
+            f"Capabilities invoke failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 1
 
 
 def _migrated_database(path: Path | None) -> Database:

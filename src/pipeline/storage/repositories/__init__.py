@@ -6,6 +6,12 @@ from pipeline.storage.repositories.artifacts import (
     ArtifactRepository,
 )
 from pipeline.storage.repositories.base import SqliteRepository
+from pipeline.storage.repositories.capabilities import (
+    CapabilityExecutionRepository,
+    ProviderInvocationRepository,
+    RoutingDecisionRepository,
+    UsageRecordRepository,
+)
 from pipeline.storage.repositories.control import (
     BudgetReservationRepository,
     IdempotencyRecordRepository,
@@ -41,6 +47,7 @@ __all__ = [
     "ArtifactPointerRepository",
     "ArtifactRepository",
     "BudgetReservationRepository",
+    "CapabilityExecutionRepository",
     "CompositionRefRepository",
     "ContentPackageRepository",
     "CutRepository",
@@ -52,13 +59,16 @@ __all__ = [
     "LayerInstanceRepository",
     "LeaseRepository",
     "OutboxMessageRepository",
+    "ProviderInvocationRepository",
     "RecoveryDecisionRepository",
+    "RoutingDecisionRepository",
     "SceneRepository",
     "SequenceRepository",
     "ShotRepository",
     "SqliteRepository",
     "StageAttemptRepository",
     "StageInstanceRepository",
+    "UsageRecordRepository",
     "WorkflowEventRepository",
     "WorkflowRunRepository",
     "insert_event_and_outbox",
