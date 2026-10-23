@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:VisualPlanningInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the visual_planning capability.",
+  "properties": {
+    "color_palette": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Color Palette"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "scene_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Scene Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "visual-planning-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "style_guidance": {
+      "default": "documentary_cinematic",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Style Guidance",
+      "type": "string"
+    },
+    "visual_intent_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Visual Intent Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "script_id"
+  ],
+  "title": "VisualPlanningInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "visual-planning-input.v1"
+}

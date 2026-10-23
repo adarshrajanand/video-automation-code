@@ -22,7 +22,26 @@ from pipeline.contracts.capabilities import (
     IdempotencyRecord,
     UsageRecord,
 )
+from pipeline.contracts.capability_payloads import (
+    ResearchInputPayload,
+    ResearchOutputPayload,
+    ScriptGenerationInputPayload,
+    ScriptGenerationOutputPayload,
+    VisualPlanningInputPayload,
+    VisualPlanningOutputPayload,
+)
 from pipeline.contracts.config import EffectiveConfig, RunOverrides
+from pipeline.contracts.content import (
+    AudioTiming,
+    Claim,
+    DurationPolicy,
+    Evidence,
+    Script,
+    ScriptScene,
+    SourceRef,
+    SourceSnapshot,
+    VisualIntent,
+)
 from pipeline.contracts.editorial import (
     CompositionRef,
     ContentPackage,
@@ -161,6 +180,23 @@ CONTRACT_MODELS: tuple[type[Contract], ...] = (
     Shot,
     LayerInstance,
     CompositionRef,
+    # Content stage contracts
+    SourceRef,
+    SourceSnapshot,
+    Evidence,
+    Claim,
+    VisualIntent,
+    DurationPolicy,
+    ScriptScene,
+    Script,
+    AudioTiming,
+    # Capability payloads
+    ResearchInputPayload,
+    ResearchOutputPayload,
+    ScriptGenerationInputPayload,
+    ScriptGenerationOutputPayload,
+    VisualPlanningInputPayload,
+    VisualPlanningOutputPayload,
 )
 
 PUBLIC_CONTRACTS: dict[str, type[Contract]] = {

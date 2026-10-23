@@ -56,6 +56,21 @@ REQUIRED_INVALID_CASES = {
     "routing_context_zero_attempt",
     "capability_requirements_mismatch",
     "idempotency_time_order",
+    "source_ref_bad_kind",
+    "source_snapshot_bad_range",
+    "evidence_bad_range",
+    "claim_bad_type",
+    "visual_intent_bad_purpose",
+    "duration_policy_bad_range",
+    "script_scene_duplicate_claims",
+    "script_duplicate_scenes",
+    "audio_timing_bad_order",
+    "research_input_bad_range",
+    "research_output_duplicate_sources_payload",
+    "script_generation_input_bad_duration",
+    "script_generation_output_bad_scene_count_payload",
+    "visual_planning_input_duplicate_scenes_payload",
+    "visual_planning_output_duplicate_intents_payload",
 }
 
 

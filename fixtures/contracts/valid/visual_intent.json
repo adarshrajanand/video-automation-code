@@ -1,0 +1,15 @@
+{
+  "schema_version": "visual-intent.v1",
+  "visual_intent_id": "vi_01",
+  "scene_id": "scene_01",
+  "description": "Aerial view of Arctic ice sheet showing dramatic retreat over time-lapse",
+  "purpose": "EVIDENCE",
+  "elements": ["satellite_imagery", "time_lapse", "ice_boundary_overlay", "scale_bar"],
+  "overlays": ["year_timestamp", "ice_extent_km2", "temperature_anomaly"],
+  "provenance_requirements": ["satellite_source_attribution", "processing_pipeline_version"],
+  "timing_hint_seconds": 8.5,
+  "metadata": {
+    "style_guidance": "documentary_cinematic",
+    "color_palette": "cool_blues_whites"
+  }
+}

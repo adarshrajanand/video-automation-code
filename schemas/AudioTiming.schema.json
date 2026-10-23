@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:AudioTiming",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Per-scene audio timing alignment for TTS generation.",
+  "properties": {
+    "audio_timing_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Timing Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_text": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Narration Text",
+      "type": "string"
+    },
+    "pause_after_word": {
+      "items": {
+        "minimum": 0,
+        "type": "number"
+      },
+      "title": "Pause After Word",
+      "type": "array"
+    },
+    "sample_rate": {
+      "default": 24000,
+      "minimum": 1,
+      "title": "Sample Rate",
+      "type": "integer"
+    },
+    "scene_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "audio-timing.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "total_duration_seconds": {
+      "minimum": 1,
+      "title": "Total Duration Seconds",
+      "type": "integer"
+    },
+    "word_end_seconds": {
+      "items": {
+        "minimum": 0,
+        "type": "number"
+      },
+      "title": "Word End Seconds",
+      "type": "array"
+    },
+    "word_start_seconds": {
+      "items": {
+        "minimum": 0,
+        "type": "number"
+      },
+      "title": "Word Start Seconds",
+      "type": "array"
+    },
+    "words": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Words",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_timing_id",
+    "scene_id",
+    "script_id",
+    "narration_text",
+    "total_duration_seconds"
+  ],
+  "title": "AudioTiming",
+  "type": "object",
+  "x-contract-schema-version": "audio-timing.v1"
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "audio-timing.v1",
+  "audio_timing_id": "at_01",
+  "scene_id": "scene_01",
+  "script_id": "script_01",
+  "narration_text": "Test narration",
+  "words": ["Test", "narration"],
+  "word_start_seconds": [0.0, 0.5],
+  "word_end_seconds": [0.4, 0.3],
+  "pause_after_word": [0.1, 0.2],
+  "total_duration_seconds": 10,
+  "sample_rate": 24000
+}

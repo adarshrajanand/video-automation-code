@@ -1,0 +1,15 @@
+{
+  "schema_version": "duration-policy.v1",
+  "policy_id": "dp_01",
+  "target_total_seconds": 300,
+  "min_scene_seconds": 5,
+  "max_scene_seconds": 25,
+  "words_per_minute": 150,
+  "pause_seconds_per_comma": 0.2,
+  "pause_seconds_per_period": 0.5,
+  "intro_outro_seconds": 8,
+  "metadata": {
+    "profile": "explainer_standard",
+    "platform": "youtube"
+  }
+}

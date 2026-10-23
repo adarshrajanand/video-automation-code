@@ -1,0 +1,40 @@
+{
+  "schema_version": "script.v1",
+  "script_id": "script_01",
+  "episode_id": "episode_01",
+  "title": "Test Script",
+  "outline": "Test outline",
+  "scenes": [
+    {
+      "schema_version": "script-scene.v1",
+      "scene_id": "scene_01",
+      "script_id": "script_01",
+      "order_index": 0,
+      "narration": "Scene 1",
+      "claim_ids": [],
+      "visual_intent_ids": [],
+      "estimated_duration_seconds": 10,
+      "metadata": {}
+    },
+    {
+      "schema_version": "script-scene.v1",
+      "scene_id": "scene_01",
+      "script_id": "script_01",
+      "order_index": 1,
+      "narration": "Scene 2",
+      "claim_ids": [],
+      "visual_intent_ids": [],
+      "estimated_duration_seconds": 10,
+      "metadata": {}
+    }
+  ],
+  "claim_ids": [],
+  "evidence_ids": [],
+  "source_ref_ids": [],
+  "visual_intent_ids": [],
+  "duration_policy_id": "dp_01",
+  "total_estimated_duration_seconds": 20,
+  "word_count": 10,
+  "language": "en",
+  "created_at": "2024-01-16T14:00:00Z"
+}

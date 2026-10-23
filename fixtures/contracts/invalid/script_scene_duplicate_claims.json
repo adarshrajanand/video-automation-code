@@ -1,0 +1,10 @@
+{
+  "schema_version": "script-scene.v1",
+  "scene_id": "scene_01",
+  "script_id": "script_01",
+  "order_index": 0,
+  "narration": "Test narration",
+  "claim_ids": ["claim_01", "claim_01"],
+  "visual_intent_ids": [],
+  "estimated_duration_seconds": 10
+}

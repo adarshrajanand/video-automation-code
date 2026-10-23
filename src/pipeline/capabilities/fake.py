@@ -86,7 +86,7 @@ class FakeCapabilityProvider:
         This method:
         1. Computes the request fingerprint
         2. Looks up a registered scripted outcome
-        3. Falls back to the default outcome
+        3. Falls back to the default outcome (capability-aware for content stages)
         4. Builds CapabilityExecution, ProviderInvocation,
            CapabilityResult, and UsageRecord
         """
@@ -95,6 +95,15 @@ class FakeCapabilityProvider:
 
         # Get the scripted outcome for this request
         outcome = self._outcomes.get(fingerprint, self._default_outcome)
+
+        # For content-stage capabilities, if no specific outcome registered,
+        # generate a deterministic success outcome based on the capability
+        if outcome is self._default_outcome and request.capability in (
+            "research",
+            "script_generation",
+            "visual_planning",
+        ):
+            outcome = create_content_stage_success_outcome(request.capability)
 
         # Create capability execution record
         execution_id = request.capability_execution_id
@@ -390,6 +399,128 @@ def outcome_internal(message: str = "Internal error") -> ScriptedOutcome:
     return create_failed_outcome(FailureCode.INTERNAL, message)
 
 
+# Content-stage specific outcome factories
+
+
+def create_research_success_outcome(
+    source_count: int = 2,
+    claim_count: int = 3,
+    evidence_count: int = 3,
+) -> ScriptedOutcome:
+    """Create a successful research outcome with deterministic artifact IDs."""
+    artifact_ids = []
+    for i in range(source_count):
+        artifact_ids.append(f"src_{i + 1:02d}")
+        artifact_ids.append(f"snap_{i + 1:02d}")
+    for i in range(claim_count):
+        artifact_ids.append(f"claim_{i + 1:02d}")
+    for i in range(evidence_count):
+        artifact_ids.append(f"ev_{i + 1:02d}")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "research",
+            "source_count": source_count,
+            "claim_count": claim_count,
+            "evidence_count": evidence_count,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=100,
+            output_units=500,
+            runtime_seconds=2.0,
+            estimated_cost_minor=500,
+            actual_cost_minor=500,
+        ),
+    )
+
+
+def create_script_generation_success_outcome(
+    scene_count: int = 3,
+) -> ScriptedOutcome:
+    """Create a successful script_generation outcome with deterministic artifact IDs."""
+    artifact_ids = ["script_01"]
+    for i in range(scene_count):
+        artifact_ids.append(f"scene_{i + 1:02d}")
+        artifact_ids.append(f"vi_{i + 1:02d}")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "script_generation",
+            "scene_count": scene_count,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=500,
+            output_units=1000,
+            runtime_seconds=3.0,
+            estimated_cost_minor=800,
+            actual_cost_minor=800,
+        ),
+    )
+
+
+def create_visual_planning_success_outcome(
+    scene_count: int = 3,
+) -> ScriptedOutcome:
+    """Create a successful visual_planning outcome with deterministic artifact IDs."""
+    artifact_ids = []
+    for i in range(scene_count * 2):
+        artifact_ids.append(f"vi_{i + 1:02d}")
+    for i in range(scene_count):
+        artifact_ids.append(f"shot_{i + 1:02d}")
+    for i in range(scene_count):
+        artifact_ids.append(f"asset_req_{i + 1:02d}")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "visual_planning",
+            "scene_count": scene_count,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=300,
+            output_units=600,
+            runtime_seconds=2.0,
+            estimated_cost_minor=400,
+            actual_cost_minor=400,
+        ),
+    )
+
+
+def create_content_stage_success_outcome(capability: str) -> ScriptedOutcome:
+    """Create a deterministic success outcome for content stage capabilities."""
+    if capability == "research":
+        return create_research_success_outcome()
+    elif capability == "script_generation":
+        return create_script_generation_success_outcome()
+    elif capability == "visual_planning":
+        return create_visual_planning_success_outcome()
+    else:
+        return create_success_outcome()
+
+
 # Map of outcome names to factory functions for CLI/test parametrization
 FAKE_OUTCOME_FACTORIES: dict[str, tuple[str, str]] = {
     "success": (
@@ -442,9 +573,13 @@ __all__ = [
     "FAKE_OUTCOME_FACTORIES",
     "FakeCapabilityProvider",
     "FakeOutcomeSpec",
+    "create_content_stage_success_outcome",
     "create_failed_outcome",
+    "create_research_success_outcome",
+    "create_script_generation_success_outcome",
     "create_success_outcome",
     "create_unknown_outcome",
+    "create_visual_planning_success_outcome",
     "outcome_authentication_failure",
     "outcome_authorization_failure",
     "outcome_budget_exceeded",

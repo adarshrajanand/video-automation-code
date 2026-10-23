@@ -1,0 +1,17 @@
+{
+  "schema_version": "audio-timing.v1",
+  "audio_timing_id": "at_01",
+  "scene_id": "scene_01",
+  "script_id": "script_01",
+  "narration_text": "The Arctic is warming four times faster than the global average, and the evidence is undeniable.",
+  "words": ["The", "Arctic", "is", "warming", "four", "times", "faster", "than", "the", "global", "average,", "and", "the", "evidence", "is", "undeniable."],
+  "word_start_seconds": [0.0, 0.15, 0.3, 0.45, 0.6, 0.75, 0.9, 1.1, 1.25, 1.4, 1.6, 1.8, 1.95, 2.1, 2.25, 2.5],
+  "word_end_seconds": [0.1, 0.25, 0.4, 0.55, 0.7, 0.85, 1.0, 1.2, 1.35, 1.5, 1.7, 1.9, 2.05, 2.2, 2.4, 3.0],
+  "pause_after_word": [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.1, 0.05, 0.05, 0.1, 0.05, 0.05, 0.05, 0.05, 0.1, 0.5],
+  "total_duration_seconds": 12,
+  "sample_rate": 24000,
+  "metadata": {
+    "tts_model": "elevenlabs_v2",
+    "voice_id": "narrator_deep_male"
+  }
+}

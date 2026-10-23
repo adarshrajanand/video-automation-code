@@ -184,6 +184,81 @@
       "error_contains": "completed_at must not be earlier",
       "fixture": "invalid/idempotency_time_order.json",
       "model": "IdempotencyRecord"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/source_ref_bad_kind.json",
+      "model": "SourceRef"
+    },
+    {
+      "error_contains": "greater than or equal to 1",
+      "fixture": "invalid/source_snapshot_bad_range.json",
+      "model": "SourceSnapshot"
+    },
+    {
+      "error_contains": "end_offset must be greater",
+      "fixture": "invalid/evidence_bad_range.json",
+      "model": "Evidence"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/claim_bad_type.json",
+      "model": "Claim"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/visual_intent_bad_purpose.json",
+      "model": "VisualIntent"
+    },
+    {
+      "error_contains": "max_scene_seconds must be >=",
+      "fixture": "invalid/duration_policy_bad_range.json",
+      "model": "DurationPolicy"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/script_scene_duplicate_claims.json",
+      "model": "ScriptScene"
+    },
+    {
+      "error_contains": "must be unique",
+      "fixture": "invalid/script_duplicate_scenes.json",
+      "model": "Script"
+    },
+    {
+      "error_contains": "end_seconds must be > start_seconds",
+      "fixture": "invalid/audio_timing_bad_order.json",
+      "model": "AudioTiming"
+    },
+    {
+      "error_contains": "greater than or equal to 1",
+      "fixture": "invalid/research_input_bad_range.json",
+      "model": "ResearchInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/research_output_duplicate_sources_payload.json",
+      "model": "ResearchOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/script_generation_output_bad_scene_count_payload.json",
+      "model": "ScriptGenerationOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/visual_planning_input_duplicate_scenes_payload.json",
+      "model": "VisualPlanningInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/visual_planning_output_duplicate_intents_payload.json",
+      "model": "VisualPlanningOutputPayload"
+    },
+    {
+      "error_contains": "String should have at least 1 character",
+      "fixture": "invalid/script_generation_input_bad_duration.json",
+      "model": "ScriptGenerationInputPayload"
     }
   ],
   "schema_version": "contract-fixtures.v1"

@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:Claim",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "An atomic verifiable statement extracted from sources.",
+  "properties": {
+    "claim_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Claim Id",
+      "type": "string"
+    },
+    "claim_type": {
+      "enum": [
+        "FACTUAL",
+        "NUMERIC",
+        "QUOTE",
+        "DEFINITION",
+        "CAUSAL"
+      ],
+      "title": "Claim Type",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "evidence_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "claim.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_ref_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Source Ref Ids",
+      "type": "array"
+    },
+    "tags": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Tags",
+      "type": "array"
+    },
+    "text": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "claim_id",
+    "text",
+    "claim_type",
+    "confidence"
+  ],
+  "title": "Claim",
+  "type": "object",
+  "x-contract-schema-version": "claim.v1"
+}

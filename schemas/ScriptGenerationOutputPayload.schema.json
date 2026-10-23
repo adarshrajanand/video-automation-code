@@ -1,0 +1,77 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ScriptGenerationOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the script_generation capability.",
+  "properties": {
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "scene_count": {
+      "minimum": 1,
+      "title": "Scene Count",
+      "type": "integer"
+    },
+    "scene_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Scene Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "script-generation-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "total_estimated_duration_seconds": {
+      "minimum": 1,
+      "title": "Total Estimated Duration Seconds",
+      "type": "integer"
+    },
+    "visual_intent_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Visual Intent Ids",
+      "type": "array"
+    },
+    "word_count": {
+      "minimum": 1,
+      "title": "Word Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "script_id",
+    "total_estimated_duration_seconds",
+    "word_count",
+    "scene_count"
+  ],
+  "title": "ScriptGenerationOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "script-generation-output.v1"
+}
