@@ -99,6 +99,7 @@ class StageAttempt(Contract):
     output_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     worker_id: NonEmptyStr | None = None
     lease_expires_at: UTCDateTime | None = None
+    fencing_token: PositiveInt | None = None
     started_at: UTCDateTime | None = None
     finished_at: UTCDateTime | None = None
     failure_code: FailureCode | None = None

@@ -1,16 +1,20 @@
 # AI Video Automation Pipeline
 
 Bootstrap shell for a local-first, modular-monolith video pipeline. This
-repository currently implements FV-01 through FV-04: the Python package
+repository currently implements FV-01 through FV-05: the Python package
 skeleton, CLI entry point, local setup diagnostics, versioned Pydantic
 contracts, deterministic fingerprint/ID helpers, committed JSON Schemas with
 fixtures, a typed SQLite repository with ordered migrations, an immutable
-local `ArtifactStore`, and a pure workflow loader and readiness engine.
+local `ArtifactStore`, a pure workflow loader and readiness engine, and the
+local execution spine (transactional outbox, polling dispatcher, inbox
+deduplication, idempotent job creation, fenced leases, retry classification,
+and lease-expiry recovery).
 
-It does **not** implement job creation, claims, scheduling, outbox dispatch,
-provider adapters, or media stage logic. Readiness evaluation is a pure
-decision over durable records supplied by the caller. There are no provider
-SDKs, credentials, or network calls, and no real media generation.
+It does **not** implement capability routing, provider adapters, stage business
+logic, media generation, quality evaluation, repair, or publication. Readiness
+evaluation remains a pure decision over durable records supplied by the caller.
+The worker CLI uses a safe no-op handler; there are no provider SDKs,
+credentials, network calls, or real media effects.
 
 ## Prerequisites
 
@@ -217,13 +221,13 @@ Pydantic model. Repository failures are typed as `NotFoundError`,
 
 Typed repositories cover effective config, workflow runs, stage instances,
 stage attempts, jobs, leases, idempotency records, budget reservations,
-artifacts, artifact dependencies, artifact pointers, and the editorial hierarchy
-(content package, episode, cut, sequence, scene, shot, layer, composition ref).
-Tables also exist for input manifests, artifact invalidation requests/results,
-quality records, human review and publication, events and outbox/inbox delivery,
-routing/provider/capability and usage records, and recovery decisions. Those
-families deliberately do not have typed repositories yet; later work packages
-add them.
+workflow events, outbox messages, inbox receipts, recovery decisions, artifacts,
+artifact dependencies, artifact pointers, and the editorial hierarchy (content
+package, episode, cut, sequence, scene, shot, layer, composition ref). Tables
+also exist for input manifests, artifact invalidation requests/results, quality
+records, human review and publication, routing/provider/capability and usage
+records. Those remaining families deliberately do not have typed repositories
+yet; later work packages add them.
 
 ### Immutable artifact store
 
@@ -343,6 +347,106 @@ its gate targets are still usable. Run status is derived as `RUNNING`,
 `COMPLETED`, `FAILED`, and `CANCELLED` statuses are preserved and produce no new
 ready work.
 
+## Local execution spine
+
+FV-05 adds `src/pipeline/execution/`. Everything remains in-process and local:
+there is no Kafka, RabbitMQ, Redis, Celery, external broker, provider call, or
+network dependency. SQLite rows are the only source of truth, and every
+ownership decision uses explicit transactions with `BEGIN IMMEDIATE` where the
+decision depends on reading current state.
+
+### Event and outbox append
+
+`EventOutbox.append` and `insert_event_and_outbox` write the canonical
+`workflow_events` row and its `outbox_messages` delivery row in one transaction.
+If the caller rolls back, neither row remains. A caller that already owns a
+transaction passes its connection; otherwise the helper opens one.
+
+### Dispatcher and inbox deduplication
+
+`OutboxDispatcher` claims pending rows with a bounded lease, acknowledges a
+delivery only if it still owns the claim, and returns expired claims to
+`PENDING` for redelivery. Delivery is at-least-once. The consumer effect and its
+`PROCESSED` `inbox_receipts` row commit in the same transaction, so a crash before
+acknowledgement can cause redelivery but cannot cause a second accepted effect:
+the second delivery observes the receipt and becomes a no-op. A failed effect
+records a `FAILED` receipt and follows bounded outbox retry/backoff until it is
+dead-lettered.
+
+### Idempotent job creation
+
+`JobFactory.create_job` converts one READY stage instance into one
+`StageAttempt` and one `Job` using `pipeline.ids.deterministic_id` and
+`idempotency_key`. The key includes run ID, node ID, logical item key, and
+attempt number. Default creation is idempotent: repeating it returns the
+existing attempt/job instead of creating a second accepted attempt. A deliberate
+retry passes the next explicit attempt number; repeating that exact attempt is
+still a no-op. FV-05 does not create capability `IdempotencyRecord` rows, which
+require a capability execution ID and belong to FV-06.
+
+### Claims, leases, fencing, and completion
+
+A claim atomically moves an eligible READY job to `CLAIMED`, moves its attempt
+and stage to `CLAIMED`, and inserts a `Lease`. The fencing token is monotonic per
+job. It is stored authoritatively in the lease and projected into the job and
+attempt payloads for inspection. A worker can renew or release only its own
+live lease. An expired lease is reclaimable even if the previous worker is still
+running.
+
+Success completion is a compare-and-set on job ID and fencing token after
+re-reading the live lease inside the transaction. A stale worker's completion or
+failure report is rejected without overwriting the new owner's job, attempt, or
+stage state. Expired-lease recovery returns the job to READY, clears ownership,
+retains all lease history, and records a `RecoveryDecision` with reason
+`LEASE_EXPIRED`.
+
+### Retry and recovery classification
+
+Failure handling maps `FailureCode` to its canonical `FailureCategory` and
+applies the caller's `RetryPolicy`; stage loops are not hard-coded. Transient and
+rate-limit failures use bounded exponential backoff with deterministic default
+jitter or an explicitly injected jitter value for tests. A retry marks the old
+job `RETRY`, preserves the failed attempt, creates a new attempt/job with the
+computed `available_at`, and leaves the stage `WAITING_RETRY` until the new job is
+claimed.
+
+Validation, authentication, authorization, and permanent failures do not retry
+unchanged. Unknown or timeout outcomes never trigger a blind paid retry: the
+attempt becomes `UNKNOWN`, the job is dead-lettered, the stage becomes `UNKNOWN`,
+and a `RECONCILE` recovery decision is recorded. Exhausted retryable failures
+default to human review. Automatic reconciliation and repair are deliberately
+deferred; no quality or repair logic is implemented here.
+
+### Execution CLI smoke commands
+
+```bash
+uv run python -m pipeline outbox dispatch --once \
+  --database /path/to/pipeline.sqlite3
+uv run python -m pipeline worker run --once \
+  --database /path/to/pipeline.sqlite3
+```
+
+`outbox dispatch` performs one bounded claim/deliver/ack pass with a safe no-op
+consumer, so it marks durable deliveries without running a downstream effect.
+`worker run` claims at most one job and runs a safe no-op handler that produces
+no artifacts. It is an honest smoke test of lease and completion mechanics, not
+a stage worker. Real capability routing, stage handlers, media processing, and
+quality gates belong to later work packages. Both commands create or migrate the
+explicit database path when needed.
+
+### Fault guarantees covered by tests
+
+- Event append and outbox insertion roll back together.
+- A crash before outbox acknowledgement leaves the event redeliverable; the
+  durable inbox receipt prevents a second effect.
+- A duplicate inbox delivery is a no-op.
+- A crashed claimed job is reclaimed after lease expiry with an audit record.
+- A stale fenced completion is rejected after reclaim.
+- Duplicate job creation does not create a second attempt or job.
+- Transient backoff is bounded and deterministic under injected jitter.
+- Validation/permanent failures do not create a replacement attempt.
+- Timeout/unknown outcomes go to reconciliation state rather than blind retry.
+
 ## Development checks
 
 Run from the repository root:
@@ -361,9 +465,11 @@ Use `uv run ruff format .` to apply formatting.
 src/pipeline/          Python package, CLI, and versioned contracts
 src/pipeline/storage/  SQLite helpers, migrations, repositories, ArtifactStore
 src/pipeline/workflow/ YAML loader, conditions, cardinality, readiness engine
+src/pipeline/execution/ Outbox, dispatcher, inbox, jobs, leases, retry, worker
 tests/                 Unit, contract, CLI, and storage tests
 tests/storage/         Migration, transaction, repository, and artifact tests
 tests/workflow/        Workflow, condition, readiness, CLI, and purity tests
+tests/execution/       Outbox, deduplication, lease, retry, and recovery tests
 fixtures/contracts/    Deterministic valid and invalid contract fixtures
 schemas/               Generated JSON Schemas and content-hash manifest
 workflows/             Runtime workflow definitions copied from the docs registry
@@ -372,10 +478,15 @@ workflows/             Runtime workflow definitions copied from the docs registr
 ## Scope boundaries
 
 - Local modular monolith only; no remote infrastructure or service split.
+- No external message broker; the outbox dispatcher polls SQLite in-process.
 - No provider SDKs, API keys, paid calls, or network access from setup checks.
-- No workflow scheduling, job creation, claims, budget enforcement, outbox
-  dispatch, provider calls, or stage business logic yet. Readiness is pure and
-  leaves those effects to later work packages.
+- No capability routing, provider adapters, stage business logic, media
+  processing, quality evaluation, repair, or publication yet. The execution
+  spine moves durable job state and runs narrow test/no-op handlers only.
+- Delivery is at-least-once; duplicate effects are prevented by durable inbox
+  receipts and idempotency keys, not by pretending the transport is exactly-once.
+- Unknown external outcomes dead-letter the delivery and request explicit
+  reconciliation; automatic paid retries and reconciliation are deferred.
 - Artifacts and runtime data stay under `PIPELINE_HOME`, never in Git.
 - The canonical architecture and implementation plans live in the separate
   documentation repository; this README covers the code bootstrap only.

@@ -3,6 +3,7 @@
   "attempt_number": 1,
   "failure_code": null,
   "failure_message": null,
+  "fencing_token": 3,
   "finished_at": "2026-10-21T10:05:00Z",
   "input_artifact_ids": [
     "artifact_topic_v1"

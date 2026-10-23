@@ -166,6 +166,30 @@ class JobRepository(SqliteRepository[Job]):
             raise NotFoundError(self.entity_name, idempotency_key)
         return self.model.model_validate_json(row[0])
 
+    def get_by_idempotency_key_optional(self, idempotency_key: str) -> Job | None:
+        """Return a job for an idempotency key, or ``None`` when absent."""
+
+        try:
+            return self.get_by_idempotency_key(idempotency_key)
+        except NotFoundError:
+            return None
+
+    def list_for_attempt(self, attempt_id: str) -> list[Job]:
+        rows = self.connection.execute(
+            "SELECT payload FROM jobs WHERE attempt_id = ? "
+            "ORDER BY available_at, job_id",
+            (attempt_id,),
+        ).fetchall()
+        return [self.model.model_validate_json(row[0]) for row in rows]
+
+    def list_for_queue(self, queue_name: str) -> list[Job]:
+        rows = self.connection.execute(
+            "SELECT payload FROM jobs WHERE queue_name = ? "
+            "ORDER BY available_at, job_id",
+            (queue_name,),
+        ).fetchall()
+        return [self.model.model_validate_json(row[0]) for row in rows]
+
     def list_by_status(self, status: JobStatus) -> list[Job]:
         rows = self.connection.execute(
             "SELECT payload FROM jobs WHERE status = ? ORDER BY available_at, job_id",

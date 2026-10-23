@@ -51,6 +51,19 @@
       "title": "Delivery Count",
       "type": "integer"
     },
+    "fencing_token": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fencing Token"
+    },
     "idempotency_key": {
       "maxLength": 512,
       "minLength": 1,

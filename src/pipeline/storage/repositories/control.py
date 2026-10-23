@@ -1,9 +1,14 @@
-"""Repositories for idempotency records and budget reservations."""
+"""Repositories for idempotency, budgets, and recovery decisions."""
 
 from __future__ import annotations
 
 from pipeline.contracts.capabilities import BudgetReservation, IdempotencyRecord
-from pipeline.contracts.vocabularies import BudgetReservationStatus, IdempotencyStatus
+from pipeline.contracts.execution import RecoveryDecision
+from pipeline.contracts.vocabularies import (
+    BudgetReservationStatus,
+    IdempotencyStatus,
+    RecoveryAction,
+)
 from pipeline.storage.repositories.base import SqliteRepository
 
 
@@ -98,4 +103,40 @@ class BudgetReservationRepository(SqliteRepository[BudgetReservation]):
         return [self.model.model_validate_json(row[0]) for row in rows]
 
 
-__all__ = ["BudgetReservationRepository", "IdempotencyRecordRepository"]
+class RecoveryDecisionRepository(SqliteRepository[RecoveryDecision]):
+    """Durable audit of recovery and reconciliation choices."""
+
+    model = RecoveryDecision
+    table = "recovery_decisions"
+    key_columns = ("recovery_decision_id",)
+    columns = (
+        "recovery_decision_id",
+        "run_id",
+        "failed_attempt_id",
+        "action",
+        "created_at",
+    )
+    order_by = ("created_at", "recovery_decision_id")
+
+    def list_for_run(self, run_id: str) -> list[RecoveryDecision]:
+        rows = self.connection.execute(
+            "SELECT payload FROM recovery_decisions WHERE run_id = ? "
+            "ORDER BY created_at, recovery_decision_id",
+            (run_id,),
+        ).fetchall()
+        return [self.model.model_validate_json(row[0]) for row in rows]
+
+    def list_by_action(self, action: RecoveryAction) -> list[RecoveryDecision]:
+        rows = self.connection.execute(
+            "SELECT payload FROM recovery_decisions WHERE action = ? "
+            "ORDER BY created_at, recovery_decision_id",
+            (action.value,),
+        ).fetchall()
+        return [self.model.model_validate_json(row[0]) for row in rows]
+
+
+__all__ = [
+    "BudgetReservationRepository",
+    "IdempotencyRecordRepository",
+    "RecoveryDecisionRepository",
+]

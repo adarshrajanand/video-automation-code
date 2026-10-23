@@ -97,6 +97,19 @@
       "default": null,
       "title": "Failure Message"
     },
+    "fencing_token": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Fencing Token"
+    },
     "finished_at": {
       "anyOf": [
         {

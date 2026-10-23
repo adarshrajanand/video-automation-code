@@ -3,6 +3,7 @@
   "available_at": "2026-10-21T12:00:00Z",
   "claimed_by": null,
   "delivery_count": 0,
+  "fencing_token": null,
   "idempotency_key": "idem_speech_generation_scene_01",
   "job_id": "job_speech_scene_01",
   "lease_expires_at": null,

@@ -20,6 +20,12 @@ from pipeline.contracts.schema_export import (
 )
 from pipeline.contracts.vocabularies import RunStatus
 from pipeline.contracts.workflow import WorkflowDefinition
+from pipeline.execution import (
+    NoopJobHandler,
+    NoopOutboxHandler,
+    OutboxDispatcher,
+    WorkerLoop,
+)
 from pipeline.paths import default_database_path
 from pipeline.setup_checks import CheckStatus, SetupReport, collect_checks
 from pipeline.storage import Database, MigrationError, MigrationRunner
@@ -34,9 +40,7 @@ from pipeline.workflow import (
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m pipeline",
-        description=(
-            "Local-first AI video automation pipeline (FV-01 bootstrap shell)."
-        ),
+        description=("Local-first AI video automation pipeline (FV-01 through FV-05)."),
     )
     parser.add_argument(
         "--version",
@@ -164,6 +168,96 @@ def build_parser() -> argparse.ArgumentParser:
             "(defaults to an empty synthetic run)"
         ),
     )
+    outbox = subparsers.add_parser(
+        "outbox",
+        help="local transactional-outbox tooling",
+        description=(
+            "Claim and deliver local outbox rows. No external broker is used."
+        ),
+    )
+    outbox_subparsers = outbox.add_subparsers(dest="outbox_command", metavar="ACTION")
+    outbox_dispatch = outbox_subparsers.add_parser(
+        "dispatch",
+        help="claim and deliver one batch of pending outbox messages",
+        description=(
+            "Claim a bounded batch with explicit leases, run the safe local "
+            "no-op delivery handler, and acknowledge each message. Use --once "
+            "for a single smoke pass."
+        ),
+    )
+    outbox_dispatch.add_argument(
+        "--once",
+        action="store_true",
+        required=True,
+        help="run one bounded polling pass (the supported local mode)",
+    )
+    outbox_dispatch.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help=(
+            "SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)"
+        ),
+    )
+    outbox_dispatch.add_argument(
+        "--consumer-id",
+        default="local_consumer",
+        help="durable inbox consumer identity (default: local_consumer)",
+    )
+    outbox_dispatch.add_argument(
+        "--lease-seconds",
+        type=float,
+        default=30.0,
+        help="dispatcher claim lease in seconds (default: 30)",
+    )
+    worker = subparsers.add_parser(
+        "worker",
+        help="local worker-loop smoke tooling",
+        description=(
+            "Claim one job with a fenced lease and run the safe no-op handler. "
+            "This smoke command does not execute stage business logic."
+        ),
+    )
+    worker_subparsers = worker.add_subparsers(dest="worker_command", metavar="ACTION")
+    worker_run = worker_subparsers.add_parser(
+        "run",
+        help="claim and complete at most one job with a no-op handler",
+        description=(
+            "Claim at most one READY job, run the safe local no-op handler, and "
+            "commit the result through a compare-and-set on job and fencing token. "
+            "A full worker requires stage handlers from later work packages."
+        ),
+    )
+    worker_run.add_argument(
+        "--once",
+        action="store_true",
+        required=True,
+        help="run one polling iteration (the supported local smoke mode)",
+    )
+    worker_run.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help=(
+            "SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)"
+        ),
+    )
+    worker_run.add_argument(
+        "--owner-id",
+        default="worker_local_cli",
+        help="worker lease owner identity (default: worker_local_cli)",
+    )
+    worker_run.add_argument(
+        "--queue",
+        default=None,
+        help="optional queue name filter",
+    )
+    worker_run.add_argument(
+        "--lease-seconds",
+        type=float,
+        default=60.0,
+        help="job lease in seconds (default: 60)",
+    )
     return parser
 
 
@@ -215,6 +309,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_db_command(arguments)
     if arguments.command == "workflow":
         return _run_workflow_command(arguments)
+    if arguments.command == "outbox":
+        return _run_outbox_command(arguments)
+    if arguments.command == "worker":
+        return _run_worker_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
 
@@ -372,6 +470,79 @@ def _run_workflow_command(arguments: argparse.Namespace) -> int:
         file=sys.stderr,
     )
     return 2
+
+
+def _run_outbox_command(arguments: argparse.Namespace) -> int:
+    if arguments.outbox_command is None:
+        print("Usage: python -m pipeline outbox dispatch --once [--database PATH]")
+        return 0
+    if arguments.outbox_command != "dispatch":
+        print(f"Unknown outbox action: {arguments.outbox_command}", file=sys.stderr)
+        return 2
+    try:
+        database = _migrated_database(arguments.database)
+        dispatcher = OutboxDispatcher(
+            database,
+            handler=NoopOutboxHandler(),
+            consumer_id=arguments.consumer_id,
+            lease_seconds=arguments.lease_seconds,
+        )
+        result = dispatcher.dispatch_once()
+    except (MigrationError, OSError, sqlite3.Error, ValueError) as error:
+        print(
+            f"Outbox dispatch failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 1
+    print(
+        "Outbox dispatch: "
+        f"claimed={result.claimed} delivered={result.delivered} "
+        f"duplicates={result.duplicates} retried={result.retried} "
+        f"failed={result.failed} stale={result.stale}."
+    )
+    print(f"Database: {database.path}")
+    return 0
+
+
+def _run_worker_command(arguments: argparse.Namespace) -> int:
+    if arguments.worker_command is None:
+        print("Usage: python -m pipeline worker run --once [--database PATH]")
+        return 0
+    if arguments.worker_command != "run":
+        print(f"Unknown worker action: {arguments.worker_command}", file=sys.stderr)
+        return 2
+    try:
+        database = _migrated_database(arguments.database)
+        worker = WorkerLoop(
+            database,
+            owner_id=arguments.owner_id,
+            handler=NoopJobHandler(),
+            queue_name=arguments.queue,
+            lease_seconds=arguments.lease_seconds,
+        )
+        result = worker.run_once()
+    except (MigrationError, OSError, sqlite3.Error, ValueError) as error:
+        print(
+            f"Worker run failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 1
+    if result.claim is None:
+        print(f"Worker {arguments.owner_id}: idle (no eligible job).")
+    else:
+        print(
+            f"Worker {arguments.owner_id}: {result.status.value} "
+            f"job={result.claim.job_id} "
+            f"fencing_token={result.claim.fencing_token}."
+        )
+    print(f"Database: {database.path}")
+    return 0
+
+
+def _migrated_database(path: Path | None) -> Database:
+    database = Database(path or default_database_path())
+    MigrationRunner(database).migrate()
+    return database
 
 
 def _run_db_command(arguments: argparse.Namespace) -> int:

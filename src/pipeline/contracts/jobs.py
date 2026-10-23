@@ -30,6 +30,10 @@ class Job(Contract):
     claimed_by: NonEmptyStr | None = None
     lease_expires_at: UTCDateTime | None = None
     delivery_count: NonNegativeInt = 0
+    # Projection of the active lease term. The leases table remains the
+    # authoritative ownership record; this copy lets a job be inspected without
+    # a join and is compare-and-set on every fenced completion.
+    fencing_token: PositiveInt | None = None
 
     @model_validator(mode="after")
     def _validate_claimed_job(self) -> Job:

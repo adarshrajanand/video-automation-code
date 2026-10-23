@@ -178,7 +178,7 @@
       "model": "Job",
       "schema_file": "Job.schema.json",
       "schema_version": "job.v1",
-      "sha256": "f3f123bc07cbd1209c2b896b5826d3629d60ddf81983d71bb05d2c3b309187e2"
+      "sha256": "cbcb5d0ae02990ec041c6a08bdca39181347ce9682d045e134c9027cb74eab80"
     },
     {
       "model": "LayerInstance",
@@ -334,7 +334,7 @@
       "model": "StageAttempt",
       "schema_file": "StageAttempt.schema.json",
       "schema_version": "stage-attempt.v1",
-      "sha256": "82f07a0ad28e706c9d12145fb75c5f2c82974c02df3141615b0234c24333813c"
+      "sha256": "a7893c38708afdf5bb4817ce555f06eb6572d1ef2c0b4f45cbd2fd44b6b18bba"
     },
     {
       "model": "StageInstance",
