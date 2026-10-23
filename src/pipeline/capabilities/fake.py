@@ -20,7 +20,7 @@ from pipeline.contracts.capabilities import (
     UsageRecord,
 )
 from pipeline.contracts.routing import ProviderInvocation, ProviderInvocationStatus
-from pipeline.contracts.vocabularies import FailureCode
+from pipeline.contracts.vocabularies import FailureCode, SpeechStrategy
 from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
@@ -96,12 +96,16 @@ class FakeCapabilityProvider:
         # Get the scripted outcome for this request
         outcome = self._outcomes.get(fingerprint, self._default_outcome)
 
-        # For content-stage capabilities, if no specific outcome registered,
+        # For content-stage and audio capabilities, if no specific outcome registered,
         # generate a deterministic success outcome based on the capability
         if outcome is self._default_outcome and request.capability in (
             "research",
             "script_generation",
             "visual_planning",
+            "speech_generation",
+            "tts_adapter",
+            "asr_alignment",
+            "audio_qc",
         ):
             outcome = create_content_stage_success_outcome(request.capability)
 
@@ -510,15 +514,191 @@ def create_visual_planning_success_outcome(
 
 
 def create_content_stage_success_outcome(capability: str) -> ScriptedOutcome:
-    """Create a deterministic success outcome for content stage capabilities."""
+    """Create a deterministic success outcome for content stage and
+    audio capabilities.
+    """
     if capability == "research":
         return create_research_success_outcome()
     elif capability == "script_generation":
         return create_script_generation_success_outcome()
     elif capability == "visual_planning":
         return create_visual_planning_success_outcome()
+    elif capability == "speech_generation":
+        return create_speech_generation_success_outcome()
+    elif capability == "tts_adapter":
+        return create_tts_adapter_success_outcome()
+    elif capability == "asr_alignment":
+        return create_asr_alignment_success_outcome()
+    elif capability == "audio_qc":
+        return create_audio_qc_success_outcome()
     else:
         return create_success_outcome()
+
+
+# Audio-stage specific outcome factories
+
+
+def create_speech_generation_success_outcome(
+    scene_count: int = 3,
+    strategy: str | SpeechStrategy = SpeechStrategy.CONTINUOUS,
+) -> ScriptedOutcome:
+    """Create a successful speech_generation outcome with deterministic artifact IDs."""
+    artifact_ids = ["manifest_01", "audio_master_01"]
+    scene_audio_ids = []
+    narration_hashes = {}
+    for i in range(scene_count):
+        scene_audio_id = f"audio_scene_{i + 1:02d}"
+        scene_audio_ids.append(scene_audio_id)
+        artifact_ids.append(scene_audio_id)
+        narration_hashes[scene_audio_id] = f"hash_narration_{i + 1:02d}"
+
+    strategy_value = (
+        strategy.value if isinstance(strategy, SpeechStrategy) else strategy
+    )
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "speech_generation",
+            "scene_count": scene_count,
+            "strategy": strategy_value,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=500,
+            output_units=2000,
+            runtime_seconds=5.0,
+            estimated_cost_minor=1000,
+            actual_cost_minor=1000,
+        ),
+    )
+
+
+def create_tts_adapter_success_outcome() -> ScriptedOutcome:
+    """Create a successful tts_adapter outcome with deterministic artifact IDs."""
+    artifact_ids = ["audio_tts_01"]
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "tts_adapter",
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=100,
+            output_units=500,
+            runtime_seconds=2.0,
+            estimated_cost_minor=200,
+            actual_cost_minor=200,
+        ),
+    )
+
+
+def create_asr_alignment_success_outcome(scene_count: int = 3) -> ScriptedOutcome:
+    """Create a successful asr_alignment outcome with deterministic artifact IDs."""
+    artifact_ids = ["alignment_01"]
+    for i in range(scene_count):
+        artifact_ids.append(f"audio_timing_{i + 1:02d}")
+    for i in range(scene_count * 5):  # ~5 words per scene
+        artifact_ids.append(f"word_ts_{i + 1:02d}")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "asr_alignment",
+            "scene_count": scene_count,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=200,
+            output_units=1000,
+            runtime_seconds=3.0,
+            estimated_cost_minor=300,
+            actual_cost_minor=300,
+        ),
+    )
+
+
+def create_audio_qc_success_outcome(
+    fidelity_pass: bool = True,
+) -> ScriptedOutcome:
+    """Create a successful audio_qc outcome with deterministic artifact IDs."""
+    artifact_ids = ["qc_report_01"]
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "audio_qc",
+            "fidelity_pass": fidelity_pass,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=50,
+            output_units=100,
+            runtime_seconds=1.0,
+            estimated_cost_minor=50,
+            actual_cost_minor=50,
+        ),
+    )
+
+
+def create_audio_qc_failure_outcome() -> ScriptedOutcome:
+    """Create a failed audio_qc outcome with omitted/changed phrases detected."""
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="FAILED",
+        artifact_ids=["qc_report_fail_01"],
+        metadata={
+            "fake": True,
+            "outcome": "failure",
+            "capability": "audio_qc",
+            "fidelity_pass": False,
+            "omitted_phrases": ["intentionally omitted phrase"],
+            "changed_phrases": ["intentionally changed phrase"],
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=50,
+            output_units=100,
+            runtime_seconds=1.0,
+            estimated_cost_minor=50,
+            actual_cost_minor=0,
+        ),
+        normalized_error_code=FailureCode.QUALITY_TTS_OMISSION.value,
+        normalized_error_category="QUALITY",
+        normalized_error_message=(
+            "Audio fidelity check detected omitted/changed phrases"
+        ),
+        normalized_error_retryable=False,
+        normalized_error_reconciliation_required=False,
+        normalized_error_severity="MAJOR",
+    )
 
 
 # Map of outcome names to factory functions for CLI/test parametrization
@@ -566,6 +746,27 @@ FAKE_OUTCOME_FACTORIES: dict[str, tuple[str, str]] = {
     ),
     "policy": ("outcome_policy", "Policy violation (retryable: false)"),
     "internal": ("outcome_internal", "Internal error (retryable: false)"),
+    # Audio-stage specific outcomes
+    "speech_generation": (
+        "create_speech_generation_success_outcome",
+        "Speech generation success (CONTINUOUS/SCENE_SEGMENTED)",
+    ),
+    "tts_adapter": (
+        "create_tts_adapter_success_outcome",
+        "TTS adapter success with audio artifact",
+    ),
+    "asr_alignment": (
+        "create_asr_alignment_success_outcome",
+        "ASR alignment success with word timestamps",
+    ),
+    "audio_qc_pass": (
+        "create_audio_qc_success_outcome",
+        "Audio QC success with fidelity pass",
+    ),
+    "audio_qc_fail": (
+        "create_audio_qc_failure_outcome",
+        "Audio QC failure with omitted/changed phrases",
+    ),
 }
 
 # Export all factory functions
@@ -573,11 +774,16 @@ __all__ = [
     "FAKE_OUTCOME_FACTORIES",
     "FakeCapabilityProvider",
     "FakeOutcomeSpec",
+    "create_asr_alignment_success_outcome",
+    "create_audio_qc_failure_outcome",
+    "create_audio_qc_success_outcome",
     "create_content_stage_success_outcome",
     "create_failed_outcome",
     "create_research_success_outcome",
     "create_script_generation_success_outcome",
+    "create_speech_generation_success_outcome",
     "create_success_outcome",
+    "create_tts_adapter_success_outcome",
     "create_unknown_outcome",
     "create_visual_planning_success_outcome",
     "outcome_authentication_failure",

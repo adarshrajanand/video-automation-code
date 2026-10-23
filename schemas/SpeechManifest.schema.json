@@ -1,0 +1,136 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {},
+    "SpeechStrategy": {
+      "enum": [
+        "CONTINUOUS",
+        "SCENE_SEGMENTED"
+      ],
+      "title": "SpeechStrategy",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:SpeechManifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Normalized speech generation output for both CONTINUOUS and\nSCENE_SEGMENTED strategies.\n\nComposition must reject mismatched script versions, scene IDs, and narration\ntext hashes. Both strategies resolve to equivalent scene-addressable timing.",
+  "properties": {
+    "alignment_artifact_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Alignment Artifact Id"
+    },
+    "master_audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Master Audio Artifact Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_text_hashes": {
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Narration Text Hashes",
+      "type": "object"
+    },
+    "sample_rate": {
+      "default": 24000,
+      "minimum": 1,
+      "title": "Sample Rate",
+      "type": "integer"
+    },
+    "scene_audio_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Scene Audio Artifact Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "speech-manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "script_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Script Version",
+      "type": "string"
+    },
+    "speech_manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Speech Manifest Id",
+      "type": "string"
+    },
+    "strategy": {
+      "$ref": "#/$defs/SpeechStrategy"
+    },
+    "total_duration_seconds": {
+      "minimum": 1,
+      "title": "Total Duration Seconds",
+      "type": "integer"
+    },
+    "voice_config_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Voice Config Hash",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "speech_manifest_id",
+    "script_id",
+    "script_version",
+    "strategy",
+    "master_audio_artifact_id",
+    "voice_config_hash",
+    "total_duration_seconds"
+  ],
+  "title": "SpeechManifest",
+  "type": "object",
+  "x-contract-schema-version": "speech-manifest.v1"
+}

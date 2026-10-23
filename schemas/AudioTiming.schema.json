@@ -11,8 +11,15 @@
   "$id": "urn:pipeline:contract:AudioTiming",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Per-scene audio timing alignment for TTS generation.",
+  "description": "Per-scene audio timing alignment for TTS generation.\n\nLinks a speech manifest to per-scene word-level timing derived from ASR\nforced alignment. Both continuous and scene-segmented speech strategies\nresolve to the same scene-addressable timing contract.",
   "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
     "audio_timing_id": {
       "maxLength": 256,
       "minLength": 1,
@@ -23,20 +30,12 @@
     "metadata": {
       "$ref": "#/$defs/ExtensionObject"
     },
-    "narration_text": {
-      "maxLength": 512,
-      "minLength": 1,
-      "pattern": "^\\S(?:.*\\S)?$",
-      "title": "Narration Text",
+    "narration_text_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Narration Text Hash",
       "type": "string"
-    },
-    "pause_after_word": {
-      "items": {
-        "minimum": 0,
-        "type": "number"
-      },
-      "title": "Pause After Word",
-      "type": "array"
     },
     "sample_rate": {
       "default": 24000,
@@ -56,52 +55,39 @@
       "title": "Schema Version",
       "type": "string"
     },
-    "script_id": {
+    "script_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Script Version",
+      "type": "string"
+    },
+    "speech_manifest_id": {
       "maxLength": 256,
       "minLength": 1,
       "pattern": "^\\S+$",
-      "title": "Script Id",
+      "title": "Speech Manifest Id",
       "type": "string"
     },
-    "total_duration_seconds": {
-      "minimum": 1,
-      "title": "Total Duration Seconds",
-      "type": "integer"
-    },
-    "word_end_seconds": {
+    "word_timestamps": {
       "items": {
-        "minimum": 0,
-        "type": "number"
-      },
-      "title": "Word End Seconds",
-      "type": "array"
-    },
-    "word_start_seconds": {
-      "items": {
-        "minimum": 0,
-        "type": "number"
-      },
-      "title": "Word Start Seconds",
-      "type": "array"
-    },
-    "words": {
-      "items": {
-        "maxLength": 512,
+        "maxLength": 256,
         "minLength": 1,
-        "pattern": "^\\S(?:.*\\S)?$",
+        "pattern": "^\\S+$",
         "type": "string"
       },
-      "title": "Words",
+      "title": "Word Timestamps",
       "type": "array"
     }
   },
   "required": [
     "schema_version",
     "audio_timing_id",
+    "speech_manifest_id",
+    "script_version",
     "scene_id",
-    "script_id",
-    "narration_text",
-    "total_duration_seconds"
+    "audio_artifact_id",
+    "narration_text_hash"
   ],
   "title": "AudioTiming",
   "type": "object",

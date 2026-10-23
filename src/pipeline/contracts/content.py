@@ -1,7 +1,8 @@
-"""Content-stage contracts for research, script generation, and visual planning.
+"""Content-stage contracts for research, script generation, visual planning, and audio.
 
 These contracts define the canonical data structures exchanged between the
-research, script_generation, and visual_planning stages and their capabilities.
+research, script_generation, visual_planning, speech_generation, tts_adapter,
+asr_alignment, and audio_qc stages and their capabilities.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from pipeline.contracts.base import (
     UnitInterval,
     UTCDateTime,
 )
-from pipeline.contracts.vocabularies import SourceKind
+from pipeline.contracts.vocabularies import SourceKind, SpeechStrategy
 
 
 class SourceRef(Contract):
@@ -214,45 +215,87 @@ class Script(Contract):
 
 
 class AudioTiming(Contract):
-    """Per-scene audio timing alignment for TTS generation."""
+    """Per-scene audio timing alignment for TTS generation.
+
+    Links a speech manifest to per-scene word-level timing derived from ASR
+    forced alignment. Both continuous and scene-segmented speech strategies
+    resolve to the same scene-addressable timing contract.
+    """
 
     schema_version: Literal["audio-timing.v1"]
     audio_timing_id: OpaqueId
+    speech_manifest_id: OpaqueId
+    script_version: NonEmptyStr
     scene_id: OpaqueId
-    script_id: OpaqueId
-    narration_text: NonEmptyStr
-    words: list[NonEmptyStr] = Field(default_factory=list)
-    word_start_seconds: list[NonNegativeFloat] = Field(default_factory=list)
-    word_end_seconds: list[NonNegativeFloat] = Field(default_factory=list)
-    pause_after_word: list[NonNegativeFloat] = Field(default_factory=list)
-    total_duration_seconds: PositiveInt
+    audio_artifact_id: OpaqueId
+    narration_text_hash: Sha256Hex
+    word_timestamps: list[OpaqueId] = Field(default_factory=list)
     sample_rate: PositiveInt = 24000
     metadata: ExtensionObject = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_audio_timing(self) -> AudioTiming:
-        counts = (
-            len(self.words),
-            len(self.word_start_seconds),
-            len(self.word_end_seconds),
-            len(self.pause_after_word),
-        )
-        if len(set(counts)) != 1:
+        if len(set(self.word_timestamps)) != len(self.word_timestamps):
+            raise ValueError("word_timestamps must not contain duplicates")
+        return self
+
+
+class WordTimestamp(Contract):
+    """Word-level timestamp from ASR forced alignment."""
+
+    schema_version: Literal["word-timestamp.v1"]
+    word_timestamp_id: OpaqueId
+    audio_timing_id: OpaqueId
+    word: NonEmptyStr
+    start_frames: NonNegativeInt
+    end_frames: PositiveInt
+    confidence: UnitInterval
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_word_timestamp(self) -> WordTimestamp:
+        if self.end_frames <= self.start_frames:
+            raise ValueError("end_frames must be greater than start_frames")
+        return self
+
+
+class SpeechManifest(Contract):
+    """Normalized speech generation output for both CONTINUOUS and
+    SCENE_SEGMENTED strategies.
+
+    Composition must reject mismatched script versions, scene IDs, and narration
+    text hashes. Both strategies resolve to equivalent scene-addressable timing.
+    """
+
+    schema_version: Literal["speech-manifest.v1"]
+    speech_manifest_id: OpaqueId
+    script_id: OpaqueId
+    script_version: NonEmptyStr
+    strategy: SpeechStrategy
+    master_audio_artifact_id: OpaqueId
+    scene_audio_artifact_ids: list[OpaqueId] = Field(default_factory=list)
+    voice_config_hash: Sha256Hex
+    narration_text_hashes: dict[OpaqueId, Sha256Hex] = Field(default_factory=dict)
+    alignment_artifact_id: OpaqueId | None = None
+    total_duration_seconds: PositiveInt
+    sample_rate: PositiveInt = 24000
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_speech_manifest(self) -> SpeechManifest:
+        if len(set(self.scene_audio_artifact_ids)) != len(
+            self.scene_audio_artifact_ids
+        ):
+            raise ValueError("scene_audio_artifact_ids must not contain duplicates")
+        if len(self.narration_text_hashes) != len(self.scene_audio_artifact_ids):
             raise ValueError(
-                "words, word_start_seconds, word_end_seconds, "
-                "pause_after_word must have equal length"
+                "narration_text_hashes must have one entry per scene_audio_artifact_id"
             )
-        if counts[0] == 0:
-            raise ValueError("at least one word required")
-        for i in range(counts[0]):
-            if self.word_end_seconds[i] <= self.word_start_seconds[i]:
-                raise ValueError(f"word {i}: end_seconds must be > start_seconds")
-            if i > 0 and self.word_start_seconds[i] < self.word_end_seconds[i - 1]:
+        for scene_id in self.narration_text_hashes:
+            if scene_id not in self.scene_audio_artifact_ids:
                 raise ValueError(
-                    f"word {i}: start_seconds must be >= previous end_seconds"
+                    f"narration_text_hashes references unknown scene_id: {scene_id}"
                 )
-        if self.total_duration_seconds < self.word_end_seconds[-1]:
-            raise ValueError("total_duration_seconds must be >= last word end")
         return self
 
 
@@ -265,5 +308,7 @@ __all__ = [
     "ScriptScene",
     "SourceRef",
     "SourceSnapshot",
+    "SpeechManifest",
     "VisualIntent",
+    "WordTimestamp",
 ]

@@ -22,7 +22,7 @@ def test_public_registry_is_derived_from_the_declared_order() -> None:
 
 
 def test_registry_contains_the_fv02_contract_surface() -> None:
-    assert len(PUBLIC_CONTRACTS) == 78
+    assert len(PUBLIC_CONTRACTS) == 88
 
 
 def test_every_public_contract_is_a_strict_concrete_contract() -> None:

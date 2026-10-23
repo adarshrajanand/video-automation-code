@@ -1,0 +1,96 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {},
+    "SpeechStrategy": {
+      "enum": [
+        "CONTINUOUS",
+        "SCENE_SEGMENTED"
+      ],
+      "title": "SpeechStrategy",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:SpeechGenerationInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the speech_generation capability.",
+  "properties": {
+    "language": {
+      "default": "en",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_texts": {
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Narration Texts",
+      "type": "object"
+    },
+    "scene_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Scene Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "speech-generation-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "script_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Script Version",
+      "type": "string"
+    },
+    "strategy": {
+      "$ref": "#/$defs/SpeechStrategy"
+    },
+    "voice_config": {
+      "$ref": "#/$defs/ExtensionObject"
+    }
+  },
+  "required": [
+    "schema_version",
+    "script_id",
+    "script_version",
+    "strategy"
+  ],
+  "title": "SpeechGenerationInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "speech-generation-input.v1"
+}

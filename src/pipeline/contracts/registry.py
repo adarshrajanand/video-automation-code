@@ -23,10 +23,18 @@ from pipeline.contracts.capabilities import (
     UsageRecord,
 )
 from pipeline.contracts.capability_payloads import (
+    ASRAlignmentInputPayload,
+    ASRAlignmentOutputPayload,
+    AudioQCInputPayload,
+    AudioQCOutputPayload,
     ResearchInputPayload,
     ResearchOutputPayload,
     ScriptGenerationInputPayload,
     ScriptGenerationOutputPayload,
+    SpeechGenerationInputPayload,
+    SpeechGenerationOutputPayload,
+    TTSAdapterInputPayload,
+    TTSAdapterOutputPayload,
     VisualPlanningInputPayload,
     VisualPlanningOutputPayload,
 )
@@ -40,7 +48,9 @@ from pipeline.contracts.content import (
     ScriptScene,
     SourceRef,
     SourceSnapshot,
+    SpeechManifest,
     VisualIntent,
+    WordTimestamp,
 )
 from pipeline.contracts.editorial import (
     CompositionRef,
@@ -190,6 +200,8 @@ CONTRACT_MODELS: tuple[type[Contract], ...] = (
     ScriptScene,
     Script,
     AudioTiming,
+    SpeechManifest,
+    WordTimestamp,
     # Capability payloads
     ResearchInputPayload,
     ResearchOutputPayload,
@@ -197,6 +209,14 @@ CONTRACT_MODELS: tuple[type[Contract], ...] = (
     ScriptGenerationOutputPayload,
     VisualPlanningInputPayload,
     VisualPlanningOutputPayload,
+    SpeechGenerationInputPayload,
+    SpeechGenerationOutputPayload,
+    TTSAdapterInputPayload,
+    TTSAdapterOutputPayload,
+    ASRAlignmentInputPayload,
+    ASRAlignmentOutputPayload,
+    AudioQCInputPayload,
+    AudioQCOutputPayload,
 )
 
 PUBLIC_CONTRACTS: dict[str, type[Contract]] = {

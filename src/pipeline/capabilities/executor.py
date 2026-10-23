@@ -317,8 +317,9 @@ class CapabilityExecutor:
     ) -> ExecutionResult:
         """Return prior result for completed idempotent replay."""
         # Fetch the prior capability execution and result
-        exec_repo = CapabilityExecutionRepository(self._database.connection())
-        prior_execution = exec_repo.get(record.capability_execution_id)
+        with self._database.connection() as conn:
+            exec_repo = CapabilityExecutionRepository(conn)
+            prior_execution = exec_repo.get(record.capability_execution_id)
 
         # Build a synthetic output from the prior result
 

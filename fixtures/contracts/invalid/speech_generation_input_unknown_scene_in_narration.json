@@ -1,0 +1,18 @@
+{
+  "schema_version": "speech-generation-input.v1",
+  "script_id": "script_01",
+  "script_version": "v1.0",
+  "scene_ids": ["scene_01", "scene_02"],
+  "strategy": "CONTINUOUS",
+  "voice_config": {
+    "provider": "elevenlabs",
+    "model": "v2",
+    "voice_id": "narrator_deep_male"
+  },
+  "narration_texts": {
+    "scene_01": "The Arctic is warming four times faster than the global average.",
+    "scene_03": "Satellite data shows accelerating ice loss since 1979."
+  },
+  "language": "en",
+  "metadata": {}
+}

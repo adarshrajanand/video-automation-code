@@ -71,6 +71,17 @@ REQUIRED_INVALID_CASES = {
     "script_generation_output_bad_scene_count_payload",
     "visual_planning_input_duplicate_scenes_payload",
     "visual_planning_output_duplicate_intents_payload",
+    "speech_manifest_duplicate_audio_ids",
+    "speech_manifest_hash_count_mismatch",
+    "speech_manifest_unknown_scene_in_hashes",
+    "speech_generation_input_duplicate_scenes",
+    "speech_generation_input_narration_count_mismatch",
+    "speech_generation_input_unknown_scene_in_narration",
+    "speech_generation_output_duplicate_audio_ids",
+    "speech_generation_output_hash_count_mismatch",
+    "asr_alignment_output_duplicate_audio_timing_ids",
+    "asr_alignment_output_duplicate_word_timestamp_ids",
+    "word_timestamp_bad_order",
 }
 
 

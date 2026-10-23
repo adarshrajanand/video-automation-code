@@ -226,7 +226,7 @@
       "model": "Script"
     },
     {
-      "error_contains": "end_seconds must be > start_seconds",
+      "error_contains": "must not contain duplicates",
       "fixture": "invalid/audio_timing_bad_order.json",
       "model": "AudioTiming"
     },
@@ -259,6 +259,61 @@
       "error_contains": "String should have at least 1 character",
       "fixture": "invalid/script_generation_input_bad_duration.json",
       "model": "ScriptGenerationInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/speech_manifest_duplicate_audio_ids.json",
+      "model": "SpeechManifest"
+    },
+    {
+      "error_contains": "narration_text_hashes must have one entry per scene_audio_artifact_id",
+      "fixture": "invalid/speech_manifest_hash_count_mismatch.json",
+      "model": "SpeechManifest"
+    },
+    {
+      "error_contains": "narration_text_hashes references unknown scene_id",
+      "fixture": "invalid/speech_manifest_unknown_scene_in_hashes.json",
+      "model": "SpeechManifest"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/speech_generation_input_duplicate_scenes.json",
+      "model": "SpeechGenerationInputPayload"
+    },
+    {
+      "error_contains": "narration_texts must have one entry per scene_id",
+      "fixture": "invalid/speech_generation_input_narration_count_mismatch.json",
+      "model": "SpeechGenerationInputPayload"
+    },
+    {
+      "error_contains": "narration_texts references unknown scene_id",
+      "fixture": "invalid/speech_generation_input_unknown_scene_in_narration.json",
+      "model": "SpeechGenerationInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/speech_generation_output_duplicate_audio_ids.json",
+      "model": "SpeechGenerationOutputPayload"
+    },
+    {
+      "error_contains": "narration_text_hashes must have one entry per scene_audio_artifact_id",
+      "fixture": "invalid/speech_generation_output_hash_count_mismatch.json",
+      "model": "SpeechGenerationOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/asr_alignment_output_duplicate_audio_timing_ids.json",
+      "model": "ASRAlignmentOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/asr_alignment_output_duplicate_word_timestamp_ids.json",
+      "model": "ASRAlignmentOutputPayload"
+    },
+    {
+      "error_contains": "end_frames must be greater than start_frames",
+      "fixture": "invalid/word_timestamp_bad_order.json",
+      "model": "WordTimestamp"
     }
   ],
   "schema_version": "contract-fixtures.v1"

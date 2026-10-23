@@ -1,6 +1,18 @@
 {
   "contracts": [
     {
+      "model": "ASRAlignmentInputPayload",
+      "schema_file": "ASRAlignmentInputPayload.schema.json",
+      "schema_version": "asr-alignment-input.v1",
+      "sha256": "a24370e22f8a155d6ea3bca8725d54f58cba1c8457fbdc76c6ce8e51b89afea7"
+    },
+    {
+      "model": "ASRAlignmentOutputPayload",
+      "schema_file": "ASRAlignmentOutputPayload.schema.json",
+      "schema_version": "asr-alignment-output.v1",
+      "sha256": "29f5cb96f4e240d7ae635bf199966e6c28a28351f076131e5941f8877188c40b"
+    },
+    {
       "model": "Artifact",
       "schema_file": "Artifact.schema.json",
       "schema_version": "artifact.v1",
@@ -19,10 +31,22 @@
       "sha256": "23715b4840b6afffab02fa485ef54254f42add83f93b8d8231b9b58cae4d0393"
     },
     {
+      "model": "AudioQCInputPayload",
+      "schema_file": "AudioQCInputPayload.schema.json",
+      "schema_version": "audio-qc-input.v1",
+      "sha256": "f3f8ddae023d02eab5f08013352f544aa7b332a6dcf762d829496c3ef3322c53"
+    },
+    {
+      "model": "AudioQCOutputPayload",
+      "schema_file": "AudioQCOutputPayload.schema.json",
+      "schema_version": "audio-qc-output.v1",
+      "sha256": "632268ddce6791f542d7e5dbcdff1ae01a89e549a292df851d16d005ec37e545"
+    },
+    {
       "model": "AudioTiming",
       "schema_file": "AudioTiming.schema.json",
       "schema_version": "audio-timing.v1",
-      "sha256": "04ef999cfb97d39b333213ef835d9ac86461af24d1ac894f5e73e29bfe85c7d2"
+      "sha256": "73cf05d9a6bb51fec19a0501c20422cd9ff6486f65d3ea65ea24c060adbd8a6e"
     },
     {
       "model": "BudgetPolicy",
@@ -403,6 +427,24 @@
       "sha256": "32f9ce9177274859dec4d517999f33b22db9f992348eb2467507897d97f4a03f"
     },
     {
+      "model": "SpeechGenerationInputPayload",
+      "schema_file": "SpeechGenerationInputPayload.schema.json",
+      "schema_version": "speech-generation-input.v1",
+      "sha256": "36bec7da82117d9d4845a89fec27688af448b56c95cc7973155ed0d8b886f219"
+    },
+    {
+      "model": "SpeechGenerationOutputPayload",
+      "schema_file": "SpeechGenerationOutputPayload.schema.json",
+      "schema_version": "speech-generation-output.v1",
+      "sha256": "d6e0342072d81b8e0e390d6ac09eff079753c0fea1d9a612810b55cc16b0c359"
+    },
+    {
+      "model": "SpeechManifest",
+      "schema_file": "SpeechManifest.schema.json",
+      "schema_version": "speech-manifest.v1",
+      "sha256": "3f73a1838d412d5d0ef14f2261a97defbabe0aa124a7eeaa46f9e21fe1d9faa0"
+    },
+    {
       "model": "StageAttempt",
       "schema_file": "StageAttempt.schema.json",
       "schema_version": "stage-attempt.v1",
@@ -425,6 +467,18 @@
       "schema_file": "SystemPolicy.schema.json",
       "schema_version": "system-policy.v1",
       "sha256": "c53421fd07da0c302b2365f142f2a47eb3fd42a254af0baeaa4988edc4186465"
+    },
+    {
+      "model": "TTSAdapterInputPayload",
+      "schema_file": "TTSAdapterInputPayload.schema.json",
+      "schema_version": "tts-adapter-input.v1",
+      "sha256": "7c36b45780e23375f22f145c1de2085edb9ba5f15dd53b2ead2fe04bf773387e"
+    },
+    {
+      "model": "TTSAdapterOutputPayload",
+      "schema_file": "TTSAdapterOutputPayload.schema.json",
+      "schema_version": "tts-adapter-output.v1",
+      "sha256": "2728671a70d1546ec45e2ac42aeb22ff09d064269326da4323c9a23d1de4e653"
     },
     {
       "model": "UsageRecord",
@@ -451,6 +505,12 @@
       "sha256": "690cf48330bb4a40310311a6e88daf6d9d91a9213c4ba425065fc62de37472e9"
     },
     {
+      "model": "WordTimestamp",
+      "schema_file": "WordTimestamp.schema.json",
+      "schema_version": "word-timestamp.v1",
+      "sha256": "8ee3ecc76a56ed616ee7133cb0f8797482bbb1b40e74fc0175723bca5e7936a9"
+    },
+    {
       "model": "WorkflowDefinition",
       "schema_file": "WorkflowDefinition.schema.json",
       "schema_version": "workflow-definition.v1",
@@ -471,6 +531,6 @@
   ],
   "generated_by": "python -m pipeline contracts export-schemas",
   "manifest_version": "1",
-  "public_contract_count": 78,
+  "public_contract_count": 88,
   "schema_dialect": "https://json-schema.org/draft/2020-12/schema"
 }

@@ -329,6 +329,11 @@ def build_parser() -> argparse.ArgumentParser:
                 "human_review",
                 "policy",
                 "internal",
+                "speech_generation",
+                "tts_adapter",
+                "asr_alignment",
+                "audio_qc_pass",
+                "audio_qc_fail",
             ]
         ),
         help="scripted outcome to return",
@@ -685,7 +690,12 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
             CapabilityExecutor,
             CapabilityRegistry,
             FakeCapabilityProvider,
+            create_asr_alignment_success_outcome,
+            create_audio_qc_failure_outcome,
+            create_audio_qc_success_outcome,
+            create_speech_generation_success_outcome,
             create_success_outcome,
+            create_tts_adapter_success_outcome,
             outcome_authentication_failure,
             outcome_authorization_failure,
             outcome_budget_exceeded,
@@ -729,6 +739,11 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
             "human_review": outcome_human_review,
             "policy": outcome_policy,
             "internal": outcome_internal,
+            "speech_generation": create_speech_generation_success_outcome,
+            "tts_adapter": create_tts_adapter_success_outcome,
+            "asr_alignment": create_asr_alignment_success_outcome,
+            "audio_qc_pass": create_audio_qc_success_outcome,
+            "audio_qc_fail": create_audio_qc_failure_outcome,
         }
 
         outcome_factory = outcome_factories[arguments.fake_outcome]

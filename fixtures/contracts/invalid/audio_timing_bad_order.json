@@ -1,13 +1,12 @@
 {
   "schema_version": "audio-timing.v1",
   "audio_timing_id": "at_01",
+  "speech_manifest_id": "manifest_01",
+  "script_version": "v1.0",
   "scene_id": "scene_01",
-  "script_id": "script_01",
-  "narration_text": "Test narration",
-  "words": ["Test", "narration"],
-  "word_start_seconds": [0.0, 0.5],
-  "word_end_seconds": [0.4, 0.3],
-  "pause_after_word": [0.1, 0.2],
-  "total_duration_seconds": 10,
-  "sample_rate": 24000
+  "audio_artifact_id": "audio_scene_01",
+  "narration_text_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+  "word_timestamps": ["wt_01", "wt_01"],
+  "sample_rate": 24000,
+  "metadata": {}
 }
