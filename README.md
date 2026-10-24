@@ -1,20 +1,27 @@
 # AI Video Automation Pipeline
 
 Bootstrap shell for a local-first, modular-monolith video pipeline. This
-repository currently implements FV-01 through FV-05: the Python package
-skeleton, CLI entry point, local setup diagnostics, versioned Pydantic
-contracts, deterministic fingerprint/ID helpers, committed JSON Schemas with
-fixtures, a typed SQLite repository with ordered migrations, an immutable
-local `ArtifactStore`, a pure workflow loader and readiness engine, and the
-local execution spine (transactional outbox, polling dispatcher, inbox
+repository implements FV-01 through FV-11: the Python package skeleton, CLI
+entry point, local setup diagnostics, versioned Pydantic contracts,
+deterministic fingerprint/ID helpers, committed JSON Schemas with fixtures, a
+typed SQLite repository with ordered migrations, an immutable local
+`ArtifactStore`, a pure workflow loader and readiness engine, the local
+execution spine (transactional outbox, polling dispatcher, inbox
 deduplication, idempotent job creation, fenced leases, retry classification,
-and lease-expiry recovery).
+and lease-expiry recovery), a capability registry with deterministic fake
+provider, budget-aware capability executor, quality gates with repair and
+human review, and validation report generation with secret redaction.
 
-It does **not** implement capability routing, provider adapters, stage business
-logic, media generation, quality evaluation, repair, or publication. Readiness
-evaluation remains a pure decision over durable records supplied by the caller.
-The worker CLI uses a safe no-op handler; there are no provider SDKs,
-credentials, network calls, or real media effects.
+It does **not** implement external message brokers, provider SDKs, API keys,
+paid calls, or network access from setup checks. Real media probing (ffprobe)
+and Remotion renderer remain deferred. Capability routing uses an explicit
+registry with explicit provider/model/feature/locale matching; the execution
+spine moves durable job state and runs narrow test/no-op handlers only.
+Delivery is at-least-once; duplicate effects are prevented by durable inbox
+receipts and idempotency keys. Unknown external outcomes dead-letter the
+delivery and request explicit reconciliation; automatic paid retries and
+reconciliation are deferred. Artifacts and runtime data stay under
+`PIPELINE_HOME`, never in Git.
 
 ## Prerequisites
 
@@ -430,8 +437,9 @@ uv run python -m pipeline worker run --once \
 consumer, so it marks durable deliveries without running a downstream effect.
 `worker run` claims at most one job and runs a safe no-op handler that produces
 no artifacts. It is an honest smoke test of lease and completion mechanics, not
-a stage worker. Real capability routing, stage handlers, media processing, and
-quality gates belong to later work packages. Both commands create or migrate the
+a stage worker. Capability routing, stage handlers, quality gates with repair
+and human review, and validation reporting are implemented. Remotion renderer
+and real media probing remain deferred. Both commands create or migrate the
 explicit database path when needed.
 
 ### Fault guarantees covered by tests
@@ -613,9 +621,12 @@ workflows/             Runtime workflow definitions copied from the docs registr
 - Local modular monolith only; no remote infrastructure or service split.
 - No external message broker; the outbox dispatcher polls SQLite in-process.
 - No provider SDKs, API keys, paid calls, or network access from setup checks.
-- No capability routing, provider adapters, stage business logic, media
-  processing, quality evaluation, repair, or publication yet. The execution
-  spine moves durable job state and runs narrow test/no-op handlers only.
+- Capability routing uses explicit registry with provider/model/feature/locale
+  matching; no provider SDKs or network calls.
+- Quality gates with repair and human review are implemented; Remotion
+  renderer and real media probing (ffprobe) are deferred.
+- The execution spine moves durable job state and runs narrow test/no-op
+  handlers only.
 - Delivery is at-least-once; duplicate effects are prevented by durable inbox
   receipts and idempotency keys, not by pretending the transport is exactly-once.
 - Unknown external outcomes dead-letter the delivery and request explicit
