@@ -16,9 +16,86 @@ from pipeline.contracts.quality import QualityGateResult
 from pipeline.contracts.vocabularies import (
     AttemptStatus,
 )
+from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
     from pipeline.storage.database import Database
+
+
+# Allowlisted environment variable names (non-sensitive)
+_ALLOWLISTED_ENV = frozenset(
+    {
+        "PIPELINE_HOME",
+        "PIPELINE_ENV",
+        "PIPELINE_CONFIG",
+        "PYTHONPATH",
+        "PYTHONHASHSEED",
+        "VIRTUAL_ENV",
+        "PATH",
+        "LANG",
+        "LC_ALL",
+        "TZ",
+        "CI",
+        "GITHUB_ACTIONS",
+        "RUNNER_OS",
+        "UV_INDEX",
+        "UV_CACHE_DIR",
+    }
+)
+
+# Keys that indicate a sensitive value in environment or CLI args
+_SENSITIVE_KEY_MARKERS = frozenset(
+    {
+        "key",
+        "token",
+        "secret",
+        "password",
+        "credential",
+        "auth",
+        "session",
+        "cookie",
+        "apikey",
+        "api_key",
+        "access_key",
+        "secret_key",
+        "private_key",
+    }
+)
+
+
+def _is_sensitive_key(key: str) -> bool:
+    """Check if an environment variable or CLI arg key looks sensitive."""
+    lower = key.lower()
+    return any(marker in lower for marker in _SENSITIVE_KEY_MARKERS)
+
+
+def _redact_environment(env: dict[str, str]) -> dict[str, str]:
+    """Return environment with sensitive values redacted and
+    non-allowlisted keys removed.
+    """
+    result = {}
+    for k, v in env.items():
+        if k in _ALLOWLISTED_ENV:
+            if _is_sensitive_key(k):
+                result[k] = "[REDACTED]"
+            else:
+                result[k] = v
+    return result
+
+
+def _redact_command_argv(argv: list[str]) -> str:
+    """Redact sensitive values in command line arguments."""
+    redacted = []
+    i = 0
+    while i < len(argv):
+        arg = argv[i]
+        redacted.append(arg)
+        # If this arg is a sensitive flag, redact the next value
+        if arg.startswith("--") and _is_sensitive_key(arg[2:]) and i + 1 < len(argv):
+            redacted.append("[REDACTED]")
+            i += 1
+        i += 1
+    return " ".join(redacted)
 
 
 @dataclass(slots=True)
@@ -85,7 +162,7 @@ class ValidationReport:
             f"**Platform:** {self.platform_info}",
             f"**Package Version:** {self.package_version}",
             "",
-            "### Environment Variables",
+            "### Environment Variables (allowlisted, sensitive redacted)",
             "",
         ]
         for key, value in sorted(self.environment.items()):
@@ -269,9 +346,9 @@ class ValidationReport:
                     [
                         f"### Gate: {qgr.gate_id} v{qgr.gate_version}",
                         f"- **Decision:** {qgr.decision.value}",
-                        f"- **Run ID:** {qgr.run_id}",
-                        f"- **Stage Instance:** {qgr.stage_instance_id}",
-                        f"- **Evaluations:** {len(qgr.evaluations)}",
+                        f"- **Run ID:** {self.run_id}",
+                        f"- **Stage Instance:** {qgr.stage_instance_id or 'N/A'}",
+                        f"- **Evaluations:** {len(qgr.evaluation_ids)}",
                         f"- **Created:** {qgr.created_at.isoformat()}",
                         "",
                     ]
@@ -453,15 +530,25 @@ class ValidationReportGenerator:
     def __init__(self, database: Database) -> None:
         self.database = database
 
-    def generate(self, run_id: str) -> ValidationReport:
-        """Generate a complete validation report for a run."""
+    def generate(
+        self,
+        run_id: str,
+        *,
+        fault_injection_results: list[dict[str, Any]] | None = None,
+        next_extension_decision: str | None = None,
+    ) -> ValidationReport:
+        """Generate a complete validation report for a run.
+
+        Args:
+            run_id: The workflow run ID.
+            fault_injection_results: Optional fault injection test results.
+            next_extension_decision: Optional next extension recommendation.
+        """
         report = ValidationReport(run_id=run_id)
 
-        # Capture environment
-        report.command = " ".join(sys.argv)
-        report.environment = {
-            k: v for k, v in os.environ.items() if not k.startswith("_")
-        }
+        # Capture environment (allowlisted + redacted)
+        report.command = _redact_command_argv(sys.argv)
+        report.environment = _redact_environment(dict(os.environ))
         report.python_version = sys.version.split()[0]
         report.platform_info = (
             f"{platform.system()} {platform.release()} ({platform.machine()})"
@@ -475,7 +562,19 @@ class ValidationReportGenerator:
         except ImportError:
             report.package_version = "unknown"
 
-        with self.database.transaction() as conn:
+        # Set fault injection results if provided
+        if fault_injection_results is not None:
+            report.fault_injection_results = fault_injection_results
+
+        # Set next extension decision if provided
+        if next_extension_decision is not None:
+            report.next_extension_decision = next_extension_decision
+        else:
+            report.next_extension_decision = (
+                "NOT_RECORDED - no explicit next extension decision provided"
+            )
+
+        with self.database.connection() as conn:
             from pipeline.storage.repositories.artifacts import (
                 ArtifactDependencyRepository,
                 ArtifactRepository,
@@ -484,6 +583,9 @@ class ValidationReportGenerator:
                 StageAttemptRepository,
                 StageInstanceRepository,
                 WorkflowRunRepository,
+            )
+            from pipeline.storage.repositories.quality import (
+                QualityGateResultRepository,
             )
 
             # Load workflow run
@@ -510,33 +612,15 @@ class ValidationReportGenerator:
                 deps = dep_repo.list_for_parent(artifact.artifact_id)
                 report.artifact_dependencies.extend(deps)
 
-            # Load quality gate results (optional - repository may not exist)
-            try:
-                from pipeline.storage.repositories.editorial import (
-                    QualityGateResultRepository,
-                )
+            # Load quality gate results
+            qgr_repo = QualityGateResultRepository(conn)
+            report.quality_gate_results = qgr_repo.list_for_run(run_id)
 
-                qgr_repo = QualityGateResultRepository(conn)
-                report.quality_gate_results = qgr_repo.list_for_run(run_id)
-            except ImportError:
-                # Repository not available yet
-                report.quality_gate_results = []
+            # Load provider usage from usage_records
+            report.provider_usage = self._load_provider_usage(conn, run_id)
 
-            # Load human reviews for blind spots
-            from pipeline.storage.repositories.editorial import HumanReviewRepository
-
-            hr_repo = HumanReviewRepository(conn)
-            reviews = hr_repo.list(run_id=run_id)
-            for review in reviews:
-                if review.status.value == "RESOLVED":
-                    decision = hr_repo.get_decision(review.review_id)
-                    if decision and decision.decision.value == "APPROVE":
-                        reasons = ", ".join(review.reason_codes)
-                        artifacts = ", ".join(review.target_artifact_ids)
-                        report.known_blind_spots.append(
-                            "Human-approved quality gap: "
-                            f"{reasons} on artifacts {artifacts}"
-                        )
+            # Load known blind spots from human reviews and threshold registry
+            report.known_blind_spots = self._load_blind_spots(conn, run_id)
 
         # Compute stage timings
         for si in report.stage_instances:
@@ -580,7 +664,6 @@ class ValidationReportGenerator:
                     by_stage[si.node_id] = (
                         by_stage.get(si.node_id, 0) + sa.quality_regeneration_number
                     )
-                # Scope would need more context - using attempt status as proxy
                 scope = "SCENE" if sa.status == AttemptStatus.SUCCEEDED else "STAGE"
                 by_scope[scope] = by_scope.get(scope, 0) + 1
 
@@ -605,27 +688,170 @@ class ValidationReportGenerator:
                     }
                 )
 
-        # Next extension decision (placeholder - would be based on analysis)
-        report.next_extension_decision = (
-            "Based on current run analysis, the next recommended extension is "
-            "**FV-12: Remotion Renderer Integration** to enable real video composition "
-            "and rendering. This will close the gap between composition specs and "
-            "final MP4 output, allowing end-to-end validation of the pipeline."
+        return report
+
+    def _load_provider_usage(self, conn, run_id: str) -> dict[str, dict[str, Any]]:
+        """Load provider usage aggregated from usage_records for a run."""
+        # Join usage_records -> capability_executions -> stage_attempts ->
+        # stage_instances
+        rows = conn.execute(
+            "SELECT ur.payload FROM usage_records ur "
+            "JOIN capability_executions ce "
+            "ON ur.capability_execution_id = ce.capability_execution_id "
+            "JOIN stage_attempts sa ON ce.attempt_id = sa.attempt_id "
+            "JOIN stage_instances si ON sa.stage_instance_id = si.stage_instance_id "
+            "WHERE si.run_id = ?",
+            (run_id,),
+        ).fetchall()
+
+        provider_usage: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            import json
+
+            ur = json.loads(row[0])
+            provider = ur.get("provider", "unknown")
+            model = ur.get("model", "unknown")
+            key = f"{provider}:{model}"
+            if key not in provider_usage:
+                provider_usage[key] = {
+                    "provider": provider,
+                    "model": model,
+                    "calls": 0,
+                    "total_latency_ms": 0.0,
+                    "total_cost_minor": 0,
+                }
+            pu = provider_usage[key]
+            pu["calls"] += 1
+            pu["total_latency_ms"] += ur.get("runtime_seconds", 0) * 1000
+            pu["total_cost_minor"] += ur.get("actual_cost_minor", 0) or ur.get(
+                "estimated_cost_minor", 0
+            )
+
+        return provider_usage
+
+    def _load_blind_spots(self, conn, run_id: str) -> list[str]:
+        """Load known blind spots from human reviews and threshold registry."""
+        blind_spots = []
+
+        # From human reviews
+        from pipeline.storage.repositories.editorial import HumanReviewRepository
+
+        hr_repo = HumanReviewRepository(conn)
+        reviews = hr_repo.list(run_id=run_id)
+        for review in reviews:
+            if review.status.value == "RESOLVED":
+                decision = hr_repo.get_decision(review.review_id)
+                if decision and decision.decision.value == "APPROVE":
+                    reasons = ", ".join(review.reason_codes)
+                    artifacts = ", ".join(review.target_artifact_ids)
+                    blind_spots.append(
+                        f"Human-approved quality gap: {reasons} on "
+                        f"artifacts {artifacts}"
+                    )
+
+        # From threshold registry blind_spots
+        from pipeline.quality.thresholds import get_default_threshold_registry
+
+        threshold_registry = get_default_threshold_registry()
+        for threshold in threshold_registry._thresholds.values():
+            for spot in threshold.blind_spots:
+                blind_spots.append(
+                    f"Threshold blind spot ({threshold.gate_id}/{threshold.check_id}/"
+                    f"{threshold.dimension_name}): {spot}"
+                )
+
+        return blind_spots
+
+
+class QualityReportGenerator:
+    """Generates quality reports from stored evaluations and gate results."""
+
+    def __init__(self, database: Database) -> None:
+        self.database = database
+
+    def generate(
+        self,
+        run_ids: list[str] | None = None,
+        gate_ids: list[str] | None = None,
+        period_start: datetime | None = None,
+        period_end: datetime | None = None,
+    ) -> Any:
+        """Generate a quality report for the given filters."""
+        from pipeline.storage.repositories.quality import (
+            QualityEvaluationRepository,
+            QualityGateResultRepository,
         )
 
-        return report
+        with self.database.connection() as conn:
+            qgr_repo = QualityGateResultRepository(conn)
+            eval_repo = QualityEvaluationRepository(conn)
+
+            if run_ids:
+                gate_results = []
+                for rid in run_ids:
+                    gate_results.extend(qgr_repo.list_for_run(rid))
+            elif gate_ids:
+                gate_results = []
+                for gid in gate_ids:
+                    gate_results.extend(qgr_repo.list_for_gate(gid))
+            else:
+                # Not implemented: query all with date filters
+                gate_results = []
+
+            evaluations = []
+            for qgr in gate_results:
+                evaluations.extend(
+                    eval_repo.list_for_gate(qgr.gate_id, qgr.stage_instance_id)
+                )
+
+            rid = deterministic_id("qrpt", str(run_ids), str(gate_ids))
+            return {
+                "schema_version": "quality-report.v1",
+                "report_id": f"qrpt_{rid}",
+                "run_ids": run_ids or [],
+                "gate_ids": gate_ids or [],
+                "period_start": period_start.isoformat() if period_start else None,
+                "period_end": period_end.isoformat() if period_end else None,
+                "total_gates": len(gate_results),
+                "pass_count": sum(
+                    1 for g in gate_results if g.decision.value == "PASS"
+                ),
+                "fail_count": sum(
+                    1 for g in gate_results if g.decision.value == "FAIL"
+                ),
+                "regenerate_count": sum(
+                    1 for g in gate_results if g.decision.value == "REGENERATE"
+                ),
+                "human_review_count": sum(
+                    1 for g in gate_results if g.decision.value == "HUMAN_REVIEW"
+                ),
+                "gate_results": [g.model_dump(mode="json") for g in gate_results],
+                "evaluations": [e.model_dump(mode="json") for e in evaluations],
+            }
+
+    def generate_for_run(self, run_id: str) -> Any:
+        """Generate a quality report for a single workflow run."""
+        return self.generate(run_ids=[run_id])
 
 
 def generate_validation_report(
     database: Database,
     run_id: str,
+    *,
+    fault_injection_results: list[dict[str, Any]] | None = None,
+    next_extension_decision: str | None = None,
 ) -> ValidationReport:
     """Convenience function to generate a validation report."""
     generator = ValidationReportGenerator(database)
-    return generator.generate(run_id)
+    return generator.generate(
+        run_id=run_id,
+        fault_injection_results=fault_injection_results,
+        next_extension_decision=next_extension_decision,
+    )
 
 
 __all__ = [
+    "QualityReportGenerator",
     "ValidationReport",
     "ValidationReportGenerator",
     "generate_validation_report",
