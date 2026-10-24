@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import uuid
+import builtins
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -46,22 +46,7 @@ class FakeCapabilityProvider:
     def __init__(self, registry: CapabilityRegistry) -> None:
         self._registry = registry
         self._outcomes: dict[str, ScriptedOutcome] = {}
-        self._default_outcome = ScriptedOutcome(
-            schema_version="scripted-outcome.v1",
-            status="SUCCEEDED",
-            artifact_ids=[f"artifact_fake_{uuid.uuid4().hex[:8]}"],
-            metadata={"fake": True},
-            usage=UsageRecord(
-                schema_version="usage.v1",
-                provider="fake",
-                model="deterministic-fixture",
-                input_units=0,
-                output_units=0,
-                runtime_seconds=0.0,
-                estimated_cost_minor=0,
-                actual_cost_minor=0,
-            ),
-        )
+        self._default_outcome = create_success_outcome()
 
     def register_outcome(
         self, request_fingerprint: str, outcome: ScriptedOutcome
@@ -109,6 +94,15 @@ class FakeCapabilityProvider:
         ):
             outcome = create_content_stage_success_outcome(request.capability)
 
+        # The default outcome is shared between requests. Derive its artifact
+        # IDs from the request fingerprint so independent fake executions do
+        # not collide in the artifact store.
+        artifact_ids = (
+            [deterministic_id("artifact", fingerprint)]
+            if outcome is self._default_outcome
+            else list(outcome.artifact_ids)
+        )
+
         # Create capability execution record
         execution_id = request.capability_execution_id
         started_at = __import__("datetime").datetime.now(__import__("datetime").UTC)
@@ -116,7 +110,17 @@ class FakeCapabilityProvider:
 
         # Handle exception-raising outcomes
         if outcome.raise_exception:
-            exc_type = getattr(__builtins__, outcome.exception_type, Exception)
+            exc_name = outcome.exception_type
+            exc_type = getattr(builtins, exc_name, None)
+            if (
+                exc_type is None
+                or not isinstance(exc_type, type)
+                or not issubclass(exc_type, BaseException)
+            ):
+                raise ValueError(
+                    f"Invalid exception_type {exc_name!r}: "
+                    "must be a builtin BaseException subclass"
+                )
             raise exc_type(outcome.exception_message or "Fake provider exception")
 
         # Build normalized error if outcome is failed/unknown
@@ -161,7 +165,7 @@ class FakeCapabilityProvider:
             else None,
             status=CapabilityExecutionStatus(outcome.status),
             input_artifact_ids=request.input_artifact_ids,
-            output_artifact_ids=outcome.artifact_ids,
+            output_artifact_ids=artifact_ids,
             started_at=started_at,
             finished_at=finished_at,
             normalized_error=normalized_error,
@@ -174,7 +178,7 @@ class FakeCapabilityProvider:
             invocation_id=invocation_id,
             capability_execution_id=execution_id,
             provider=input_data.routing_decision.provider,
-            operation_id=f"fake_op_{uuid.uuid4().hex[:12]}"
+            operation_id=deterministic_id("op", fingerprint)
             if outcome.status != "UNKNOWN"
             else None,
             idempotency_key=request.idempotency_key,
@@ -204,7 +208,7 @@ class FakeCapabilityProvider:
             schema_version="capability-result.v1",
             capability_execution_id=execution_id,
             status=CapabilityResultStatus(outcome.status),
-            artifact_ids=outcome.artifact_ids,
+            artifact_ids=artifact_ids,
             metadata=outcome.metadata,
             usage=usage_record,
             normalized_error=normalized_error,
@@ -228,7 +232,7 @@ def create_success_outcome(
     return ScriptedOutcome(
         schema_version="scripted-outcome.v1",
         status="SUCCEEDED",
-        artifact_ids=artifact_ids or [f"artifact_fake_{uuid.uuid4().hex[:8]}"],
+        artifact_ids=artifact_ids or [deterministic_id("artifact", "fake", "success")],
         metadata={"fake": True, "outcome": "success"},
         usage=usage
         or UsageRecord(

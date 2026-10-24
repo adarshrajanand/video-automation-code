@@ -55,14 +55,35 @@ class CapabilityRegistry:
         model: str | None = None,
         required_features: list[str] | None = None,
         locale: str | None = None,
-    ) -> CapabilityImplementation | None:
+    ) -> CapabilityImplementation:
         """Find a matching implementation, optionally filtered by
-        provider/model/features/locale."""
+        provider/model/features/locale.
+
+        Args:
+            capability: The capability name.
+            operation_version: The operation version.
+            provider: Optional provider filter.
+            model: Optional model filter.
+            required_features: Optional list of required features.
+            locale: Optional locale filter.
+
+        Returns:
+            The matching CapabilityImplementation.
+
+        Raises:
+            CapabilityNotFoundError: If no implementation is registered for the
+                (capability, operation_version) key.
+            CapabilityRequirementMismatchError: If implementations exist but none
+                satisfy the explicit provider/model/required_features/locale filters.
+        """
         key = CapabilityKey(capability=capability, operation_version=operation_version)
         candidates = self._implementations.get(key, [])
         if not candidates:
-            return None
+            raise CapabilityNotFoundError(
+                capability, operation_version, provider=provider, model=model
+            )
 
+        filtered = []
         for impl in candidates:
             if provider is not None and impl.provider != provider:
                 continue
@@ -78,10 +99,27 @@ class CapabilityRegistry:
                 and locale not in impl.supported_locales
             ):
                 continue
-            return impl
+            filtered.append(impl)
 
-        # No filtered match; return first as fallback
-        return candidates[0]
+        if not filtered:
+            reasons = []
+            if provider is not None:
+                reasons.append(f"provider={provider!r}")
+            if model is not None:
+                reasons.append(f"model={model!r}")
+            if required_features is not None:
+                reasons.append(f"required_features={required_features!r}")
+            if locale is not None:
+                reasons.append(f"locale={locale!r}")
+            raise CapabilityRequirementMismatchError(
+                capability,
+                operation_version,
+                f"No implementation matches filters: {', '.join(reasons)}",
+                provider=provider,
+                model=model,
+            )
+
+        return filtered[0]
 
     def list_for_capability(
         self, capability: str, operation_version: str
