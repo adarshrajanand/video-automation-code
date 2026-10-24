@@ -119,9 +119,7 @@ def _setup_scenario(test_db: Database, scenario_name: str) -> dict:
             effective_config_id=ec_id,
             effective_config_hash="a" * 64,
             status=RunStatus.RUNNING,
-            content_package_id=deterministic_id(
-                "package", f"matrix_{scenario_name}"
-            ),
+            content_package_id=deterministic_id("package", f"matrix_{scenario_name}"),
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
@@ -231,9 +229,7 @@ def _test_duplicate_trigger_same_key(test_db: Database) -> None:
             run_repo.insert(run_2)
 
 
-def _test_duplicate_trigger_new_policy(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_duplicate_trigger_new_policy(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 1b: Explicit new run policy creates new run even with same key."""
     run_id = test_run_setup["run_id"]
     ec_id = test_run_setup["ec_id"]
@@ -441,6 +437,7 @@ def _test_provider_succeeds_worker_crashes(
     with test_db.transaction() as conn:
         job_repo = JobRepository(conn)
         from pipeline.storage.repositories.execution import LeaseRepository
+
         lease_repo = LeaseRepository(conn)
 
         job = job_repo.get(claim_result.claim.job_id)
@@ -449,6 +446,7 @@ def _test_provider_succeeds_worker_crashes(
 
         # Verify lease was released
         from pipeline.storage.repositories.execution import LeaseRepository
+
         lease_repo = LeaseRepository(conn)
         leases = lease_repo.list_for_job(job.job_id)
         # Lease should be released/expired after completion
@@ -456,9 +454,7 @@ def _test_provider_succeeds_worker_crashes(
             assert lease.expires_at is not None
 
 
-def _test_artifact_upload_db_fails(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_artifact_upload_db_fails(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 4: Artifact stored but DB commit fails - artifact orphaned."""
     # Create test setup
     with test_db.transaction() as conn:
@@ -507,6 +503,7 @@ def _test_artifact_upload_db_fails(
     # Verify atomicity: artifact repo only commits if DB transaction succeeds
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.artifacts import ArtifactRepository
+
         artifact_repo = ArtifactRepository(conn)
         artifacts_before = artifact_repo.list_for_run("artifact_test")
 
@@ -514,6 +511,7 @@ def _test_artifact_upload_db_fails(
     # that artifacts are only visible after successful commit
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.artifacts import ArtifactRepository
+
         artifact_repo = ArtifactRepository(conn)
         artifacts_after = artifact_repo.list_for_run("artifact_test")
 
@@ -624,9 +622,7 @@ def _test_malformed_output(test_db: Database) -> None:
         )
 
 
-def _test_transient_error(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_transient_error(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 7: Provider returns transient error - retry scheduled."""
     test_run_setup["run_id"]
     test_run_setup["stage_instances"]
@@ -661,9 +657,7 @@ def _test_transient_error(
     assert result.recovery.decision.action == FailureAction.RETRY
 
 
-def _test_quality_failure(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_quality_failure(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 8: Quality gate fails - regeneration or human review triggered."""
     test_run_setup["run_id"]
     test_run_setup["stage_instances"]
@@ -702,9 +696,7 @@ def _test_quality_failure(
     assert result.recovery is not None
 
 
-def _test_one_scene_fails(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_one_scene_fails(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 9: One scene fails while others succeed - isolated failure."""
     test_run_setup["run_id"]
     stage_instances = test_run_setup["stage_instances"]
@@ -770,9 +762,7 @@ def _test_one_scene_fails(
         assert failed_attempts >= 1, "At least one attempt should fail"
 
 
-def _test_paid_fallback_disabled(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_paid_fallback_disabled(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 10: Paid provider fallback disabled - failure not retried with paid."""
     from pipeline.contracts.routing import RoutingDecision
     from pipeline.execution.worker import JobHandlerResult
@@ -807,7 +797,6 @@ def _test_paid_fallback_disabled(
     # Verify that a handler with this routing doesn't trigger paid fallback
     class FreeProviderFailureHandler:
         def __call__(self, claim):
-            from pipeline.execution.worker import JobHandlerResult
             return JobHandlerResult(
                 succeeded=False,
                 failure_code=FailureCode.PERMANENT_PROVIDER,
@@ -820,9 +809,7 @@ def _test_paid_fallback_disabled(
     assert routing.fallback_chain == []
 
 
-def _test_pending_human_review(
-    test_db: Database, test_run_setup: dict
-) -> None:
+def _test_pending_human_review(test_db: Database, test_run_setup: dict) -> None:
     """Scenario 11: Human review pending - pipeline waits for decision."""
     run_id = test_run_setup["run_id"]
 
