@@ -1,0 +1,135 @@
+schema_version: workflow-definition.v1
+workflow_id: explainer_validation_v1
+version: "1.0"
+policy_ids: [default_recovery_v1]
+nodes:
+  - node_id: intake
+    schema_version: stage-node.v1
+    stage_name: manual_topic
+    implementation_version: manual-topic.v1
+    depends_on: []
+    input_selector: {schema_version: input-selector.v1, kind: RUN_INPUT}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_one}
+    quality_gate_id: null
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: idea
+    schema_version: stage-node.v1
+    stage_name: idea_development
+    implementation_version: idea-development.v1
+    depends_on: [intake]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_one}
+    quality_gate_id: null
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: research
+    schema_version: stage-node.v1
+    stage_name: research
+    implementation_version: research.v1
+    depends_on: [idea]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_one}
+    quality_gate_id: research_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: script
+    schema_version: stage-node.v1
+    stage_name: script_generation
+    implementation_version: script-generation.v1
+    depends_on: [research]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_one}
+    quality_gate_id: script_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: visual_plan
+    schema_version: stage-node.v1
+    stage_name: visual_planning
+    implementation_version: visual-planning.v1
+    depends_on: [script]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_one}
+    quality_gate_id: visual_plan_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: assets
+    schema_version: stage-node.v1
+    stage_name: asset_acquisition
+    implementation_version: asset-acquisition.v1
+    depends_on: [visual_plan]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_many, count: null, selection_policy: manifest_children}
+    quality_gate_id: asset_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: speech
+    schema_version: stage-node.v1
+    stage_name: speech_generation
+    implementation_version: speech-generation.v1
+    depends_on: [script]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_many, count: null, selection_policy: manifest_children}
+    quality_gate_id: speech_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: composition
+    schema_version: stage-node.v1
+    stage_name: composition
+    implementation_version: composition-authoring.v1
+    depends_on: [visual_plan, assets, speech]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: many_to_one}
+    quality_gate_id: composition_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: long_form_render
+    schema_version: stage-node.v1
+    stage_name: rendering
+    implementation_version: rendering.v1
+    depends_on: [composition]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_many, count: null, selection_policy: render_chunk_manifest}
+    quality_gate_id: render_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: long_form_assembly
+    schema_version: stage-node.v1
+    stage_name: assembly
+    implementation_version: assembly.v1
+    depends_on: [long_form_render]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: many_to_one}
+    quality_gate_id: assembly_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: short_derivative
+    schema_version: stage-node.v1
+    stage_name: short_derivative
+    implementation_version: short-derivative.v1
+    depends_on: [composition, long_form_assembly]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_many, count: 1}
+    quality_gate_id: short_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: final_review
+    schema_version: stage-node.v1
+    stage_name: technical_content_review
+    implementation_version: final-review.v1
+    depends_on: [long_form_assembly, short_derivative]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: many_to_one}
+    quality_gate_id: final_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null
+  - node_id: human_approval
+    schema_version: stage-node.v1
+    stage_name: human_approval
+    implementation_version: human-approval.v1
+    depends_on: [final_review]
+    input_selector: {schema_version: input-selector.v1, kind: DEPENDENCY_OUTPUTS}
+    cardinality: {schema_version: cardinality.v1, mode: one_to_one}
+    quality_gate_id: human_publication_gate_v1
+    recovery_policy_id: default_recovery_v1
+    enabled_when: null

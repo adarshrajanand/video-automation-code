@@ -1,0 +1,111 @@
+schema_version: failure-code-registry.v1
+registry_id: canonical-failure-codes
+version: "1.0"
+codes:
+  - code: EXEC.VALIDATION
+    category: VALIDATION
+    default_action: FAIL
+  - code: EXEC.AUTHENTICATION
+    category: AUTHENTICATION
+    default_action: PAUSE
+  - code: EXEC.AUTHORIZATION
+    category: AUTHORIZATION
+    default_action: PAUSE
+  - code: EXEC.RATE_LIMIT
+    category: RATE_LIMIT
+    default_action: RETRY
+  - code: EXEC.QUOTA
+    category: QUOTA
+    default_action: DEFER
+  - code: EXEC.TRANSIENT_PROVIDER
+    category: TRANSIENT
+    default_action: RETRY
+  - code: EXEC.PERMANENT_PROVIDER
+    category: PERMANENT
+    default_action: FAIL
+  - code: EXEC.INTERNAL
+    category: INTERNAL
+    default_action: FAIL
+  - code: EXEC.TIMEOUT_UNKNOWN
+    category: UNKNOWN_OUTCOME
+    default_action: RECONCILE
+  - code: MEDIA.DECODE_ERROR
+    category: MEDIA
+    default_action: REGENERATE
+  - code: MEDIA.OUTPUT_PROFILE
+    category: MEDIA
+    default_action: REGENERATE
+  - code: MEDIA.TIMELINE_INVALID
+    category: MEDIA
+    default_action: REGENERATE
+  - code: MEDIA.TECHNICAL_INTEGRITY
+    category: MEDIA
+    default_action: FAIL
+  - code: QUALITY.SCHEMA_INVALID
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.GENERIC
+    category: QUALITY
+    default_action: HUMAN_REVIEW
+  - code: QUALITY.UNSUPPORTED_CLAIM
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.NUMERIC_CONTRADICTION
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.TTS_OMISSION
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.TTS_PRONUNCIATION
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.VISUAL_MISMATCH
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.MISSING_ASSET
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.PROVENANCE_MISSING
+    category: QUALITY
+    default_action: HUMAN_REVIEW
+  - code: QUALITY.CAPTION_OVERFLOW
+    category: QUALITY
+    default_action: REGENERATE
+  - code: QUALITY.AUDIO_DECODE
+    category: QUALITY
+    default_action: REGENERATE
+  - code: MEDIA.RENDER_CORRUPT
+    category: MEDIA
+    default_action: REGENERATE
+  - code: MEDIA.AUDIO_VIDEO_DRIFT
+    category: MEDIA
+    default_action: REGENERATE
+  - code: QUALITY.REPEATED_FAILURE
+    category: QUALITY
+    default_action: HUMAN_REVIEW
+  - code: RIGHTS.LICENSE_UNCERTAIN
+    category: POLICY
+    default_action: HUMAN_REVIEW
+  - code: HUMAN.REVIEW_REQUIRED
+    category: HUMAN_REVIEW
+    default_action: HUMAN_REVIEW
+  - code: POLICY.BUDGET_EXCEEDED
+    category: BUDGET
+    default_action: PAUSE
+  - code: POLICY.PROHIBITED_CONTENT
+    category: POLICY
+    default_action: FAIL
+  - code: CONFIG.UNKNOWN_STAGE
+    category: CONFIGURATION
+    default_action: FAIL
+aliases:
+  SOURCE_MISSING: EXEC.VALIDATION
+  SCRIPT_SCHEMA: QUALITY.SCHEMA_INVALID
+  UNSUPPORTED_CLAIM: QUALITY.UNSUPPORTED_CLAIM
+  PROVENANCE_MISSING: QUALITY.PROVENANCE_MISSING
+  MEDIA_DECODE: MEDIA.DECODE_ERROR
+  AUDIO_DECODE: QUALITY.AUDIO_DECODE
+  OUTPUT_PROFILE: MEDIA.OUTPUT_PROFILE
+  TIMELINE_INVALID: MEDIA.TIMELINE_INVALID
+  TECHNICAL_INTEGRITY: MEDIA.TECHNICAL_INTEGRITY
+  LICENSE_UNCERTAIN: RIGHTS.LICENSE_UNCERTAIN
