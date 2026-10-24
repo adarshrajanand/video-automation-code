@@ -233,6 +233,15 @@ class DeterministicCheckEvaluator:
                 if evidence_snapshots and ref not in evidence_snapshots:
                     unresolved += 1
 
+        # If there are claims with evidence_refs but no evidence_snapshots provided,
+        # that's a failure - all references are unresolved
+        if (
+            claims
+            and any(c.get("evidence_refs") for c in claims)
+            and not evidence_snapshots
+        ):
+            unresolved = sum(len(c.get("evidence_refs", [])) for c in claims)
+
         score = 1.0 - (unresolved / len(claims)) if claims else 1.0
         dimensions.append(
             EvaluationDimension(
@@ -294,7 +303,8 @@ class DeterministicCheckEvaluator:
             )
 
         assets = asset_manifest.get("assets", [])
-        missing = sum(1 for a in assets if not a.get("available", True))
+        # Default to False for missing 'available' field - fail closed
+        missing = sum(1 for a in assets if not a.get("available", False))
         score = 1.0 - (missing / len(assets)) if assets else 1.0
 
         dimensions.append(
@@ -349,10 +359,24 @@ class DeterministicCheckEvaluator:
                 evidence=[{"error": "Composition artifact missing"}],
             )
 
-        # Simplified timeline validation
+        # Real timeline validation: check shots for frame overlaps/gaps
         shots = composition.get("shots", [])
-        has_overlaps = False  # Would check actual timing in real implementation
+        has_overlaps = False
         has_gaps = False
+
+        if shots:
+            # Sort shots by order_index
+            sorted_shots = sorted(shots, key=lambda s: s.get("order_index", 0))
+            for i in range(len(sorted_shots) - 1):
+                current = sorted_shots[i]
+                next_shot = sorted_shots[i + 1]
+                current_end = current.get("end_frame")
+                next_start = next_shot.get("start_frame")
+                if current_end is not None and next_start is not None:
+                    if next_start < current_end:
+                        has_overlaps = True
+                    elif next_start > current_end:
+                        has_gaps = True
 
         dimensions.append(
             EvaluationDimension(
@@ -530,6 +554,14 @@ class SpecializedCheckEvaluator:
             created_at=datetime.now(UTC),
         )
 
+    def _require_artifact(
+        self, manifest: QualityInputManifest, artifacts: dict[str, Any], idx: int = 0
+    ) -> tuple[Any, bool]:
+        """Get required target artifact or return None with error flag."""
+        artifact_id = manifest.target_artifact_ids[idx]
+        artifact = artifacts.get(artifact_id)
+        return artifact, artifact is not None
+
     def _evaluate_wer_cer(
         self,
         check: QualityCheck,
@@ -542,75 +574,61 @@ class SpecializedCheckEvaluator:
         evidence = []
         failure_codes = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
-        supporting_artifacts.get("speech_manifest")
-        supporting_artifacts.get("asr_alignment")
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
+        speech_manifest = supporting_artifacts.get("speech_manifest")
+        asr_alignment = supporting_artifacts.get("asr_alignment")
 
-        # Simulated WER/CER calculation
-        wer = 0.03  # 3% WER
-        cer = 0.01  # 1% CER
-        wer_threshold = 0.10  # 10% max WER
-        cer_threshold = 0.05  # 5% max CER
-
-        wer_pass = wer <= wer_threshold
-        cer_pass = cer <= cer_threshold
-
-        dimensions.append(
-            EvaluationDimension(
-                schema_version="evaluation-dimension.v1",
-                name="wer",
-                score=1.0 - wer,
-                threshold=1.0 - wer_threshold,
-                severity=Severity.MAJOR if not wer_pass else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_TTS_PRONUNCIATION]
-                if not wer_pass
-                else [],
-                evidence_refs=["wer_measurement"],
-                details={
-                    "wer": wer,
-                    "threshold": wer_threshold,
-                    "normalization": "text-v1",
-                },
+        if not ok or not speech_manifest or not asr_alignment:
+            # Missing required inputs - fail closed
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="wer_cer",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing speech_manifest/asr_alignment"},
+                )
             )
-        )
+            evidence.append({"error": "Missing required artifacts"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
+
+        # Real implementation would compute WER/CER from asr_alignment
+        # For now, return ERROR since we don't have the actual computation
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
-                name="cer",
-                score=1.0 - cer,
-                threshold=1.0 - cer_threshold,
-                severity=Severity.MAJOR if not cer_pass else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_TTS_PRONUNCIATION]
-                if not cer_pass
-                else [],
-                evidence_refs=["cer_measurement"],
-                details={
-                    "cer": cer,
-                    "threshold": cer_threshold,
-                    "normalization": "text-v1",
-                },
+                name="wer_cer",
+                score=0.0,
+                threshold=1.0,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_TTS_PRONUNCIATION],
+                evidence_refs=[],
+                details={"error": "WER/CER not implemented - needs ASR alignment"},
             )
         )
         evidence.append(
             {
                 "check": "wer_cer",
-                "wer": wer,
-                "cer": cer,
-                "wer_threshold": wer_threshold,
-                "cer_threshold": cer_threshold,
+                "error": "Not implemented - requires actual ASR alignment processing",
             }
         )
+        failure_codes.append(FailureCode.QUALITY_TTS_PRONUNCIATION)
 
-        if not wer_pass or not cer_pass:
-            failure_codes.append(FailureCode.QUALITY_TTS_PRONUNCIATION)
-
-        outcome = CheckOutcome.PASS if (wer_pass and cer_pass) else CheckOutcome.FAIL
         return _SpecializedResult(
             dimensions=dimensions,
-            outcome=outcome,
+            outcome=CheckOutcome.ERROR,
             evidence=evidence,
             estimated_cost_minor=10,
-            actual_cost_minor=8,
+            actual_cost_minor=0,
         )
 
     def _evaluate_critical_tokens(
@@ -625,55 +643,95 @@ class SpecializedCheckEvaluator:
         evidence = []
         failure_codes = []
 
-        supporting_artifacts.get("asr_alignment")
+        asr_alignment = supporting_artifacts.get("asr_alignment")
         speech_manifest = supporting_artifacts.get("speech_manifest")
 
-        # Simulated critical token check
+        if not asr_alignment or not speech_manifest:
+            # Missing required inputs - fail closed
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="critical_tokens",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing asr_alignment or speech_manifest"},
+                )
+            )
+            evidence.append({"error": "Missing required artifacts"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
+
+        # Check if critical_tokens are defined in speech_manifest
         critical_tokens = (
             speech_manifest.get("critical_tokens", []) if speech_manifest else []
         )
-        missed = 0
-        for token in critical_tokens:
-            if token.get("matched", True) is False:
-                missed += 1
 
-        score = 1.0 - (missed / len(critical_tokens)) if critical_tokens else 1.0
-        threshold = 1.0  # All critical tokens must be present
+        if not critical_tokens:
+            # No critical tokens defined - NOT_APPLICABLE (no tokens to verify)
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="critical_tokens",
+                    score=1.0,
+                    threshold=1.0,
+                    severity=Severity.INFO,
+                    failure_codes=[],
+                    evidence_refs=[],
+                    details={"note": "No critical tokens defined in speech manifest"},
+                )
+            )
+            evidence.append(
+                {
+                    "check": "critical_tokens",
+                    "total": 0,
+                    "note": "No critical tokens defined",
+                }
+            )
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.PASS,  # Nothing to check = pass
+                evidence=evidence,
+                estimated_cost_minor=5,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would check ASR alignment for token matches
+        # For now, return ERROR since we don't have the actual computation
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="critical_tokens",
-                score=score,
-                threshold=threshold,
-                severity=Severity.CRITICAL if missed > 0 else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_TTS_OMISSION] if missed > 0 else [],
-                evidence_refs=[f"token_{t.get('token_id')}" for t in critical_tokens],
-                details={
-                    "total_critical_tokens": len(critical_tokens),
-                    "missed": missed,
-                    "matched": len(critical_tokens) - missed,
-                },
+                score=0.0,
+                threshold=1.0,
+                severity=Severity.CRITICAL,
+                failure_codes=[FailureCode.QUALITY_TTS_OMISSION],
+                evidence_refs=[],
+                details={"error": "Critical token verify not implemented"},
             )
         )
         evidence.append(
             {
                 "check": "critical_tokens",
+                "error": "Not implemented - requires actual ASR alignment processing",
                 "total": len(critical_tokens),
-                "missed": missed,
             }
         )
+        failure_codes.append(FailureCode.QUALITY_TTS_OMISSION)
 
-        if missed > 0:
-            failure_codes.append(FailureCode.QUALITY_TTS_OMISSION)
-
-        outcome = CheckOutcome.PASS if missed == 0 else CheckOutcome.FAIL
         return _SpecializedResult(
             dimensions=dimensions,
-            outcome=outcome,
+            outcome=CheckOutcome.ERROR,
             evidence=evidence,
             estimated_cost_minor=5,
-            actual_cost_minor=3,
+            actual_cost_minor=0,
         )
 
     def _evaluate_forced_alignment(
@@ -687,35 +745,56 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        supporting_artifacts.get("asr_alignment")
+        asr_alignment = supporting_artifacts.get("asr_alignment")
 
-        # Simulated forced alignment check
-        alignment_score = 0.95
-        threshold = 0.90
+        if not asr_alignment:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="forced_alignment",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing required artifact: asr_alignment"},
+                )
+            )
+            evidence.append({"error": "Missing required artifact: asr_alignment"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would compute alignment quality from asr_alignment
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="forced_alignment",
-                score=alignment_score,
-                threshold=threshold,
-                severity=Severity.MAJOR
-                if alignment_score < threshold
-                else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_TTS_PRONUNCIATION]
-                if alignment_score < threshold
-                else [],
-                evidence_refs=["alignment_quality"],
-                details={"alignment_score": alignment_score, "threshold": threshold},
+                score=0.0,
+                threshold=1.0,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_TTS_PRONUNCIATION],
+                evidence_refs=[],
+                details={"error": "Forced alignment not implemented"},
             )
         )
-        evidence.append({"check": "forced_alignment", "score": alignment_score})
-
-        outcome = (
-            CheckOutcome.PASS if alignment_score >= threshold else CheckOutcome.FAIL
+        evidence.append(
+            {
+                "check": "forced_alignment",
+                "error": "Not implemented - requires ASR alignment processing",
+            }
         )
+
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=10,
+            actual_cost_minor=0,
         )
 
     def _evaluate_signal_quality(
@@ -728,64 +807,56 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
 
-        # Simulated signal quality metrics
-        snr_db = 45.0
-        clipping_percent = 0.1
-        silence_percent = 2.0
-
-        snr_pass = snr_db >= 30.0
-        clipping_pass = clipping_percent <= 1.0
-        silence_pass = silence_percent <= 5.0
-
-        dimensions.append(
-            EvaluationDimension(
-                schema_version="evaluation-dimension.v1",
-                name="snr",
-                score=min(snr_db / 60.0, 1.0),
-                threshold=30.0 / 60.0,
-                severity=Severity.MINOR if not snr_pass else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_AUDIO_DECODE]
-                if not snr_pass
-                else [],
-                evidence_refs=["snr_measurement"],
-                details={"snr_db": snr_db, "threshold_db": 30.0},
+        if not ok:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="signal_quality",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Target audio artifact missing"},
+                )
             )
-        )
+            evidence.append({"error": "Target audio artifact missing"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
+
+        # Real implementation would use ffprobe/ffmpeg to measure SNR, clipping, silence
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
-                name="clipping",
-                score=1.0 - clipping_percent / 100.0,
-                threshold=0.99,
-                severity=Severity.MINOR if not clipping_pass else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_AUDIO_DECODE]
-                if not clipping_pass
-                else [],
-                evidence_refs=["clipping_measurement"],
-                details={
-                    "clipping_percent": clipping_percent,
-                    "threshold_percent": 1.0,
-                },
+                name="signal_quality",
+                score=0.0,
+                threshold=1.0,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_AUDIO_DECODE],
+                evidence_refs=[],
+                details={"error": "Signal quality not implemented - needs ffprobe"},
             )
         )
         evidence.append(
             {
                 "check": "signal_quality",
-                "snr_db": snr_db,
-                "clipping_percent": clipping_percent,
-                "silence_percent": silence_percent,
+                "error": "Not implemented - requires actual audio signal analysis",
             }
         )
 
-        outcome = (
-            CheckOutcome.PASS
-            if (snr_pass and clipping_pass and silence_pass)
-            else CheckOutcome.FAIL
-        )
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=20,
+            actual_cost_minor=0,
         )
 
     def _evaluate_license_compliance(
@@ -800,8 +871,27 @@ class SpecializedCheckEvaluator:
 
         asset_manifest = artifacts.get(manifest.target_artifact_ids[0])
 
-        # Simulated license check
-        assets = asset_manifest.get("assets", []) if asset_manifest else []
+        if not asset_manifest or not isinstance(asset_manifest, dict):
+            return _SpecializedResult(
+                dimensions=[
+                    EvaluationDimension(
+                        schema_version="evaluation-dimension.v1",
+                        name="license_compliance",
+                        score=0.0,
+                        threshold=1.0,
+                        severity=Severity.CRITICAL,
+                        failure_codes=[FailureCode.QUALITY_MISSING_ASSET],
+                        evidence_refs=[],
+                        details={"error": "Asset manifest missing or invalid"},
+                    )
+                ],
+                outcome=CheckOutcome.FAIL,
+                evidence=[{"error": "Asset manifest missing"}],
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
+
+        assets = asset_manifest.get("assets", [])
         uncertain = sum(1 for a in assets if a.get("license_status") == "uncertain")
         prohibited = sum(1 for a in assets if a.get("license_status") == "prohibited")
 
@@ -858,37 +948,58 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
-        supporting_artifacts.get("audio")
-        supporting_artifacts.get("visual_plan")
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
+        audio_artifact = supporting_artifacts.get("audio")
+        visual_plan = supporting_artifacts.get("visual_plan")
 
-        # Simulated A/V sync check
-        max_drift_ms = 40
-        threshold_ms = 100
+        if not ok or not audio_artifact or not visual_plan:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="av_sync",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing audio or visual_plan"},
+                )
+            )
+            evidence.append({"error": "Missing required artifacts"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would use ffprobe to measure A/V drift
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="av_sync",
-                score=1.0 - min(max_drift_ms / threshold_ms, 1.0),
-                threshold=1.0 - threshold_ms / 1000.0,  # Normalized
-                severity=Severity.MAJOR
-                if max_drift_ms > threshold_ms
-                else Severity.INFO,
-                failure_codes=[FailureCode.MEDIA_AUDIO_VIDEO_DRIFT]
-                if max_drift_ms > threshold_ms
-                else [],
-                evidence_refs=["av_sync_measurement"],
-                details={"max_drift_ms": max_drift_ms, "threshold_ms": threshold_ms},
+                score=0.0,
+                threshold=1.0,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.MEDIA_AUDIO_VIDEO_DRIFT],
+                evidence_refs=[],
+                details={"error": "A/V sync not implemented - needs ffprobe"},
             )
         )
-        evidence.append({"check": "av_sync", "max_drift_ms": max_drift_ms})
-
-        outcome = (
-            CheckOutcome.PASS if max_drift_ms <= threshold_ms else CheckOutcome.FAIL
+        evidence.append(
+            {
+                "check": "av_sync",
+                "error": "Not implemented - requires actual A/V drift measurement",
+            }
         )
+
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=15,
+            actual_cost_minor=0,
         )
 
     def _evaluate_decode(
@@ -901,33 +1012,56 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
 
-        # Simulated decode check
-        decode_success = True
-        error_count = 0
+        if not ok:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="decode_success",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Target media artifact missing"},
+                )
+            )
+            evidence.append({"error": "Target media artifact missing"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would use ffprobe to verify decode
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="decode_success",
-                score=1.0 if decode_success else 0.0,
+                score=0.0,
                 threshold=1.0,
-                severity=Severity.CRITICAL if not decode_success else Severity.INFO,
-                failure_codes=[FailureCode.MEDIA_DECODE_ERROR]
-                if not decode_success
-                else [],
-                evidence_refs=["decode_test"],
-                details={"decode_success": decode_success, "error_count": error_count},
+                severity=Severity.CRITICAL,
+                failure_codes=[FailureCode.MEDIA_DECODE_ERROR],
+                evidence_refs=[],
+                details={"error": "Decode validation not implemented"},
             )
         )
         evidence.append(
-            {"check": "decode", "success": decode_success, "errors": error_count}
+            {
+                "check": "decode",
+                "error": "Not implemented - requires actual decode test",
+            }
         )
 
-        outcome = CheckOutcome.PASS if decode_success else CheckOutcome.FAIL
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=10,
+            actual_cost_minor=0,
         )
 
     def _evaluate_profile(
@@ -941,34 +1075,57 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
-        supporting_artifacts.get("render_profile")
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
+        render_profile = supporting_artifacts.get("render_profile")
 
-        # Simulated profile check
-        profile_match = True
-        mismatches = []
+        if not ok or not render_profile:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="profile_conformance",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing target artifact or render profile"},
+                )
+            )
+            evidence.append({"error": "Missing required artifacts"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would use ffprobe to verify profile
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="profile_conformance",
-                score=1.0 if profile_match else 0.0,
+                score=0.0,
                 threshold=1.0,
-                severity=Severity.MAJOR if not profile_match else Severity.INFO,
-                failure_codes=[FailureCode.MEDIA_OUTPUT_PROFILE]
-                if not profile_match
-                else [],
-                evidence_refs=["profile_check"],
-                details={"profile_match": profile_match, "mismatches": mismatches},
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.MEDIA_OUTPUT_PROFILE],
+                evidence_refs=[],
+                details={"error": "Profile validation not implemented"},
             )
         )
         evidence.append(
-            {"check": "profile", "match": profile_match, "mismatches": mismatches}
+            {
+                "check": "profile",
+                "error": "Not implemented - requires actual profile verification",
+            }
         )
 
-        outcome = CheckOutcome.PASS if profile_match else CheckOutcome.FAIL
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=15,
+            actual_cost_minor=0,
         )
 
     def _evaluate_timeline(
@@ -982,47 +1139,57 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
-        supporting_artifacts.get("composition")
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
+        composition = supporting_artifacts.get("composition")
 
-        # Simulated timeline check
-        duration_match = True
-        frame_count_match = True
+        if not ok or not composition:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="timeline_conformance",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing target artifact or composition"},
+                )
+            )
+            evidence.append({"error": "Missing required artifacts"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would compare actual timeline with composition
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="timeline_conformance",
-                score=1.0 if (duration_match and frame_count_match) else 0.5,
+                score=0.0,
                 threshold=1.0,
-                severity=Severity.MAJOR
-                if not (duration_match and frame_count_match)
-                else Severity.INFO,
-                failure_codes=[FailureCode.MEDIA_TIMELINE_INVALID]
-                if not (duration_match and frame_count_match)
-                else [],
-                evidence_refs=["timeline_check"],
-                details={
-                    "duration_match": duration_match,
-                    "frame_count_match": frame_count_match,
-                },
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.MEDIA_TIMELINE_INVALID],
+                evidence_refs=[],
+                details={"error": "Timeline validation not implemented"},
             )
         )
         evidence.append(
             {
                 "check": "timeline",
-                "duration_match": duration_match,
-                "frame_count_match": frame_count_match,
+                "error": "Not implemented - requires actual timeline comparison",
             }
         )
 
-        outcome = (
-            CheckOutcome.PASS
-            if (duration_match and frame_count_match)
-            else CheckOutcome.FAIL
-        )
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=20,
+            actual_cost_minor=0,
         )
 
     def _evaluate_assembly_integrity(
@@ -1039,7 +1206,26 @@ class SpecializedCheckEvaluator:
         assembly = artifacts.get(manifest.target_artifact_ids[0])
         rendered_chunks = supporting_artifacts.get("rendered_chunks", {})
 
-        # Simulated assembly integrity check
+        if not assembly or not isinstance(assembly, dict):
+            return _SpecializedResult(
+                dimensions=[
+                    EvaluationDimension(
+                        schema_version="evaluation-dimension.v1",
+                        name="assembly_integrity",
+                        score=0.0,
+                        threshold=1.0,
+                        severity=Severity.CRITICAL,
+                        failure_codes=[FailureCode.MEDIA_RENDER_CORRUPT],
+                        evidence_refs=[],
+                        details={"error": "Assembly artifact missing or invalid"},
+                    )
+                ],
+                outcome=CheckOutcome.FAIL,
+                evidence=[{"error": "Assembly artifact missing"}],
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
+
         expected_chunks = assembly.get("chunk_ids", []) if assembly else []
         missing_chunks = [c for c in expected_chunks if c not in rendered_chunks]
         corrupt_chunks = 0  # Would check actual corruption in real implementation
@@ -1098,35 +1284,56 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
 
-        # Simulated A/V drift check
-        max_drift_ms = 80
-        threshold_ms = 150
+        if not ok:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="av_drift",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Target assembly artifact missing"},
+                )
+            )
+            evidence.append({"error": "Target assembly artifact missing"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would measure accumulated drift
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="av_drift",
-                score=1.0 - min(max_drift_ms / threshold_ms, 1.0),
-                threshold=1.0 - threshold_ms / 1000.0,
-                severity=Severity.MAJOR
-                if max_drift_ms > threshold_ms
-                else Severity.INFO,
-                failure_codes=[FailureCode.MEDIA_AUDIO_VIDEO_DRIFT]
-                if max_drift_ms > threshold_ms
-                else [],
-                evidence_refs=["av_drift_measurement"],
-                details={"max_drift_ms": max_drift_ms, "threshold_ms": threshold_ms},
+                score=0.0,
+                threshold=1.0,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.MEDIA_AUDIO_VIDEO_DRIFT],
+                evidence_refs=[],
+                details={"error": "A/V drift not implemented"},
             )
         )
-        evidence.append({"check": "av_drift", "max_drift_ms": max_drift_ms})
-
-        outcome = (
-            CheckOutcome.PASS if max_drift_ms <= threshold_ms else CheckOutcome.FAIL
+        evidence.append(
+            {
+                "check": "av_drift",
+                "error": "Not implemented - requires actual drift measurement",
+            }
         )
+
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=15,
+            actual_cost_minor=0,
         )
 
     def _evaluate_short_integrity(
@@ -1140,42 +1347,57 @@ class SpecializedCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
-        supporting_artifacts.get("assembly")
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
+        assembly = supporting_artifacts.get("assembly")
 
-        # Simulated short integrity check
-        duration_ok = True
-        content_match = True
+        if not ok or not assembly:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="short_integrity",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing target artifact or assembly"},
+                )
+            )
+            evidence.append({"error": "Missing required artifacts"})
+            return _SpecializedResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would verify short derivative against assembly
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="short_integrity",
-                score=1.0 if (duration_ok and content_match) else 0.5,
+                score=0.0,
                 threshold=1.0,
-                severity=Severity.MAJOR
-                if not (duration_ok and content_match)
-                else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_VISUAL_MISMATCH]
-                if not (duration_ok and content_match)
-                else [],
-                evidence_refs=["short_integrity_check"],
-                details={"duration_ok": duration_ok, "content_match": content_match},
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_VISUAL_MISMATCH],
+                evidence_refs=[],
+                details={"error": "Short integrity not implemented"},
             )
         )
         evidence.append(
             {
                 "check": "short_integrity",
-                "duration_ok": duration_ok,
-                "content_match": content_match,
+                "error": "Not implemented - needs short derivative verification",
             }
         )
 
-        outcome = (
-            CheckOutcome.PASS if (duration_ok and content_match) else CheckOutcome.FAIL
-        )
         return _SpecializedResult(
-            dimensions=dimensions, outcome=outcome, evidence=evidence
+            dimensions=dimensions,
+            outcome=CheckOutcome.ERROR,
+            evidence=evidence,
+            estimated_cost_minor=10,
+            actual_cost_minor=0,
         )
 
     def _error_evaluation(
@@ -1302,55 +1524,130 @@ class SemanticCheckEvaluator:
 
         script = artifacts.get(manifest.target_artifact_ids[0])
         supporting_artifacts.get("claim_ledger")
-        supporting_artifacts.get("evidence_snapshots")
+        evidence_snapshots = supporting_artifacts.get("evidence_snapshots")
 
-        # Simulated claim/evidence evaluation
-        claims = script.get("claims", []) if script else []
-        supported = sum(1 for c in claims if c.get("supported", True))
-        total = len(claims)
-        score = supported / total if total > 0 else 1.0
-        threshold = 0.8
+        if not script or not isinstance(script, dict):
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="claim_support",
+                    score=0.0,
+                    threshold=0.8,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Script artifact missing or invalid"},
+                )
+            )
+            evidence.append({"error": "Script artifact missing or invalid"})
+            return _SemanticResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                confidence=Confidence.LOW,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        claims = script.get("claims", [])
+
+        if not claims:
+            # No claims to verify - PASS (nothing to check)
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="claim_support",
+                    score=1.0,
+                    threshold=0.8,
+                    severity=Severity.INFO,
+                    failure_codes=[],
+                    evidence_refs=[],
+                    details={"note": "No claims in script"},
+                )
+            )
+            evidence.append(
+                {
+                    "check": "claim_evidence",
+                    "total_claims": 0,
+                    "note": "No claims to verify",
+                }
+            )
+            return _SemanticResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.PASS,
+                evidence=evidence,
+                confidence=Confidence.HIGH,
+                estimated_cost_minor=50,
+                actual_cost_minor=0,
+            )
+
+        # Check if evidence_snapshots are provided when claims have evidence_refs
+        has_refs = any(c.get("evidence_refs") for c in claims)
+        if has_refs and not evidence_snapshots:
+            # Claims reference evidence but no evidence provided - FAIL
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="claim_support",
+                    score=0.0,
+                    threshold=0.8,
+                    severity=Severity.MAJOR,
+                    failure_codes=[FailureCode.QUALITY_UNSUPPORTED_CLAIM],
+                    evidence_refs=[f"claim_{c.get('claim_id')}" for c in claims],
+                    details={
+                        "error": "Claims ref evidence but no snapshots",
+                        "total_claims": len(claims),
+                    },
+                )
+            )
+            evidence.append(
+                {
+                    "check": "claim_evidence",
+                    "error": "Missing evidence_snapshots for claims with evidence_refs",
+                    "total_claims": len(claims),
+                }
+            )
+            return _SemanticResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                confidence=Confidence.HIGH,
+                estimated_cost_minor=50,
+                actual_cost_minor=0,
+            )
+
+        # Real implementation would use LLM to evaluate claim support
+        # For now, return ERROR since LLM evaluation not available
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
                 name="claim_support",
-                score=score,
-                threshold=threshold,
-                severity=Severity.MAJOR if score < threshold else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_UNSUPPORTED_CLAIM]
-                if score < threshold
-                else [],
+                score=0.0,
+                threshold=0.8,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_UNSUPPORTED_CLAIM],
                 evidence_refs=[f"claim_{c.get('claim_id')}" for c in claims],
                 details={
-                    "total_claims": total,
-                    "supported": supported,
-                    "unsupported": total - supported,
-                    "normalization": "text-v1",
+                    "error": "Claim/evidence eval needs LLM",
+                    "total_claims": len(claims),
                 },
             )
         )
         evidence.append(
             {
                 "check": "claim_evidence",
-                "total_claims": total,
-                "supported": supported,
-                "score": score,
-                "rubric_version": check.rubric_version,
+                "error": "Not implemented - requires LLM-based evaluator",
+                "total_claims": len(claims),
             }
         )
 
-        outcome = CheckOutcome.PASS if score >= threshold else CheckOutcome.FAIL
-        confidence = (
-            Confidence.HIGH if abs(score - threshold) > 0.15 else Confidence.MEDIUM
-        )
         return _SemanticResult(
             dimensions=dimensions,
-            outcome=outcome,
+            outcome=CheckOutcome.ERROR,
             evidence=evidence,
-            confidence=confidence,
+            confidence=Confidence.LOW,
             estimated_cost_minor=50,
-            actual_cost_minor=45,
+            actual_cost_minor=0,
         )
 
     def _evaluate_editorial_clarity(
@@ -1364,89 +1661,61 @@ class SemanticCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
 
-        # Simulated editorial evaluation
-        clarity_score = 0.91
-        structure_score = 0.88
-        tone_score = 0.93
-        threshold = 0.8
+        if not ok:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="editorial_clarity",
+                    score=0.0,
+                    threshold=0.8,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Target script artifact missing"},
+                )
+            )
+            evidence.append({"error": "Target script artifact missing"})
+            return _SemanticResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                confidence=Confidence.LOW,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
 
+        # Real implementation would use LLM to evaluate editorial quality
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
-                name="clarity",
-                score=clarity_score,
-                threshold=threshold,
-                severity=Severity.MAJOR if clarity_score < threshold else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_GENERIC]
-                if clarity_score < threshold
-                else [],
-                evidence_refs=["editorial_judgment"],
+                name="editorial_clarity",
+                score=0.0,
+                threshold=0.8,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_GENERIC],
+                evidence_refs=[],
                 details={
+                    "error": "Editorial eval needs LLM",
                     "rubric_version": check.rubric_version,
-                    "dimension": "clarity",
                 },
-            )
-        )
-        dimensions.append(
-            EvaluationDimension(
-                schema_version="evaluation-dimension.v1",
-                name="structure",
-                score=structure_score,
-                threshold=threshold,
-                severity=Severity.MAJOR
-                if structure_score < threshold
-                else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_GENERIC]
-                if structure_score < threshold
-                else [],
-                evidence_refs=["editorial_judgment"],
-                details={
-                    "rubric_version": check.rubric_version,
-                    "dimension": "structure",
-                },
-            )
-        )
-        dimensions.append(
-            EvaluationDimension(
-                schema_version="evaluation-dimension.v1",
-                name="tone",
-                score=tone_score,
-                threshold=threshold,
-                severity=Severity.MAJOR if tone_score < threshold else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_GENERIC]
-                if tone_score < threshold
-                else [],
-                evidence_refs=["editorial_judgment"],
-                details={"rubric_version": check.rubric_version, "dimension": "tone"},
             )
         )
         evidence.append(
             {
                 "check": "editorial_clarity",
-                "clarity": clarity_score,
-                "structure": structure_score,
-                "tone": tone_score,
-                "rubric_version": check.rubric_version,
+                "error": "Not implemented - requires LLM-based evaluator",
             }
         )
 
-        overall_pass = all(
-            s >= threshold for s in [clarity_score, structure_score, tone_score]
-        )
-        outcome = CheckOutcome.PASS if overall_pass else CheckOutcome.FAIL
-        min_score = min(clarity_score, structure_score, tone_score)
-        confidence = (
-            Confidence.HIGH if abs(min_score - threshold) > 0.15 else Confidence.MEDIUM
-        )
         return _SemanticResult(
             dimensions=dimensions,
-            outcome=outcome,
+            outcome=CheckOutcome.ERROR,
             evidence=evidence,
-            confidence=confidence,
+            confidence=Confidence.LOW,
             estimated_cost_minor=50,
-            actual_cost_minor=42,
+            actual_cost_minor=0,
         )
 
     def _evaluate_visual_intent_coherence(
@@ -1460,75 +1729,71 @@ class SemanticCheckEvaluator:
         dimensions = []
         evidence = []
 
-        artifacts.get(manifest.target_artifact_ids[0])
-        supporting_artifacts.get("script")
+        _target_artifact, ok = self._require_artifact(manifest, artifacts)
+        script = supporting_artifacts.get("script")
 
-        # Simulated visual coherence evaluation
-        coherence_score = 0.87
-        coverage_score = 0.92
-        threshold = 0.8
-
-        dimensions.append(
-            EvaluationDimension(
-                schema_version="evaluation-dimension.v1",
-                name="coherence",
-                score=coherence_score,
-                threshold=threshold,
-                severity=Severity.MAJOR
-                if coherence_score < threshold
-                else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_VISUAL_MISMATCH]
-                if coherence_score < threshold
-                else [],
-                evidence_refs=["visual_judgment"],
-                details={
-                    "rubric_version": check.rubric_version,
-                    "dimension": "coherence",
-                },
+        if not ok or not script:
+            dimensions.append(
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="visual_intent_coherence",
+                    score=0.0,
+                    threshold=0.8,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing target visual plan or script"},
+                )
             )
-        )
+            evidence.append({"error": "Missing target visual plan or script"})
+            return _SemanticResult(
+                dimensions=dimensions,
+                outcome=CheckOutcome.FAIL,
+                evidence=evidence,
+                confidence=Confidence.LOW,
+                estimated_cost_minor=0,
+                actual_cost_minor=0,
+            )
+
+        # Real implementation would use LLM to evaluate visual coherence
         dimensions.append(
             EvaluationDimension(
                 schema_version="evaluation-dimension.v1",
-                name="coverage",
-                score=coverage_score,
-                threshold=threshold,
-                severity=Severity.MAJOR
-                if coverage_score < threshold
-                else Severity.INFO,
-                failure_codes=[FailureCode.QUALITY_VISUAL_MISMATCH]
-                if coverage_score < threshold
-                else [],
-                evidence_refs=["visual_judgment"],
+                name="visual_intent_coherence",
+                score=0.0,
+                threshold=0.8,
+                severity=Severity.MAJOR,
+                failure_codes=[FailureCode.QUALITY_VISUAL_MISMATCH],
+                evidence_refs=[],
                 details={
+                    "error": "Visual coherence eval needs LLM",
                     "rubric_version": check.rubric_version,
-                    "dimension": "coverage",
                 },
             )
         )
         evidence.append(
             {
                 "check": "visual_intent_coherence",
-                "coherence": coherence_score,
-                "coverage": coverage_score,
-                "rubric_version": check.rubric_version,
+                "error": "Not implemented - requires LLM-based evaluator",
             }
         )
 
-        overall_pass = coherence_score >= threshold and coverage_score >= threshold
-        outcome = CheckOutcome.PASS if overall_pass else CheckOutcome.FAIL
-        min_score = min(coherence_score, coverage_score)
-        confidence = (
-            Confidence.HIGH if abs(min_score - threshold) > 0.15 else Confidence.MEDIUM
-        )
         return _SemanticResult(
             dimensions=dimensions,
-            outcome=outcome,
+            outcome=CheckOutcome.ERROR,
             evidence=evidence,
-            confidence=confidence,
+            confidence=Confidence.LOW,
             estimated_cost_minor=50,
-            actual_cost_minor=38,
+            actual_cost_minor=0,
         )
+
+    def _require_artifact(
+        self, manifest: QualityInputManifest, artifacts: dict[str, Any], idx: int = 0
+    ) -> tuple[Any, bool]:
+        """Get required target artifact or return None with error flag."""
+        artifact_id = manifest.target_artifact_ids[idx]
+        artifact = artifacts.get(artifact_id)
+        return artifact, artifact is not None
 
     def _error_evaluation(
         self,

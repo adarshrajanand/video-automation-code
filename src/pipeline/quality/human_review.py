@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from pipeline.contracts.review import HumanReview, HumanReviewDecision
 from pipeline.contracts.vocabularies import ReviewDecision, ReviewStatus
+from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
     from pipeline.storage.database import Database
@@ -66,9 +66,20 @@ class HumanReviewManager:
         Returns:
             The created HumanReview record.
         """
+        # Deterministic review ID based on request content
+        review_id = deterministic_id(
+            "review",
+            request.run_id,
+            request.stage_instance_id or "",
+            request.gate_id or "",
+            ",".join(sorted(request.target_artifact_ids)),
+            ",".join(f"{k}:{v}" for k, v in sorted(request.target_hashes.items())),
+            request.requested_action,
+        )
+
         review = HumanReview(
             schema_version="human-review.v1",
-            review_id=f"review_{uuid.uuid4().hex[:12]}",
+            review_id=review_id,
             run_id=request.run_id,
             stage_instance_id=request.stage_instance_id,
             gate_id=request.gate_id,
@@ -84,19 +95,32 @@ class HumanReviewManager:
         with self.database.transaction() as conn:
             from pipeline.storage.repositories.editorial import HumanReviewRepository
 
-            HumanReviewRepository(conn).insert(review)
+            try:
+                HumanReviewRepository(conn).insert(review)
+            except Exception:
+                # If already exists (idempotent), fetch and return existing
+                existing = HumanReviewRepository(conn).get(review_id)
+                if existing:
+                    return existing
+                raise
 
         return review
 
     def get_review(self, review_id: str) -> HumanReview:
         """Get a human review by ID."""
-        with self.database.transaction() as conn:
+        with self.database.connection() as conn:
             from pipeline.storage.repositories.editorial import HumanReviewRepository
 
-            review = HumanReviewRepository(conn).get(review_id)
-            if review is None:
-                raise HumanReviewNotFoundError(f"Review {review_id!r} not found")
-            return review
+            try:
+                return HumanReviewRepository(conn).get(review_id)
+            except Exception as e:
+                from pipeline.storage.errors import NotFoundError
+
+                if isinstance(e, NotFoundError):
+                    raise HumanReviewNotFoundError(
+                        f"Review {review_id!r} not found"
+                    ) from e
+                raise
 
     def list_reviews(
         self,
@@ -104,7 +128,7 @@ class HumanReviewManager:
         status: ReviewStatus | None = None,
     ) -> list[HumanReview]:
         """List human reviews with optional filters."""
-        with self.database.transaction() as conn:
+        with self.database.connection() as conn:
             from pipeline.storage.repositories.editorial import HumanReviewRepository
 
             return HumanReviewRepository(conn).list(run_id=run_id, status=status)
@@ -136,9 +160,16 @@ class HumanReviewManager:
             from pipeline.storage.repositories.editorial import HumanReviewRepository
 
             repo = HumanReviewRepository(conn)
-            review = repo.get(review_id)
-            if review is None:
-                raise HumanReviewNotFoundError(f"Review {review_id!r} not found")
+            try:
+                review = repo.get(review_id)
+            except Exception as e:
+                from pipeline.storage.errors import NotFoundError
+
+                if isinstance(e, NotFoundError):
+                    raise HumanReviewNotFoundError(
+                        f"Review {review_id!r} not found"
+                    ) from e
+                raise
 
             if review.status is not ReviewStatus.OPEN:
                 raise HumanReviewAlreadyResolvedError(
@@ -178,51 +209,12 @@ class HumanReviewManager:
 
     def get_decision(self, review_id: str) -> HumanReviewDecision | None:
         """Get the recorded decision for a review."""
-        with self.database.transaction() as conn:
+        with self.database.connection() as conn:
             from pipeline.storage.repositories.editorial import HumanReviewRepository
 
             return HumanReviewRepository(conn).get_decision(review_id)
 
 
-def request_human_review(
-    database: Database,
-    run_id: str,
-    target_artifact_ids: list[str],
-    target_hashes: dict[str, str],
-    reason_codes: list[str],
-    requested_action: str,
-    stage_instance_id: str | None = None,
-    gate_id: str | None = None,
-) -> HumanReview:
-    """Convenience function to request human review.
-
-    Args:
-        database: The database connection.
-        run_id: The workflow run ID.
-        target_artifact_ids: Artifacts under review.
-        target_hashes: Exact hashes of artifacts under review.
-        reason_codes: Failure codes triggering the review.
-        requested_action: Description of what the reviewer should evaluate.
-        stage_instance_id: Optional stage instance ID.
-        gate_id: Optional gate ID that triggered the review.
-
-    Returns:
-        The created HumanReview record.
-    """
-    manager = HumanReviewManager(database)
-    request = HumanReviewRequest(
-        run_id=run_id,
-        stage_instance_id=stage_instance_id,
-        gate_id=gate_id,
-        target_artifact_ids=target_artifact_ids,
-        target_hashes=target_hashes,
-        reason_codes=reason_codes,
-        requested_action=requested_action,
-    )
-    return manager.create_review(request)
-
-
-# CLI command handler
 def cli_human_review_decide(
     database: Database,
     review_id: str,
@@ -254,21 +246,48 @@ def cli_human_review_decide(
         ) from err
 
     manager = HumanReviewManager(database)
-    return manager.record_decision(review_id, decision_enum, reviewer, comments)
+    return manager.record_decision(
+        review_id=review_id,
+        decision=decision_enum,
+        reviewer=reviewer,
+        comments=comments,
+    )
 
 
-def cli_human_review_list(
+def request_human_review(
     database: Database,
-    run_id: str | None = None,
-    status: str | None = None,
-) -> list[HumanReview]:
-    """CLI handler for listing human reviews."""
-    manager = HumanReviewManager(database)
-    status_enum = ReviewStatus(status) if status else None
-    return manager.list_reviews(run_id=run_id, status=status_enum)
+    run_id: str,
+    target_artifact_ids: list[str],
+    target_hashes: dict[str, str],
+    reason_codes: list[str],
+    requested_action: str,
+    stage_instance_id: str | None = None,
+    gate_id: str | None = None,
+) -> HumanReview:
+    """Convenience function to request human review.
 
+    Args:
+        database: The database connection.
+        run_id: The workflow run ID.
+        target_artifact_ids: List of artifact IDs under review.
+        target_hashes: Content hashes of target artifacts.
+        reason_codes: Failure codes triggering the review.
+        requested_action: The action being requested (e.g., "review_quality_gate").
+        stage_instance_id: Optional stage instance ID.
+        gate_id: Optional gate ID.
 
-def cli_human_review_show(database: Database, review_id: str) -> HumanReview:
-    """CLI handler for showing a human review."""
+    Returns:
+        The created HumanReview record.
+    """
     manager = HumanReviewManager(database)
-    return manager.get_review(review_id)
+    return manager.create_review(
+        HumanReviewRequest(
+            run_id=run_id,
+            stage_instance_id=stage_instance_id,
+            gate_id=gate_id,
+            target_artifact_ids=target_artifact_ids,
+            target_hashes=target_hashes,
+            reason_codes=reason_codes,
+            requested_action=requested_action,
+        )
+    )

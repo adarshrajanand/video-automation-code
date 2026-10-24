@@ -36,11 +36,65 @@ class CheckEvaluationResult:
     is_hard_failure: bool
 
 
+def _compute_pass_threshold(
+    evaluation: QualityEvaluation,
+    check: QualityCheck,
+    policy: QualityGatePolicy,
+) -> tuple[bool, list[FailureCode]]:
+    """Check if evaluation dimensions meet policy pass thresholds.
+
+    Returns:
+        Tuple of (all_pass, failure_codes_for_below_threshold)
+    """
+    failure_codes = []
+    for dimension in evaluation.dimensions:
+        if dimension.score is None:
+            continue
+        # Check against policy pass threshold for this dimension
+        threshold = policy.pass_thresholds.get(dimension.name)
+        if threshold is not None and dimension.score < threshold:
+            # Dimension score below pass threshold
+            failure_codes.extend(dimension.failure_codes)
+            if not failure_codes:
+                failure_codes.append(FailureCode.QUALITY_GENERIC)
+    return len(failure_codes) == 0, failure_codes
+
+
+def _verify_artifact_hashes(
+    manifest: QualityInputManifest,
+    artifacts: dict[str, Any],
+) -> tuple[bool, list[FailureCode]]:
+    """Verify artifact hashes match manifest.
+
+    Returns:
+        Tuple of (all_match, failure_codes)
+    """
+    import json
+
+    from pipeline.fingerprints import sha256_text
+
+    failure_codes = []
+    for artifact_id, expected_hash in manifest.target_hashes.items():
+        artifact = artifacts.get(artifact_id)
+        if artifact is None:
+            failure_codes.append(FailureCode.QUALITY_SCHEMA_INVALID)
+            continue
+        # Compute hash of artifact content
+        actual_hash = sha256_text(json.dumps(artifact, sort_keys=True, default=str))
+        if actual_hash != expected_hash:
+            failure_codes.append(FailureCode.QUALITY_PROVENANCE_MISSING)
+    return len(failure_codes) == 0, failure_codes
+
+
 def evaluate_gate(
     policy: QualityGatePolicy,
     manifest: QualityInputManifest,
     evaluations: tuple[QualityEvaluation, ...],
     registry: QualityCheckRegistry,
+    artifacts: dict[str, Any] | None = None,
+    stage_instance_id: str | None = None,
+    logical_item_key: str | None = None,
+    regeneration_count: int = 0,
 ) -> QualityGateResult:
     """Aggregate check evaluations into a gate decision.
 
@@ -48,17 +102,23 @@ def evaluate_gate(
     1. Any evaluation with outcome ERROR → gate decision FAIL
     2. Required check FAIL with severity CRITICAL → gate decision FAIL
     3. Check with failure_code in hard_failure_codes → gate decision FAIL
-    4. All required checks PASS → gate decision PASS
-    5. Required check FAIL (non-critical), max_regenerations not exceeded → REGENERATE
-    6. Max regenerations exceeded → apply after_max_regenerations
-    7. Semantic check below human_review_threshold → HUMAN_REVIEW
-    8. Check outcome ABSTAIN → HUMAN_REVIEW
+    4. Artifact hash mismatch → gate decision FAIL
+    5. Dimension score below policy pass_threshold → gate decision FAIL
+    6. All required checks PASS → gate decision PASS
+    7. Required check FAIL (non-critical), max_regenerations not exceeded → REGENERATE
+    8. Max regenerations exceeded → apply after_max_regenerations
+    9. Semantic check below human_review_threshold → HUMAN_REVIEW
+    10. Check outcome ABSTAIN → HUMAN_REVIEW
 
     Args:
         policy: The quality gate policy defining required checks and thresholds.
         manifest: The input manifest for this gate evaluation.
         evaluations: Tuple of completed evaluations for each required check.
         registry: The quality check registry for check metadata lookup.
+        artifacts: Optional loaded artifacts for hash verification.
+        stage_instance_id: Optional stage instance ID for linking.
+        logical_item_key: Optional logical item key for linking.
+        regeneration_count: Current regeneration attempt number.
 
     Returns:
         A QualityGateResult with the aggregate decision and repair scope.
@@ -80,7 +140,15 @@ def evaluate_gate(
                 repair_scope=None,
                 created_at=created_at,
                 completed_at=datetime.now(UTC),
+                stage_instance_id=stage_instance_id,
+                logical_item_key=logical_item_key,
             )
+
+    # Rule 4: Artifact hash verification (if artifacts provided)
+    if artifacts is not None:
+        hashes_match, hash_failure_codes = _verify_artifact_hashes(manifest, artifacts)
+        if not hashes_match:
+            hard_failure_codes.extend(hash_failure_codes)
 
     # Rule 2 & 3: Check for hard failures (CRITICAL severity or hard_failure_codes)
     for evaluation in evaluations:
@@ -106,6 +174,13 @@ def evaluate_gate(
                 ):
                     hard_failure_codes.append(FailureCode.QUALITY_GENERIC)
 
+        # Rule 5: Check pass thresholds
+        thresholds_pass, threshold_failures = _compute_pass_threshold(
+            evaluation, check, policy
+        )
+        if not thresholds_pass:
+            hard_failure_codes.extend(threshold_failures)
+
     if hard_failure_codes:
         return _create_gate_result(
             policy=policy,
@@ -116,9 +191,11 @@ def evaluate_gate(
             repair_scope=None,
             created_at=created_at,
             completed_at=datetime.now(UTC),
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
         )
 
-    # Rule 4: All required checks PASS
+    # Rule 6: All required checks PASS
     all_required_pass = all(
         _evaluation_for_check(evaluations, check_id) is not None
         and _evaluation_for_check(evaluations, check_id).outcome is CheckOutcome.PASS
@@ -152,6 +229,8 @@ def evaluate_gate(
                 repair_scope=None,
                 created_at=created_at,
                 completed_at=datetime.now(UTC),
+                stage_instance_id=stage_instance_id,
+                logical_item_key=logical_item_key,
             )
 
         return _create_gate_result(
@@ -163,9 +242,11 @@ def evaluate_gate(
             repair_scope=None,
             created_at=created_at,
             completed_at=datetime.now(UTC),
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
         )
 
-    # Rule 5 & 6: Some required checks FAIL - check regeneration policy
+    # Rule 7 & 8: Some required checks FAIL - check regeneration policy
     # Count failed required checks (non-hard-failure)
     failed_required = 0
     max_severity = Severity.INFO
@@ -204,19 +285,32 @@ def evaluate_gate(
             repair_scope=None,
             created_at=created_at,
             completed_at=datetime.now(UTC),
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
         )
 
-    # Determine if we've exceeded max regenerations
-    # This would be tracked externally (e.g., in the workflow state)
-    # For now, we assume we're within limits and use the check's on_failure
-    if failure_action is QualityFailureAction.HUMAN_REVIEW:
-        decision = GateDecision.HUMAN_REVIEW
-        repair_scope = None
-    elif failure_action is QualityFailureAction.FAIL:
-        decision = GateDecision.FAIL
-        repair_scope = None
-    else:  # REGENERATE
-        decision = GateDecision.REGENERATE
+    # Check max regenerations
+    if regeneration_count >= policy.max_regenerations:
+        # Max regenerations exceeded - apply after_max_regenerations
+        after_action = policy.after_max_regenerations
+        if after_action == QualityFailureAction.HUMAN_REVIEW:
+            decision = GateDecision.HUMAN_REVIEW
+            repair_scope = None
+        elif after_action == QualityFailureAction.FAIL:
+            decision = GateDecision.FAIL
+            repair_scope = None
+        else:  # REGENERATE (shouldn't happen if max_regenerations > 0)
+            decision = GateDecision.REGENERATE
+    else:
+        # Within regeneration limits
+        if failure_action is QualityFailureAction.HUMAN_REVIEW:
+            decision = GateDecision.HUMAN_REVIEW
+            repair_scope = None
+        elif failure_action is QualityFailureAction.FAIL:
+            decision = GateDecision.FAIL
+            repair_scope = None
+        else:  # REGENERATE
+            decision = GateDecision.REGENERATE
 
     return _create_gate_result(
         policy=policy,
@@ -227,6 +321,8 @@ def evaluate_gate(
         repair_scope=repair_scope if decision is GateDecision.REGENERATE else None,
         created_at=created_at,
         completed_at=datetime.now(UTC),
+        stage_instance_id=stage_instance_id,
+        logical_item_key=logical_item_key,
     )
 
 
@@ -294,6 +390,8 @@ def _create_gate_result(
     repair_scope: RepairScope | None,
     created_at: datetime,
     completed_at: datetime,
+    stage_instance_id: str | None = None,
+    logical_item_key: str | None = None,
 ) -> QualityGateResult:
     """Create a QualityGateResult with common fields."""
     return QualityGateResult(
@@ -301,12 +399,12 @@ def _create_gate_result(
         quality_gate_result_id=f"qgr_{uuid.uuid4().hex[:12]}",
         gate_id=policy.gate_id,
         gate_version=policy.version,
-        stage_instance_id=None,
-        logical_item_key=None,
+        stage_instance_id=stage_instance_id,
+        logical_item_key=logical_item_key,
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
         required_check_ids=policy.required_check_ids,
-        evaluation_ids=evaluation_ids,
+        evaluation_ids=list(evaluation_ids),
         decision=decision,
         hard_failure_codes=list(hard_failure_codes),
         repair_scope=repair_scope,
@@ -332,6 +430,9 @@ class QualityGate:
         manifest: QualityInputManifest,
         artifacts: dict[str, Any],
         supporting_artifacts: dict[str, Any],
+        stage_instance_id: str | None = None,
+        logical_item_key: str | None = None,
+        regeneration_count: int = 0,
     ) -> tuple[QualityGateResult, tuple[QualityEvaluation, ...]]:
         """Run all required checks and aggregate into a gate result.
 
@@ -339,6 +440,9 @@ class QualityGate:
             manifest: Input manifest with target artifacts and hashes.
             artifacts: Loaded target artifacts.
             supporting_artifacts: Loaded supporting artifacts.
+            stage_instance_id: Optional stage instance ID for linking.
+            logical_item_key: Optional logical item key for linking.
+            regeneration_count: Current regeneration attempt number.
 
         Returns:
             Tuple of (gate_result, evaluations).
@@ -357,6 +461,13 @@ class QualityGate:
             evaluations.append(evaluation)
 
         gate_result = evaluate_gate(
-            self.policy, manifest, tuple(evaluations), self.registry
+            self.policy,
+            manifest,
+            tuple(evaluations),
+            self.registry,
+            artifacts=artifacts,
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
+            regeneration_count=regeneration_count,
         )
         return gate_result, tuple(evaluations)

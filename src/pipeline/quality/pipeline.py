@@ -5,9 +5,7 @@ Order: deterministic → specialized → semantic → human.
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from pipeline.contracts.quality import (
@@ -27,6 +25,7 @@ if TYPE_CHECKING:
     )
     from pipeline.quality.registry import QualityCheckRegistry
     from pipeline.quality.repair import RepairPlan, RepairPlanner
+    from pipeline.storage.database import Database
 
 
 @dataclass(slots=True)
@@ -47,6 +46,9 @@ class QualityPipelineConfig:
     regeneration_count: int = 0
     max_regenerations: int = 2
     after_max_regenerations: str = "HUMAN_REVIEW"
+    run_id: str = ""
+    stage_instance_id: str | None = None
+    logical_item_key: str | None = None
 
 
 class QualityPipeline:
@@ -67,11 +69,54 @@ class QualityPipeline:
         gate: QualityGate,
         repair_planner: RepairPlanner,
         human_review_manager: HumanReviewManager,
+        database: Database | None = None,
     ) -> None:
         self.registry = registry
         self.gate = gate
         self.repair_planner = repair_planner
         self.human_review_manager = human_review_manager
+        self._database = database
+
+    def _persist_results(
+        self,
+        gate_result: QualityGateResult,
+        evaluations: tuple[QualityEvaluation, ...],
+        repair_plan: RepairPlan | None,
+        human_review: HumanReview | None,
+    ) -> None:
+        """Persist quality results to database if available."""
+        if self._database is None:
+            return
+
+        with self._database.transaction() as conn:
+            from pipeline.storage.repositories.quality import (
+                QualityEvaluationRepository,
+                QualityGateResultRepository,
+                RepairPlanRepository,
+            )
+
+            # Persist evaluations
+            eval_repo = QualityEvaluationRepository(conn)
+            for eval_record in evaluations:
+                # Add run_id, stage_instance_id if available
+                eval_data = eval_record.model_copy(
+                    update={
+                        "stage_instance_id": gate_result.stage_instance_id,
+                        "logical_item_key": gate_result.logical_item_key,
+                    }
+                )
+                eval_repo.insert(eval_data)
+
+            # Persist gate result
+            gate_repo = QualityGateResultRepository(conn)
+            gate_repo.insert(gate_result)
+
+            # Persist repair plan if any
+            if repair_plan is not None:
+                repair_repo = RepairPlanRepository(conn)
+                repair_repo.insert(repair_plan)
+
+            # Human review is persisted by HumanReviewManager.create_review
 
     def run(
         self,
@@ -94,7 +139,12 @@ class QualityPipeline:
         """
         # Run gate evaluation (handles all check categories in order)
         gate_result, evaluations = self.gate.evaluate(
-            manifest, artifacts, supporting_artifacts
+            manifest,
+            artifacts,
+            supporting_artifacts,
+            stage_instance_id=config.stage_instance_id,
+            logical_item_key=config.logical_item_key,
+            regeneration_count=config.regeneration_count,
         )
 
         repair_plan = None
@@ -110,9 +160,11 @@ class QualityPipeline:
 
         elif gate_result.decision is GateDecision.HUMAN_REVIEW:
             # Create human review request
+            if not config.run_id:
+                raise ValueError("run_id required for human review")
             human_review = self.human_review_manager.create_review(
                 HumanReviewRequest(
-                    run_id="",  # Would be passed in real implementation
+                    run_id=config.run_id,
                     stage_instance_id=gate_result.stage_instance_id,
                     gate_id=gate_result.gate_id,
                     target_artifact_ids=list(gate_result.target_artifact_ids),
@@ -122,6 +174,9 @@ class QualityPipeline:
                     requested_action="review_quality_gate",
                 )
             )
+
+        # Persist results
+        self._persist_results(gate_result, evaluations, repair_plan, human_review)
 
         return QualityPipelineResult(
             gate_result=gate_result,
@@ -137,6 +192,11 @@ def run_quality_pipeline(
     manifest: QualityInputManifest,
     artifacts: dict[str, Any],
     supporting_artifacts: dict[str, Any],
+    database: Database | None = None,
+    human_review_manager: HumanReviewManager | None = None,
+    run_id: str = "",
+    stage_instance_id: str | None = None,
+    logical_item_key: str | None = None,
     regeneration_count: int = 0,
     max_regenerations: int = 2,
     after_max_regenerations: str = "HUMAN_REVIEW",
@@ -149,6 +209,12 @@ def run_quality_pipeline(
         manifest: Input manifest.
         artifacts: Target artifacts.
         supporting_artifacts: Supporting artifacts.
+        database: Optional database for persistence.
+        human_review_manager: Optional human review manager
+            (required if database provided).
+        run_id: Workflow run ID (required for human review).
+        stage_instance_id: Stage instance ID for linking.
+        logical_item_key: Logical item key for linking.
         regeneration_count: Current regeneration attempt number.
         max_regenerations: Maximum allowed regenerations.
         after_max_regenerations: Action after max regenerations exceeded.
@@ -159,36 +225,25 @@ def run_quality_pipeline(
     from pipeline.quality.gate import QualityGate
     from pipeline.quality.repair import RepairPlanner
 
-    # These would be properly injected in real usage
     gate = QualityGate(gate_policy, registry)
     repair_planner = RepairPlanner(registry)
 
-    # HumanReviewManager requires a database - use a mock for now
-    class MockHumanReviewManager:
-        def create_review(self, request):
-            from pipeline.contracts.review import HumanReview
-            from pipeline.contracts.vocabularies import ReviewStatus
+    if human_review_manager is None:
+        if database is not None:
+            from pipeline.quality.human_review import HumanReviewManager
 
-            return HumanReview(
-                schema_version="human-review.v1",
-                review_id=f"review_{uuid.uuid4().hex[:12]}",
-                run_id=request.run_id or "unknown",
-                stage_instance_id=request.stage_instance_id,
-                gate_id=request.gate_id,
-                target_artifact_ids=request.target_artifact_ids,
-                target_hashes=request.target_hashes,
-                reason_codes=request.reason_codes,
-                requested_action=request.requested_action,
-                status=ReviewStatus.OPEN,
-                created_at=datetime.now(UTC),
-                resolved_at=None,
-            )
+            human_review_manager = HumanReviewManager(database)
+        else:
+            raise ValueError("human_review_manager or database must be provided")
 
-    human_review_manager = MockHumanReviewManager()
-
-    pipeline = QualityPipeline(registry, gate, repair_planner, human_review_manager)
+    pipeline = QualityPipeline(
+        registry, gate, repair_planner, human_review_manager, database
+    )
     config = QualityPipelineConfig(
         gate_policy=gate_policy,
+        run_id=run_id,
+        stage_instance_id=stage_instance_id,
+        logical_item_key=logical_item_key,
         regeneration_count=regeneration_count,
         max_regenerations=max_regenerations,
         after_max_regenerations=after_max_regenerations,

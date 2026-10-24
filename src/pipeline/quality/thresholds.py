@@ -17,7 +17,7 @@ from pipeline.contracts.base import (
 from pipeline.contracts.vocabularies import EvaluationKind
 
 if TYPE_CHECKING:
-    from pipeline.contracts.quality import QualityEvaluation
+    pass
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,9 +183,9 @@ class ThresholdRegistry:
         if not (0.0 <= new_review <= new_pass <= 1.0):
             raise ValueError("Invalid threshold values")
 
-        updated = ThresholdRecord(
-            **{
-                **current.__dict__,
+        # Use model_copy for Pydantic model (frozen) instead of __dict__
+        updated = current.model_copy(
+            update={
                 "pass_threshold": new_pass,
                 "review_threshold": new_review,
                 "updated_at": datetime.now(UTC),
@@ -251,8 +251,8 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             false_pass_target=0.05,
             false_reject_target=0.10,
             confidence_interval=(0.90, 0.95),
-            blind_spots=["domain_jargon", "creative_writing_style"],
-            known_limitations=["single_rater_bias", "rubric_version_dependent"],
+            blind_spots=["subjective_tone"],
+            known_limitations=["requires_llm_evaluator"],
             recalibration_trigger="false_pass_rate_exceeded",
             recalibration_interval_runs=100,
             min_samples_for_recalibration=50,
@@ -271,8 +271,8 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             false_pass_target=0.05,
             false_reject_target=0.10,
             confidence_interval=(0.90, 0.95),
-            blind_spots=["non_linear_narratives"],
-            known_limitations=["rubric_version_dependent"],
+            blind_spots=["subjective_structure"],
+            known_limitations=["requires_llm_evaluator"],
             recalibration_trigger="false_pass_rate_exceeded",
             recalibration_interval_runs=100,
             min_samples_for_recalibration=50,
@@ -291,15 +291,53 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             false_pass_target=0.05,
             false_reject_target=0.10,
             confidence_interval=(0.90, 0.95),
-            blind_spots=["sarcasm", "irony"],
-            known_limitations=[
-                "rubric_version_dependent",
-                "cultural_context_dependent",
-            ],
+            blind_spots=["subjective_tone"],
+            known_limitations=["requires_llm_evaluator"],
             recalibration_trigger="false_pass_rate_exceeded",
             recalibration_interval_runs=100,
             min_samples_for_recalibration=50,
             rubric_version="editorial-rubric-v1",
+        )
+    )
+
+    # Visual gate thresholds
+    registry.register(
+        ThresholdRecord(
+            gate_id="visual_gate_v1",
+            check_id="visual_intent_coherence_v1",
+            dimension_name="coherence",
+            evaluation_kind=EvaluationKind.SEMANTIC,
+            pass_threshold=0.80,
+            review_threshold=0.65,
+            false_pass_target=0.05,
+            false_reject_target=0.10,
+            confidence_interval=(0.90, 0.95),
+            blind_spots=["abstract_visual_concepts"],
+            known_limitations=["requires_llm_evaluator"],
+            recalibration_trigger="false_pass_rate_exceeded",
+            recalibration_interval_runs=100,
+            min_samples_for_recalibration=50,
+            rubric_version="visual-rubric-v1",
+        )
+    )
+
+    registry.register(
+        ThresholdRecord(
+            gate_id="visual_gate_v1",
+            check_id="visual_intent_coherence_v1",
+            dimension_name="coverage",
+            evaluation_kind=EvaluationKind.SEMANTIC,
+            pass_threshold=0.80,
+            review_threshold=0.65,
+            false_pass_target=0.05,
+            false_reject_target=0.10,
+            confidence_interval=(0.90, 0.95),
+            blind_spots=["implicit_visual_requirements"],
+            known_limitations=["requires_llm_evaluator"],
+            recalibration_trigger="false_pass_rate_exceeded",
+            recalibration_interval_runs=100,
+            min_samples_for_recalibration=50,
+            rubric_version="visual-rubric-v1",
         )
     )
 
@@ -310,16 +348,17 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             check_id="speech_wer_cer_v1",
             dimension_name="wer",
             evaluation_kind=EvaluationKind.SPECIALIZED,
-            pass_threshold=0.90,  # 1 - max_wer
+            pass_threshold=0.90,  # 1 - 0.10 WER threshold
             review_threshold=0.85,
-            false_pass_target=0.03,
-            false_reject_target=0.08,
+            false_pass_target=0.05,
+            false_reject_target=0.10,
             confidence_interval=(0.95, 0.99),
-            blind_spots=["accented_speech", "rare_proper_nouns"],
-            known_limitations=["asr_model_dependent", "normalization_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            blind_spots=["accented_speech", "rare_words"],
+            known_limitations=["requires_asr_alignment"],
+            recalibration_trigger="wer_drift",
             recalibration_interval_runs=50,
             min_samples_for_recalibration=30,
+            rubric_version="speech-rubric-v1",
         )
     )
 
@@ -329,16 +368,17 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             check_id="speech_wer_cer_v1",
             dimension_name="cer",
             evaluation_kind=EvaluationKind.SPECIALIZED,
-            pass_threshold=0.95,  # 1 - max_cer
+            pass_threshold=0.95,  # 1 - 0.05 CER threshold
             review_threshold=0.90,
-            false_pass_target=0.03,
-            false_reject_target=0.08,
+            false_pass_target=0.05,
+            false_reject_target=0.10,
             confidence_interval=(0.95, 0.99),
-            blind_spots=["homophones", "character_level_errors"],
-            known_limitations=["asr_model_dependent", "normalization_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            blind_spots=["non_latin_scripts"],
+            known_limitations=["requires_asr_alignment"],
+            recalibration_trigger="cer_drift",
             recalibration_interval_runs=50,
             min_samples_for_recalibration=30,
+            rubric_version="speech-rubric-v1",
         )
     )
 
@@ -348,16 +388,17 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             check_id="speech_critical_tokens_v1",
             dimension_name="critical_tokens",
             evaluation_kind=EvaluationKind.SPECIALIZED,
-            pass_threshold=1.0,
+            pass_threshold=1.0,  # All critical tokens must match
             review_threshold=1.0,
             false_pass_target=0.01,
             false_reject_target=0.05,
-            confidence_interval=(0.99, 0.999),
-            blind_spots=["phonetically_similar_tokens"],
-            known_limitations=["requires_explicit_critical_token_list"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            confidence_interval=(0.99, 1.0),
+            blind_spots=["homophones"],
+            known_limitations=["requires_critical_token_list"],
+            recalibration_trigger="token_mismatch_pattern",
             recalibration_interval_runs=50,
             min_samples_for_recalibration=30,
+            rubric_version="speech-rubric-v1",
         )
     )
 
@@ -372,11 +413,12 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             false_pass_target=0.05,
             false_reject_target=0.10,
             confidence_interval=(0.95, 0.99),
-            blind_spots=["overlapping_speech", "background_noise"],
-            known_limitations=["alignment_model_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            blind_spots=["overlapping_speech"],
+            known_limitations=["requires_asr_alignment"],
+            recalibration_trigger="alignment_drift",
             recalibration_interval_runs=50,
             min_samples_for_recalibration=30,
+            rubric_version="speech-rubric-v1",
         )
     )
 
@@ -386,116 +428,58 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             check_id="speech_signal_quality_v1",
             dimension_name="snr",
             evaluation_kind=EvaluationKind.SPECIALIZED,
-            pass_threshold=0.50,  # 30dB / 60dB normalized
-            review_threshold=0.40,
-            false_pass_target=0.10,
-            false_reject_target=0.15,
-            confidence_interval=(0.90, 0.95),
-            blind_spots=["musical_background", "non_speech_audio"],
-            known_limitations=["snr_estimation_method_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
-            recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
-        )
-    )
-
-    # Visual plan gate thresholds
-    registry.register(
-        ThresholdRecord(
-            gate_id="visual_plan_gate_v1",
-            check_id="visual_intent_coherence_v1",
-            dimension_name="coherence",
-            evaluation_kind=EvaluationKind.SEMANTIC,
-            pass_threshold=0.80,
-            review_threshold=0.65,
-            false_pass_target=0.05,
-            false_reject_target=0.10,
-            confidence_interval=(0.90, 0.95),
-            blind_spots=["abstract_concepts", "metaphorical_visuals"],
-            known_limitations=["rubric_version_dependent", "evaluator_model_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
-            recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
-            rubric_version="visual-rubric-v1",
-        )
-    )
-
-    registry.register(
-        ThresholdRecord(
-            gate_id="visual_plan_gate_v1",
-            check_id="visual_intent_coherence_v1",
-            dimension_name="coverage",
-            evaluation_kind=EvaluationKind.SEMANTIC,
-            pass_threshold=0.80,
-            review_threshold=0.65,
-            false_pass_target=0.05,
-            false_reject_target=0.10,
-            confidence_interval=(0.90, 0.95),
-            blind_spots=["implicit_visual_requirements"],
-            known_limitations=["rubric_version_dependent", "evaluator_model_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
-            recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
-            rubric_version="visual-rubric-v1",
-        )
-    )
-
-    # Composition gate thresholds
-    registry.register(
-        ThresholdRecord(
-            gate_id="composition_gate_v1",
-            check_id="composition_sync_v1",
-            dimension_name="av_sync",
-            evaluation_kind=EvaluationKind.SPECIALIZED,
-            pass_threshold=0.90,  # 1 - max_drift/threshold
-            review_threshold=0.80,
+            pass_threshold=0.5,  # 30dB / 60dB normalized
+            review_threshold=0.33,
             false_pass_target=0.05,
             false_reject_target=0.10,
             confidence_interval=(0.95, 0.99),
-            blind_spots=["variable_frame_rate", "drift_accumulation"],
-            known_limitations=["sync_detection_method_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
-            recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
+            blind_spots=["background_music"],
+            known_limitations=["requires_ffmpeg"],
+            recalibration_trigger="snr_drift",
+            recalibration_interval_runs=50,
+            min_samples_for_recalibration=30,
+            rubric_version="speech-rubric-v1",
         )
     )
 
-    # Render gate thresholds
+    # Media gate thresholds
     registry.register(
         ThresholdRecord(
-            gate_id="render_gate_v1",
-            check_id="render_decode_v1",
+            gate_id="media_gate_v1",
+            check_id="media_decode_v1",
             dimension_name="decode_success",
             evaluation_kind=EvaluationKind.SPECIALIZED,
             pass_threshold=1.0,
             review_threshold=1.0,
-            false_pass_target=0.001,
-            false_reject_target=0.01,
-            confidence_interval=(0.999, 0.9999),
-            blind_spots=["container_level_corruption"],
-            known_limitations=["decode_test_depth_limited"],
-            recalibration_trigger="false_pass_rate_exceeded",
-            recalibration_interval_runs=200,
-            min_samples_for_recalibration=100,
+            false_pass_target=0.0,
+            false_reject_target=0.0,
+            confidence_interval=(1.0, 1.0),
+            blind_spots=[],
+            known_limitations=["requires_ffmpeg"],
+            recalibration_trigger="never",
+            recalibration_interval_runs=100,
+            min_samples_for_recalibration=10,
+            rubric_version="media-rubric-v1",
         )
     )
 
     registry.register(
         ThresholdRecord(
-            gate_id="render_gate_v1",
-            check_id="render_profile_v1",
+            gate_id="media_gate_v1",
+            check_id="media_profile_v1",
             dimension_name="profile_conformance",
             evaluation_kind=EvaluationKind.SPECIALIZED,
             pass_threshold=1.0,
             review_threshold=1.0,
-            false_pass_target=0.01,
-            false_reject_target=0.05,
-            confidence_interval=(0.99, 0.999),
-            blind_spots=["metadata_only_checks"],
-            known_limitations=["profile_spec_completeness_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            false_pass_target=0.0,
+            false_reject_target=0.0,
+            confidence_interval=(1.0, 1.0),
+            blind_spots=[],
+            known_limitations=["requires_ffmpeg"],
+            recalibration_trigger="never",
             recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
+            min_samples_for_recalibration=10,
+            rubric_version="media-rubric-v1",
         )
     )
 
@@ -508,33 +492,35 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             evaluation_kind=EvaluationKind.SPECIALIZED,
             pass_threshold=1.0,
             review_threshold=1.0,
-            false_pass_target=0.001,
-            false_reject_target=0.01,
-            confidence_interval=(0.999, 0.9999),
-            blind_spots=["chunk_boundary_artifacts"],
-            known_limitations=["assembly_method_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            false_pass_target=0.0,
+            false_reject_target=0.0,
+            confidence_interval=(1.0, 1.0),
+            blind_spots=[],
+            known_limitations=[],
+            recalibration_trigger="never",
             recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
+            min_samples_for_recalibration=10,
+            rubric_version="assembly-rubric-v1",
         )
     )
 
     registry.register(
         ThresholdRecord(
             gate_id="assembly_gate_v1",
-            check_id="assembly_audio_video_drift_v1",
+            check_id="assembly_av_drift_v1",
             dimension_name="av_drift",
             evaluation_kind=EvaluationKind.SPECIALIZED,
-            pass_threshold=0.85,  # 1 - 150ms/1000ms
-            review_threshold=0.75,
+            pass_threshold=0.467,  # 1 - 80/150
+            review_threshold=0.333,
             false_pass_target=0.05,
             false_reject_target=0.10,
             confidence_interval=(0.95, 0.99),
-            blind_spots=["gradual_drift"],
-            known_limitations=["measurement_window_limited"],
-            recalibration_trigger="false_pass_rate_exceeded",
-            recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
+            blind_spots=["variable_frame_rate"],
+            known_limitations=["requires_media_analysis"],
+            recalibration_trigger="drift_accumulation",
+            recalibration_interval_runs=50,
+            min_samples_for_recalibration=30,
+            rubric_version="assembly-rubric-v1",
         )
     )
 
@@ -546,50 +532,15 @@ def _populate_default_thresholds(registry: ThresholdRegistry) -> None:
             dimension_name="short_integrity",
             evaluation_kind=EvaluationKind.SPECIALIZED,
             pass_threshold=1.0,
-            review_threshold=0.90,
-            false_pass_target=0.05,
-            false_reject_target=0.10,
-            confidence_interval=(0.95, 0.99),
-            blind_spots=["aspect_ratio_crops", "time_compression_artifacts"],
-            known_limitations=["derivative_method_dependent"],
-            recalibration_trigger="false_pass_rate_exceeded",
+            review_threshold=1.0,
+            false_pass_target=0.0,
+            false_reject_target=0.0,
+            confidence_interval=(1.0, 1.0),
+            blind_spots=[],
+            known_limitations=[],
+            recalibration_trigger="never",
             recalibration_interval_runs=100,
-            min_samples_for_recalibration=50,
+            min_samples_for_recalibration=10,
+            rubric_version="short-rubric-v1",
         )
     )
-
-
-def evaluate_against_thresholds(
-    gate_id: str,
-    evaluations: tuple[QualityEvaluation, ...],
-    registry: ThresholdRegistry | None = None,
-) -> dict[str, dict[str, bool]]:
-    """Evaluate evaluation scores against registered thresholds.
-
-    Returns:
-        Dict mapping check_id -> dimension_name -> {pass, review, needs_recalibration}
-    """
-    if registry is None:
-        registry = get_default_threshold_registry()
-
-    results = {}
-    for evaluation in evaluations:
-        check_results = {}
-        for dimension in evaluation.dimensions:
-            threshold = registry.get(gate_id, evaluation.check_id, dimension.name)
-            if threshold is None:
-                check_results[dimension.name] = {
-                    "pass": True,  # Default to pass if no threshold
-                    "review": False,
-                    "needs_recalibration": False,
-                }
-                continue
-
-            score = dimension.score
-            check_results[dimension.name] = {
-                "pass": threshold.should_pass(score),
-                "review": threshold.should_trigger_human_review(score),
-                "needs_recalibration": False,  # Would be computed from historical data
-            }
-        results[evaluation.check_id] = check_results
-    return results

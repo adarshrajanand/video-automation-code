@@ -56,17 +56,20 @@ def create_repair_plan(request: RepairPlanRequest) -> RepairPlan | None:
     if decision is GateDecision.REGENERATE:
         # Check if we've exceeded max regenerations
         if request.regeneration_count >= request.max_regenerations:
-            # Exceeded - would be handled by workflow layer
-            # Return a plan that indicates max exceeded
-            pass
+            # Exceeded max regenerations - no repair plan, workflow handles escalation
+            return None
 
         # Determine invalidation scope from repair_scope
         repair_scope = request.gate_result.repair_scope or RepairScope.SCENE
         invalidation_scope = _repair_scope_to_invalidation_scope(repair_scope)
 
-        # Collect reason codes from failed evaluations
+        # Collect reason codes from failed evaluations' failure codes
         # In a real implementation, this would come from the evaluations
-        reason_codes = ["QUALITY.GENERIC"]  # Placeholder
+        # For now, use the hard_failure_codes from gate result if available,
+        # or derive from the repair scope
+        reason_codes = list(request.gate_result.hard_failure_codes)
+        if not reason_codes:
+            reason_codes = ["QUALITY.REGENERATE"]
 
         # Determine target artifacts and stages
         target_artifact_ids = list(request.gate_result.target_artifact_ids)
@@ -147,6 +150,12 @@ class RepairPlanner:
         Returns:
             List of stage instance IDs to invalidate (including targets).
         """
+        if repair_plan.invalidation_scope != RepairInvalidationScope.SUBGRAPH:
+            return list(repair_plan.target_stage_instance_ids)
+
+        if not workflow_dag:
+            raise ValueError("workflow_dag required for SUBGRAPH invalidation")
+
         invalidated = set(repair_plan.target_stage_instance_ids)
 
         # BFS from each target to find all dependents
@@ -165,12 +174,15 @@ class RepairPlanner:
 def apply_repair_invalidation(
     repair_plan: RepairPlan,
     stage_instances: dict[str, dict],  # stage_instance_id -> stage instance data
+    workflow_dag: dict[str, list[str]] | None = None,
 ) -> list[str]:
     """Apply invalidation to stage instances based on repair plan scope.
 
     Args:
         repair_plan: The repair plan specifying what to invalidate.
         stage_instances: Dictionary of all stage instances in the workflow.
+        workflow_dag: Required for SUBGRAPH scope.
+            Adjacency list of workflow dependencies.
 
     Returns:
         List of stage instance IDs that were invalidated.
@@ -195,8 +207,20 @@ def apply_repair_invalidation(
 
     elif repair_plan.invalidation_scope is RepairInvalidationScope.SUBGRAPH:
         # Invalidate target stages and all downstream dependents
-        # This would use the workflow DAG in a real implementation
-        for stage_id in repair_plan.target_stage_instance_ids:
+        if workflow_dag is None:
+            raise ValueError("workflow_dag required for SUBGRAPH invalidation")
+        # Use the repair planner's logic
+        # For now, inline the BFS
+        invalidated_set = set(repair_plan.target_stage_instance_ids)
+        queue = list(repair_plan.target_stage_instance_ids)
+        while queue:
+            current = queue.pop(0)
+            dependents = workflow_dag.get(current, [])
+            for dep in dependents:
+                if dep not in invalidated_set:
+                    invalidated_set.add(dep)
+                    queue.append(dep)
+        for stage_id in invalidated_set:
             if stage_id in stage_instances:
                 stage_instances[stage_id]["acceptance_status"] = "REGENERATE"
                 stage_instances[stage_id]["execution_status"] = "INVALIDATED"

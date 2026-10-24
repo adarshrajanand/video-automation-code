@@ -41,6 +41,12 @@ from pipeline.storage.repositories.execution import (
     StageInstanceRepository,
     WorkflowRunRepository,
 )
+from pipeline.storage.repositories.quality import (
+    QualityEvaluationRepository,
+    QualityGateResultRepository,
+    QualityInputManifestRepository,
+    RepairPlanRepository,
+)
 
 __all__ = [
     "ArtifactDependencyRepository",
@@ -60,7 +66,11 @@ __all__ = [
     "LeaseRepository",
     "OutboxMessageRepository",
     "ProviderInvocationRepository",
+    "QualityEvaluationRepository",
+    "QualityGateResultRepository",
+    "QualityInputManifestRepository",
     "RecoveryDecisionRepository",
+    "RepairPlanRepository",
     "RoutingDecisionRepository",
     "SceneRepository",
     "SequenceRepository",
