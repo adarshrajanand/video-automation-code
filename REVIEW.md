@@ -1,6 +1,6 @@
 # FV-11 Comprehensive Review & Fix Tracking — UPDATED
 
-**Branch:** `fv-11-report` | **Baseline:** `4804573` | **Current:** `a174fcb`
+**Branch:** `fv-11-report` | **Baseline:** `4804573` | **Current:** `107ae31`
 
 ---
 
@@ -12,7 +12,17 @@
 
 ---
 
-## ✅ FIXED — Capability Layer (Commits 1daab56, 3d78440)
+## ✅ FIXED — Capability Layer (Commits 1daab56, 3d78440, 3d78440)
+
+| ID | Finding | Severity | File(s) | Fix Summary |
+|----|---------|----------|---------|-------------|
+| C1 | Registry returns `candidates[0]` when filters reject all | Critical | `registry.py` | Raises `CapabilityNotFoundError` / `CapabilityRequirementMismatchError` |
+| C2 | `getattr(__builtins__, ...)` exception lookup broken | High | `fake.py` | Uses `builtins` module; validates `BaseException` subclass |
+| C3 | `uuid.uuid4()` in fake artifact/operation IDs | High | `fake.py` | All IDs via `deterministic_id(fingerprint)` |
+| C4 | Budget enforcement no-op (`cost_limit_minor` ignored) | Critical | `executor.py` | Real guard: per-request + cumulative scope |
+| C5 | Non-atomic idempotency (separate connections, broad `except`) | High | `executor.py` | Single `BEGIN IMMEDIATE` transaction |
+| C6 | Idempotency key reuse for different request not detected | High | `executor.py` | Validates `capability` and `request_fingerprint` match |
+| C7 | No regression tests for registry/fake fixes | Medium | `tests/capabilities/test_registry_and_fake.py` | 29 new tests |
 
 | ID | Finding | Severity | File(s) | Fix Summary |
 |----|---------|----------|---------|-------------|
@@ -23,6 +33,35 @@
 | C5 | Non-atomic idempotency (separate connections, broad `except`) | High | `executor.py` | Single `BEGIN IMMEDIATE` transaction: get/create → validate → budget → insert routing/exec → IN_FLIGHT |
 | C6 | Idempotency key reuse for different request not detected | High | `executor.py` | Validates `capability` and `request_fingerprint` match; returns `VALIDATION` error on mismatch |
 | C7 | No regression tests for registry/fake fixes | Medium | `tests/capabilities/test_registry_and_fake.py` | 29 new tests: filters, mismatches, exceptions, determinism |
+
+---
+
+## ✅ FIXED — Validation Report (Commit a886470)
+
+| ID | Finding | Severity | Fix Summary |
+|----|---------|----------|-------------|
+| R1 | Env var leak (`dict(os.environ)`) | Critical | Allowlist + sensitive key redaction (`[REDACTED]`) |
+| R2 | CLI arg leak (`sys.argv`) | Critical | Redacts values after `--key`, `--token`, `--secret`, `--password`, `--api-key` |
+| R3 | `fault_injection_results` empty | High | Accepted as `generate(fault_injection_results=...)` param |
+| R4 | `provider_usage` empty | High | Joins `usage_records` → `capability_executions` → `stage_attempts` → `stage_instances` |
+| R5 | Hardcoded "FV-12 Remotion" | Medium | `next_extension_decision` param with default `"NOT_RECORDED"` |
+| R6 | Markdown crashes on `qgr.run_id`, `qgr.evaluations` | High | Uses `self.run_id` and `len(qgr.evaluation_ids)` |
+| R7 | Imports non-existent `QualityGateResultRepository` | High | Uses new `QualityGateResultRepository` from `quality.py` |
+| R8 | Quality results never loaded | Critical | Loads via `QualityGateResultRepository.list_for_run(run_id)` |
+| R9 | Write transaction for reads | Medium | Uses `connection()` (read-only) instead of `transaction()` |
+| R10 | `QualityReportGenerator` empty template | High | Implemented `generate()` and `generate_for_run()` |
+| R11 | Blind spots not computed | Low | From human reviews (approved gaps) + threshold registry |
+
+---
+
+## ✅ FIXED — Inbox/Outbox/Dispatcher (Commit 107ae31)
+
+| ID | Finding | Severity | Fix Summary |
+|----|---------|----------|-------------|
+| I1 | `ignore()` downgrades `PROCESSED` → `IGNORED` | High | Returns existing PROCESSED receipt unchanged |
+| O1 | `ack()` no lease expiry check | High | Returns `False` if `lease_expires_at <= now` |
+| O2 | `deliver_claimed()` no lease expiry check | High | Returns `STALE` if `lease_expires_at <= now` |
+| D1 | `dispatch_once` partial writes commit | High | Per-item `SAVEPOINT`/`ROLLBACK TO`/`RELEASE` |
 
 ---
 
@@ -107,25 +146,26 @@
 
 ---
 
-## ⏳ PENDING — Inbox/Outbox/Dispatcher
+## ✅ FIXED — Inbox/Outbox/Dispatcher (Commit 107ae31)
 
 ### Inbox (`src/pipeline/execution/inbox.py`)
 
-| ID | Finding | Severity | Details |
-|----|---------|----------|---------|
-| I1 | `ignore()` can downgrade `PROCESSED` → `IGNORED` | High | Should preserve `PROCESSED`; only upgrade `RECEIVED/FAILED` → `IGNORED` |
+| ID | Finding | Severity | Fix Summary |
+|----|---------|----------|-------------|
+| I1 | `ignore()` can downgrade `PROCESSED` → `IGNORED` | High | Returns existing PROCESSED receipt unchanged; cannot downgrade |
 
-### Outbox (`src/pipeline/execution/outbox.py`)
+### Outbox (`src/pipeline/execution/dispatcher.py`)
 
-| ID | Finding | Severity | Details |
-|----|---------|----------|---------|
-| O1 | `ack()` checks only `claimed_by`, not lease expiry/fencing token | High | Stale dispatcher could ack after lease expired |
+| ID | Finding | Severity | Fix Summary |
+|----|---------|----------|-------------|
+| O1 | `ack()` checks only `claimed_by`, not lease expiry | High | Returns `False` if `lease_expires_at <= now` |
+| O2 | `deliver_claimed()` no lease expiry check | High | Returns `STALE` if `lease_expires_at <= now` |
 
 ### Dispatcher (`src/pipeline/execution/dispatcher.py`)
 
-| ID | Finding | Severity | Details |
-|----|---------|----------|---------|
-| D1 | `dispatch_once` catches errors inside transaction → partial writes commit | High | Per-item savepoints needed; failed item should rollback, not commit |
+| ID | Finding | Severity | Fix Summary |
+|----|---------|----------|-------------|
+| D1 | `dispatch_once` catches errors inside transaction → partial writes commit | High | Per-item `SAVEPOINT`/`ROLLBACK TO SAVEPOINT`/`RELEASE SAVEPOINT` |
 
 ---
 

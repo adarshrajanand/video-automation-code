@@ -3,13 +3,13 @@ abstention rate, etc."""
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from pipeline.contracts.quality import QualityEvaluation, QualityGateResult
 from pipeline.contracts.vocabularies import CheckOutcome, GateDecision
+from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
     from pipeline.storage.database import Database
@@ -20,7 +20,11 @@ class QualityReport:
     """Aggregate quality report for a time period or run set."""
 
     schema_version: str = "quality-report.v1"
-    report_id: str = field(default_factory=lambda: f"rpt_{uuid.uuid4().hex[:12]}")
+    report_id: str = field(
+        default_factory=lambda: (
+            f"rpt_{deterministic_id('qrpt', str(datetime.now(UTC).timestamp()))}"
+        )
+    )
     run_ids: list[str] = field(default_factory=list)
     gate_ids: list[str] = field(default_factory=list)
     period_start: datetime | None = None

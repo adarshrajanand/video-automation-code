@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -22,6 +21,7 @@ from pipeline.contracts.vocabularies import (
     RepairScope,
     Severity,
 )
+from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
     from pipeline.quality.registry import QualityCheckRegistry
@@ -394,9 +394,14 @@ def _create_gate_result(
     logical_item_key: str | None = None,
 ) -> QualityGateResult:
     """Create a QualityGateResult with common fields."""
+    # Deterministic gate result ID from manifest + gate + version + decision + eval IDs
+    eval_id_str = ",".join(sorted(evaluation_ids))
+    gate_result_id = deterministic_id(
+        "qgr", policy.gate_id, policy.version, decision.value, eval_id_str
+    )
     return QualityGateResult(
         schema_version="quality-gate-result.v1",
-        quality_gate_result_id=f"qgr_{uuid.uuid4().hex[:12]}",
+        quality_gate_result_id=f"qgr_{gate_result_id}",
         gate_id=policy.gate_id,
         gate_version=policy.version,
         stage_instance_id=stage_instance_id,

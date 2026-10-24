@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
@@ -16,6 +15,7 @@ from pipeline.contracts.vocabularies import (
     GateDecision,
     RepairInvalidationScope,
 )
+from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
     from pipeline.quality.registry import QualityCheckRegistry
@@ -81,9 +81,15 @@ def create_repair_plan(request: RepairPlanRequest) -> RepairPlan | None:
         remaining = request.max_regenerations - request.regeneration_count
         max_attempts = max(1, remaining)
 
+        # Deterministic repair plan ID from source gate result + regeneration count
+        rid = deterministic_id(
+            "repair",
+            request.gate_result.quality_gate_result_id,
+            str(request.regeneration_count),
+        )
         return RepairPlan(
             schema_version="repair-plan.v1",
-            repair_plan_id=f"repair_{uuid.uuid4().hex[:12]}",
+            repair_plan_id=f"repair_{rid}",
             source_gate_result_id=request.gate_result.quality_gate_result_id,
             reason_codes=reason_codes,
             target_artifact_ids=target_artifact_ids,

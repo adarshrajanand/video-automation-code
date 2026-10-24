@@ -3,7 +3,6 @@ semantic, and human checks."""
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol
@@ -20,6 +19,7 @@ from pipeline.contracts.vocabularies import (
     FailureCode,
     Severity,
 )
+from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
     pass
@@ -100,9 +100,12 @@ class DeterministicCheckEvaluator:
             )
 
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
             scene_id=None,
@@ -423,9 +426,12 @@ class DeterministicCheckEvaluator:
     ) -> QualityEvaluation:
         """Create an error evaluation."""
         latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
             evaluation_input_manifest_id=manifest.manifest_id,
@@ -527,9 +533,12 @@ class SpecializedCheckEvaluator:
             )
 
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
             scene_id=None,
@@ -1408,9 +1417,12 @@ class SpecializedCheckEvaluator:
         started_at: datetime,
     ) -> QualityEvaluation:
         latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
             evaluation_input_manifest_id=manifest.manifest_id,
@@ -1484,9 +1496,15 @@ class SemanticCheckEvaluator:
             )
 
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
+        inv_id = deterministic_id(
+            "inv", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
             scene_id=None,
@@ -1506,7 +1524,7 @@ class SemanticCheckEvaluator:
             evidence=result.evidence,
             estimated_cost_minor=result.estimated_cost_minor,
             actual_cost_minor=result.actual_cost_minor,
-            provider_invocation_id=f"inv_{uuid.uuid4().hex[:12]}",
+            provider_invocation_id=f"inv_{inv_id}",
             latency_ms=latency_ms,
             created_at=datetime.now(UTC),
         )
@@ -1803,9 +1821,12 @@ class SemanticCheckEvaluator:
         started_at: datetime,
     ) -> QualityEvaluation:
         latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
             evaluation_input_manifest_id=manifest.manifest_id,
@@ -1882,9 +1903,12 @@ class HumanCheckEvaluator:
         ]
 
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        eval_id = deterministic_id(
+            "eval", manifest.manifest_id, check.check_id, check.evaluator_version
+        )
         return QualityEvaluation(
             schema_version="quality-evaluation.v1",
-            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
             scene_id=None,

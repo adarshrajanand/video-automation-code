@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import platform
 import sys
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
@@ -103,7 +102,11 @@ class ValidationReport:
     """Complete validation report for a workflow run."""
 
     schema_version: str = "validation-report.v1"
-    report_id: str = field(default_factory=lambda: f"vrpt_{uuid.uuid4().hex[:12]}")
+    report_id: str = field(
+        default_factory=lambda: (
+            f"vrpt_{deterministic_id('vrpt', str(datetime.now(UTC).timestamp()))}"
+        )
+    )
     run_id: str = ""
     generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
