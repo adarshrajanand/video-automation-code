@@ -169,16 +169,16 @@
 
 ---
 
-## ⏳ PENDING — Deterministic IDs (Cross-Cutting)
+## ✅ FIXED — Deterministic IDs (Cross-Cutting) (Commit 03d4311)
 
-| ID | Finding | Severity | Files |
-|----|---------|----------|-------|
-| X1 | Evaluation IDs: `uuid.uuid4()` | Medium | `evaluators.py`, `gate.py` |
-| X2 | Gate result IDs: `uuid.uuid4()` | Medium | `gate.py` |
-| X3 | Repair plan IDs: `uuid.uuid4()` | Medium | `repair.py` |
-| X4 | Human review IDs: `uuid.uuid4()` | Medium | `human_review.py` |
-| X5 | Quality report IDs: `uuid.uuid4()` | Medium | `quality/report.py` |
-| X6 | Validation report IDs: `uuid.uuid4()` | Medium | `report.py` |
+| ID | Finding | Severity | Fix Summary |
+|----|---------|----------|-------------|
+| X1 | Evaluation IDs: `uuid.uuid4()` | Medium | Uses `deterministic_id("eval", manifest_id, check_id, evaluator_version)` |
+| X2 | Gate result IDs: `uuid.uuid4()` | Medium | Uses `deterministic_id("qgr", gate_id, version, decision, eval_ids)` |
+| X3 | Repair plan IDs: `uuid.uuid4()` | Medium | Uses `deterministic_id("repair", gate_result_id, regeneration_count)` |
+| X4 | Human review IDs: `uuid.uuid4()` | Medium | Already fixed earlier - `deterministic_id("review", run_id, stage_id, gate_id, target_hashes, action)` |
+| X5 | Quality report IDs: `uuid.uuid4()` | Medium | Uses `deterministic_id("qrpt", timestamp)` |
+| X6 | Validation report IDs: `uuid.uuid4()` | Medium | Uses `deterministic_id("vrpt", timestamp)` |
 
 ---
 
