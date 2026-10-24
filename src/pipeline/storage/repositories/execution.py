@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pipeline.contracts.config import EffectiveConfig
 from pipeline.contracts.execution import StageAttempt, StageInstance, WorkflowRun
 from pipeline.contracts.jobs import Job, Lease
-from pipeline.contracts.vocabularies import JobStatus, RunStatus
+from pipeline.contracts.vocabularies import JobStatus, RunStatus, StageExecutionStatus
 from pipeline.storage.errors import NotFoundError
 from pipeline.storage.repositories.base import SqliteRepository
 
@@ -98,6 +100,20 @@ class StageInstanceRepository(SqliteRepository[StageInstance]):
             "ORDER BY created_at, stage_instance_id",
             (run_id,),
         ).fetchall()
+        return [self.model.model_validate_json(row[0]) for row in rows]
+
+    def list_ready(self, *, limit: int | None = None) -> list[StageInstance]:
+        """List stage instances that are READY for job creation."""
+        query = (
+            "SELECT payload FROM stage_instances "
+            "WHERE execution_status = ? "
+            "ORDER BY created_at, stage_instance_id"
+        )
+        params: list[Any] = [StageExecutionStatus.READY.value]
+        if limit is not None:
+            query += " LIMIT ?"
+            params.append(limit)
+        rows = self.connection.execute(query, params).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
 
     def get_by_logical_item(

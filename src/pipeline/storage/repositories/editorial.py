@@ -219,9 +219,8 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
     def insert_decision(self, decision: HumanReviewDecision) -> None:
         sql = (
             "INSERT INTO human_review_decisions "
-            "(review_id, decision, reviewer, comments, target_hashes, "
-            "created_at, schema_version, payload) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            "(review_id, decision, reviewer, created_at, schema_version, payload) "
+            "VALUES (?, ?, ?, ?, ?, ?)"
         )
         self.connection.execute(
             sql,
@@ -229,8 +228,6 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
                 decision.review_id,
                 decision.decision.value,
                 decision.reviewer,
-                decision.comments,
-                "",
                 decision.created_at.isoformat(),
                 decision.schema_version,
                 decision.model_dump_json(),

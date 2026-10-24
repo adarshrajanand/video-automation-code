@@ -3,6 +3,8 @@
 Every claim, acknowledgement, retry, and expiry decision is a compare-and-set
 inside an explicit ``BEGIN IMMEDIATE`` transaction. Delivery is at-least-once;
 the inbox consumer makes a repeated delivery a no-op instead of a second effect.
+
+Also provides a JobDispatcher for enqueueing READY stage instances as jobs.
 """
 
 from __future__ import annotations
@@ -17,9 +19,11 @@ from typing import Protocol
 from pipeline.contracts.events import EventEnvelope, OutboxMessage
 from pipeline.contracts.vocabularies import OutboxStatus
 from pipeline.execution.inbox import InboxConsumer
+from pipeline.execution.jobs import JobFactory
 from pipeline.execution.retry import bounded_backoff_seconds, deterministic_jitter
 from pipeline.storage.database import Database
 from pipeline.storage.repositories.events import OutboxMessageRepository
+from pipeline.storage.repositories.execution import StageInstanceRepository
 
 DEFAULT_OUTBOX_LEASE_SECONDS = 30.0
 DEFAULT_MAX_DELIVERY_ATTEMPTS = 5
@@ -70,6 +74,16 @@ class DispatchResult:
     retried: int = 0
     failed: int = 0
     stale: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class JobDispatchResult:
+    """Result of one job dispatch pass."""
+
+    claimed: int = 0
+    enqueued: int = 0
+    skipped: int = 0
+    errors: int = 0
 
 
 class OutboxDispatcher:
@@ -310,6 +324,61 @@ class OutboxDispatcher:
             return DeliveryStatus.RETRIED
 
 
+class JobDispatcher:
+    """Claim READY stage instances and create claimable jobs for them."""
+
+    def __init__(
+        self,
+        database: Database,
+        *,
+        queue_name: str = "default",
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
+        self.database = database
+        self.queue_name = queue_name
+        self._clock = clock or _utc_now
+        self._job_factory = JobFactory(database, clock=self._clock)
+
+    def dispatch_once(self, *, limit: int | None = None) -> JobDispatchResult:
+        """Find READY stage instances and create jobs for them."""
+
+        if limit is not None and limit < 1:
+            raise ValueError("limit must be at least 1")
+
+        claimed = enqueued = skipped = errors = 0
+        now = self._clock()
+
+        with self.database.transaction(immediate=True) as conn:
+            si_repo = StageInstanceRepository(conn)
+            ready_instances = si_repo.list_ready(limit=limit)
+
+            for si in ready_instances:
+                claimed += 1
+                try:
+                    # Pass the connection to avoid nested transactions
+                    result = self._job_factory.create_job(
+                        si,
+                        queue_name=self.queue_name,
+                        available_at=now,
+                        connection=conn,
+                    )
+                    if result.created:
+                        enqueued += 1
+                    else:
+                        skipped += 1
+                except Exception as error:
+                    errors += 1
+                    # Log error but continue with other instances
+                    print(f"Job creation failed for {si.stage_instance_id}: {error}")
+
+        return JobDispatchResult(
+            claimed=claimed,
+            enqueued=enqueued,
+            skipped=skipped,
+            errors=errors,
+        )
+
+
 def _utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -320,6 +389,8 @@ __all__ = [
     "DeliveryResult",
     "DeliveryStatus",
     "DispatchResult",
+    "JobDispatchResult",
+    "JobDispatcher",
     "NoopOutboxHandler",
     "OutboxDeliveryHandler",
     "OutboxDispatcher",

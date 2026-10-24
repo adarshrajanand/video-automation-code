@@ -247,8 +247,7 @@ class EvaluatorHarness:
                 exp_fc = sorted(expected_dim.failure_codes)
                 act_fc = sorted(actual_dim.failure_codes)
                 msg = (
-                    f"dimension {name!r} failure_codes: "
-                    f"expected {exp_fc}, got {act_fc}"
+                    f"dimension {name!r} failure_codes: expected {exp_fc}, got {act_fc}"
                 )
                 mismatches.append(msg)
 

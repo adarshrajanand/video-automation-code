@@ -167,11 +167,10 @@ class HumanReviewManager:
             )
 
             # Update review status
-            review = HumanReview(
-                **review.model_dump(),
-                status=ReviewStatus.RESOLVED,
-                resolved_at=datetime.now(UTC),
-            )
+            review_data = review.model_dump()
+            review_data["status"] = ReviewStatus.RESOLVED
+            review_data["resolved_at"] = datetime.now(UTC)
+            review = HumanReview(**review_data)
             repo.update(review)
             repo.insert_decision(review_decision)
 

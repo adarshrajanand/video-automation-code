@@ -27,6 +27,7 @@ from pipeline.execution import (
     WorkerLoop,
 )
 from pipeline.paths import default_database_path
+from pipeline.report import generate_validation_report
 from pipeline.setup_checks import CheckStatus, SetupReport, collect_checks
 from pipeline.storage import Database, MigrationError, MigrationRunner
 from pipeline.workflow import (
@@ -516,6 +517,181 @@ def build_parser() -> argparse.ArgumentParser:
         help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
     )
 
+    # Validation report command
+    report = subparsers.add_parser(
+        "report",
+        help="generate validation report for a workflow run",
+        description=(
+            "Produce a comprehensive markdown validation report including "
+            "environment, run manifest, artifact graph, quality results, "
+            "fault injection results, timing, provider usage, and regeneration summary."
+        ),
+    )
+    report.add_argument(
+        "--run-id",
+        required=True,
+        help="workflow run ID to report on",
+    )
+    report.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="output markdown file path (default: stdout)",
+    )
+    report.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+
+    # Artifact graph command
+    artifact = subparsers.add_parser(
+        "artifact",
+        help="artifact inspection tooling",
+        description="Inspect artifact lineage and dependency graphs.",
+    )
+    artifact_subparsers = artifact.add_subparsers(
+        dest="artifact_command", metavar="ACTION"
+    )
+    artifact_graph = artifact_subparsers.add_parser(
+        "graph",
+        help="print artifact dependency graph for a run",
+        description="Display the artifact dependency graph as text or DOT format.",
+    )
+    artifact_graph.add_argument(
+        "--run-id",
+        required=True,
+        help="workflow run ID",
+    )
+    artifact_graph.add_argument(
+        "--format",
+        choices=["text", "dot"],
+        default="text",
+        help="output format (default: text)",
+    )
+    artifact_graph.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+
+    # Run status command
+    run = subparsers.add_parser(
+        "run",
+        help="workflow run inspection",
+        description="Inspect workflow run status and details.",
+    )
+    run_subparsers = run.add_subparsers(dest="run_command", metavar="ACTION")
+    run_status = run_subparsers.add_parser(
+        "status",
+        help="show workflow run status and summary",
+        description="Display the current status and summary of a workflow run.",
+    )
+    run_status.add_argument(
+        "--run-id",
+        required=True,
+        help="workflow run ID",
+    )
+    run_status.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+
+    # Job dispatch command
+    job = subparsers.add_parser(
+        "job",
+        help="job queue tooling",
+        description="Dispatch and inspect jobs in the local queue.",
+    )
+    job_subparsers = job.add_subparsers(dest="job_command", metavar="ACTION")
+    job_dispatch = job_subparsers.add_parser(
+        "dispatch",
+        help="dispatch pending jobs to the queue",
+        description=(
+            "Claim and enqueue READY stage instances as jobs. "
+            "Use --once for a single pass."
+        ),
+    )
+    job_dispatch.add_argument(
+        "--once",
+        action="store_true",
+        required=True,
+        help="run one dispatch pass (the supported local mode)",
+    )
+    job_dispatch.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+
+    # Review commands (alias for human-review with simpler names)
+    review = subparsers.add_parser(
+        "review",
+        help="human review management (alias for human-review)",
+        description="List and decide human review requests.",
+    )
+    review_subparsers = review.add_subparsers(dest="review_command", metavar="ACTION")
+    review_list = review_subparsers.add_parser(
+        "list",
+        help="list human review requests",
+        description="List open or resolved human review requests.",
+    )
+    review_list.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+    review_list.add_argument(
+        "--run-id",
+        default=None,
+        help="filter by run ID",
+    )
+    review_list.add_argument(
+        "--status",
+        choices=["OPEN", "ASSIGNED", "RESOLVED", "EXPIRED", "CANCELLED"],
+        default=None,
+        help="filter by review status",
+    )
+    review_decide = review_subparsers.add_parser(
+        "decide",
+        help="record a human review decision",
+        description=(
+            "Record a reviewer decision: APPROVE, REGENERATE_SCENE, "
+            "REGENERATE_STAGE, or REJECT."
+        ),
+    )
+    review_decide.add_argument(
+        "review_id",
+        help="review ID to decide",
+    )
+    review_decide.add_argument(
+        "decision",
+        choices=["APPROVE", "REGENERATE_SCENE", "REGENERATE_STAGE", "REJECT"],
+        help="review decision",
+    )
+    review_decide.add_argument(
+        "--reviewer",
+        required=True,
+        help="reviewer identifier",
+    )
+    review_decide.add_argument(
+        "--comments",
+        default=None,
+        help="optional reviewer comments",
+    )
+    review_decide.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+
     return parser
 
 
@@ -577,6 +753,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_quality_command(arguments)
     if arguments.command == "human-review":
         return _run_human_review_command(arguments)
+    if arguments.command == "report":
+        return _run_report_command(arguments)
+    if arguments.command == "artifact":
+        return _run_artifact_command(arguments)
+    if arguments.command == "run":
+        return _run_run_command(arguments)
+    if arguments.command == "job":
+        return _run_job_command(arguments)
+    if arguments.command == "review":
+        return _run_review_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
 
@@ -1446,6 +1632,258 @@ def _run_human_review_command(arguments: argparse.Namespace) -> int:
 
         traceback.print_exc()
         return 1
+
+
+def _run_report_command(arguments: argparse.Namespace) -> int:
+    try:
+        database = _migrated_database(arguments.database)
+        report = generate_validation_report(database, arguments.run_id)
+
+        markdown = report.to_markdown()
+        if arguments.output:
+            arguments.output.parent.mkdir(parents=True, exist_ok=True)
+            arguments.output.write_text(markdown, encoding="utf-8")
+            print(f"Validation report written to {arguments.output}")
+        else:
+            print(markdown)
+        return 0
+    except Exception as error:
+        print(
+            f"Report generation failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+
+def _run_artifact_command(arguments: argparse.Namespace) -> int:
+    if arguments.artifact_command is None:
+        print(
+            "Usage: python -m pipeline artifact graph "
+            "--run-id RUN_ID [--format text|dot]"
+        )
+        return 0
+    if arguments.artifact_command != "graph":
+        print(f"Unknown artifact action: {arguments.artifact_command}", file=sys.stderr)
+        return 2
+    try:
+        database = _migrated_database(arguments.database)
+        with database.transaction() as conn:
+            from pipeline.storage.repositories.artifacts import (
+                ArtifactDependencyRepository,
+                ArtifactRepository,
+            )
+            from pipeline.storage.repositories.execution import WorkflowRunRepository
+
+            # Verify run exists
+            run_repo = WorkflowRunRepository(conn)
+            try:
+                run_repo.get(arguments.run_id)
+            except Exception:
+                print(f"Run {arguments.run_id} not found", file=sys.stderr)
+                return 1
+
+            artifact_repo = ArtifactRepository(conn)
+            artifacts = artifact_repo.list_for_run(arguments.run_id)
+
+            dep_repo = ArtifactDependencyRepository(conn)
+            dependencies = []
+            for artifact in artifacts:
+                deps = dep_repo.list_for_parent(artifact.artifact_id)
+                dependencies.extend(deps)
+
+        if arguments.format == "dot":
+            _print_artifact_graph_dot(artifacts, dependencies)
+        else:
+            _print_artifact_graph_text(artifacts, dependencies)
+        return 0
+    except Exception as error:
+        print(
+            f"Artifact graph failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+
+def _print_artifact_graph_text(artifacts: list, dependencies: list) -> None:
+    print(
+        "Artifact Graph for "
+        f"{len(artifacts)} artifacts, {len(dependencies)} dependencies"
+    )
+    print()
+    # Group by logical slot
+    by_slot: dict[str, list] = {}
+    for artifact in artifacts:
+        by_slot.setdefault(artifact.logical_slot, []).append(artifact)
+
+    for slot, slot_artifacts in sorted(by_slot.items()):
+        print(f"Slot: {slot}")
+        for artifact in sorted(slot_artifacts, key=lambda a: a.version):
+            sha_short = artifact.sha256[:16]
+            print(
+                f"  v{artifact.version} {artifact.artifact_id} "
+                f"[{artifact.artifact_type}] {sha_short}... "
+                f"({artifact.state.value})"
+            )
+        print()
+
+    print("Dependencies:")
+    for dep in dependencies:
+        parent = dep.parent_artifact_id
+        child = dep.child_artifact_id
+        dtype = dep.dependency_type
+        print(f"  {parent} --({dtype})--> {child}")
+
+
+def _print_artifact_graph_dot(artifacts: list, dependencies: list) -> None:
+    print("digraph artifact_graph {")
+    print("  rankdir=LR;")
+    print("  node [shape=box];")
+    for artifact in artifacts:
+        label = (
+            f"{artifact.logical_slot}\\nv{artifact.version}\\n"
+            f"{artifact.artifact_id[:12]}"
+        )
+        color = "lightgreen" if artifact.state.value == "ACCEPTED" else "lightyellow"
+        print(
+            f'  "{artifact.artifact_id}" [label="{label}", '
+            f"style=filled, fillcolor={color}];"
+        )
+    for dep in dependencies:
+        print(
+            f'  "{dep.parent_artifact_id}" -> "{dep.child_artifact_id}" '
+            f'[label="{dep.dependency_type}"];'
+        )
+    print("}")
+
+
+def _run_run_command(arguments: argparse.Namespace) -> int:
+    if arguments.run_command is None:
+        print("Usage: python -m pipeline run status --run-id RUN_ID")
+        return 0
+    if arguments.run_command != "status":
+        print(f"Unknown run action: {arguments.run_command}", file=sys.stderr)
+        return 2
+    try:
+        database = _migrated_database(arguments.database)
+        with database.transaction() as conn:
+            from pipeline.storage.repositories.artifacts import ArtifactRepository
+            from pipeline.storage.repositories.execution import (
+                StageAttemptRepository,
+                StageInstanceRepository,
+                WorkflowRunRepository,
+            )
+
+            run_repo = WorkflowRunRepository(conn)
+            run = run_repo.get(arguments.run_id)
+
+            si_repo = StageInstanceRepository(conn)
+            stage_instances = si_repo.list_for_run(arguments.run_id)
+
+            sa_repo = StageAttemptRepository(conn)
+            all_attempts = []
+            for si in stage_instances:
+                attempts = sa_repo.list_for_stage_instance(si.stage_instance_id)
+                all_attempts.extend(attempts)
+
+            artifact_repo = ArtifactRepository(conn)
+            artifacts = artifact_repo.list_for_run(arguments.run_id)
+
+        print(f"Run: {run.run_id}")
+        print(f"  Key: {run.run_key}")
+        print(f"  Workflow: {run.workflow_id} v{run.workflow_version}")
+        print(f"  Status: {run.status.value}")
+        config_short = run.effective_config_hash[:16]
+        print(f"  Config: {run.effective_config_id} ({config_short}...)")
+        print(f"  Package: {run.content_package_id}")
+        print(f"  Created: {run.created_at.isoformat()}")
+        print(f"  Updated: {run.updated_at.isoformat()}")
+        print()
+        print(f"Stage Instances ({len(stage_instances)}):")
+        for si in stage_instances:
+            attempts = [
+                a for a in all_attempts if a.stage_instance_id == si.stage_instance_id
+            ]
+            latest = max(attempts, key=lambda a: a.attempt_number) if attempts else None
+            print(f"  {si.stage_instance_id} [{si.node_id}] item={si.logical_item_key}")
+            print(
+                f"    Exec: {si.execution_status.value} "
+                f"| Accept: {si.acceptance_status.value}"
+            )
+            print(
+                f"    Gate: {si.quality_gate_id or 'N/A'} "
+                f"| Attempt: {si.active_attempt_id or 'N/A'}"
+            )
+            if latest:
+                print(
+                    f"    Latest Attempt: {latest.attempt_id} "
+                    f"#{latest.attempt_number} [{latest.status.value}]"
+                )
+        print()
+        print(f"Total Attempts: {len(all_attempts)}")
+        print(f"Total Artifacts: {len(artifacts)}")
+        return 0
+    except Exception as error:
+        print(
+            f"Run status failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+
+def _run_job_command(arguments: argparse.Namespace) -> int:
+    if arguments.job_command is None:
+        print("Usage: python -m pipeline job dispatch --once [--database PATH]")
+        return 0
+    if arguments.job_command != "dispatch":
+        print(f"Unknown job action: {arguments.job_command}", file=sys.stderr)
+        return 2
+    try:
+        from pipeline.execution.dispatcher import JobDispatcher
+
+        database = _migrated_database(arguments.database)
+        dispatcher = JobDispatcher(database)
+        result = dispatcher.dispatch_once()
+        print(
+            f"Job dispatch: claimed={result.claimed} enqueued={result.enqueued} "
+            f"skipped={result.skipped} errors={result.errors}."
+        )
+        print(f"Database: {database.path}")
+        return 0
+    except Exception as error:
+        print(
+            f"Job dispatch failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+
+def _run_review_command(arguments: argparse.Namespace) -> int:
+    # Delegate to human-review command handlers
+    # Create a mock arguments namespace for human-review
+    import argparse
+
+    hr_args = argparse.Namespace()
+    hr_args.database = arguments.database
+    hr_args.human_review_command = arguments.review_command
+    hr_args.run_id = getattr(arguments, "run_id", None)
+    hr_args.status = getattr(arguments, "status", None)
+    hr_args.review_id = getattr(arguments, "review_id", None)
+    hr_args.decision = getattr(arguments, "decision", None)
+    hr_args.reviewer = getattr(arguments, "reviewer", None)
+    hr_args.comments = getattr(arguments, "comments", None)
+    return _run_human_review_command(hr_args)
 
 
 if __name__ == "__main__":  # pragma: no cover
