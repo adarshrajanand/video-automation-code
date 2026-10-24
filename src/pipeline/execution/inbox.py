@@ -106,12 +106,17 @@ class InboxConsumer:
             raise
 
     def ignore(self, event: EventEnvelope, *, consumer_id: str) -> InboxReceipt:
-        """Record a deliberate no-op receipt for an event."""
+        """Record a deliberate no-op receipt for an event.
 
+        Preserves existing PROCESSED status - cannot downgrade from PROCESSED.
+        """
         now = self._clock()
         with self.database.transaction(immediate=True) as connection:
             repository = InboxReceiptRepository(connection)
             existing = repository.get_receipt(consumer_id, event.event_id)
+            if existing is not None and existing.status is InboxStatus.PROCESSED:
+                # Cannot downgrade PROCESSED to IGNORED
+                return existing
             receipt = InboxReceipt(
                 schema_version="inbox-receipt.v1",
                 consumer_id=consumer_id,

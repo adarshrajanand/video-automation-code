@@ -155,8 +155,9 @@ class OutboxDispatcher:
             return claimed
 
     def ack(self, message: OutboxMessage) -> bool:
-        """Mark one message delivered only when this dispatcher still owns it."""
-
+        """Mark one message delivered only when this dispatcher still owns it
+        and the lease has not expired.
+        """
         now = self._clock()
         with self.database.transaction(immediate=True) as connection:
             repository = OutboxMessageRepository(connection)
@@ -164,6 +165,10 @@ class OutboxDispatcher:
             if (
                 current.status is not OutboxStatus.CLAIMED
                 or current.claimed_by != self.dispatcher_id
+                or (
+                    current.lease_expires_at is not None
+                    and current.lease_expires_at <= now
+                )
             ):
                 return False
             delivered = current.model_copy(
@@ -185,10 +190,13 @@ class OutboxDispatcher:
         acknowledge: bool = True,
     ) -> DeliveryResult:
         """Run the deduplicated consumer effect for one claimed message."""
+        now = self._clock()
 
         if message.status is not OutboxStatus.CLAIMED:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
         if message.claimed_by != self.dispatcher_id:
+            return DeliveryResult(status=DeliveryStatus.STALE, message=message)
+        if message.lease_expires_at is not None and message.lease_expires_at <= now:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
         try:
             processed = self._inbox.process(
@@ -340,7 +348,11 @@ class JobDispatcher:
         self._job_factory = JobFactory(database, clock=self._clock)
 
     def dispatch_once(self, *, limit: int | None = None) -> JobDispatchResult:
-        """Find READY stage instances and create jobs for them."""
+        """Find READY stage instances and create jobs for them.
+
+        Uses per-item savepoints so a failure on one item does not roll back
+        successful enqueues of other items in the same batch.
+        """
 
         if limit is not None and limit < 1:
             raise ValueError("limit must be at least 1")
@@ -354,8 +366,9 @@ class JobDispatcher:
 
             for si in ready_instances:
                 claimed += 1
+                # Per-item savepoint
+                conn.execute("SAVEPOINT job_item")
                 try:
-                    # Pass the connection to avoid nested transactions
                     result = self._job_factory.create_job(
                         si,
                         queue_name=self.queue_name,
@@ -366,8 +379,11 @@ class JobDispatcher:
                         enqueued += 1
                     else:
                         skipped += 1
+                    conn.execute("RELEASE SAVEPOINT job_item")
                 except Exception as error:
                     errors += 1
+                    conn.execute("ROLLBACK TO SAVEPOINT job_item")
+                    conn.execute("RELEASE SAVEPOINT job_item")
                     # Log error but continue with other instances
                     print(f"Job creation failed for {si.stage_instance_id}: {error}")
 
