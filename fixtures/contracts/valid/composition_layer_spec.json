@@ -1,0 +1,11 @@
+{
+  "layer_id": "layer_01",
+  "kind": "VIDEO",
+  "schema_version": "composition-layer-spec.v1",
+  "start_frame": 0,
+  "end_frame": 300,
+  "asset_instance_id": null,
+  "payload_artifact_id": null,
+  "z_index": 0,
+  "properties": {}
+}

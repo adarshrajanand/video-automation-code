@@ -334,6 +334,10 @@ def build_parser() -> argparse.ArgumentParser:
                 "asr_alignment",
                 "audio_qc_pass",
                 "audio_qc_fail",
+                "composition",
+                "rendering",
+                "assembly",
+                "short_derivative",
             ]
         ),
         help="scripted outcome to return",
@@ -691,8 +695,12 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
             CapabilityRegistry,
             FakeCapabilityProvider,
             create_asr_alignment_success_outcome,
+            create_assembly_success_outcome,
             create_audio_qc_failure_outcome,
             create_audio_qc_success_outcome,
+            create_composition_success_outcome,
+            create_rendering_success_outcome,
+            create_short_derivative_success_outcome,
             create_speech_generation_success_outcome,
             create_success_outcome,
             create_tts_adapter_success_outcome,
@@ -744,6 +752,10 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
             "asr_alignment": create_asr_alignment_success_outcome,
             "audio_qc_pass": create_audio_qc_success_outcome,
             "audio_qc_fail": create_audio_qc_failure_outcome,
+            "composition": create_composition_success_outcome,
+            "rendering": create_rendering_success_outcome,
+            "assembly": create_assembly_success_outcome,
+            "short_derivative": create_short_derivative_success_outcome,
         }
 
         outcome_factory = outcome_factories[arguments.fake_outcome]

@@ -149,12 +149,20 @@ class VisualPlanningOutputPayload(Contract):
 __all__ = [
     "ASRAlignmentInputPayload",
     "ASRAlignmentOutputPayload",
+    "AssemblyInputPayload",
+    "AssemblyOutputPayload",
     "AudioQCInputPayload",
     "AudioQCOutputPayload",
+    "CompositionInputPayload",
+    "CompositionOutputPayload",
+    "RenderingInputPayload",
+    "RenderingOutputPayload",
     "ResearchInputPayload",
     "ResearchOutputPayload",
     "ScriptGenerationInputPayload",
     "ScriptGenerationOutputPayload",
+    "ShortDerivativeInputPayload",
+    "ShortDerivativeOutputPayload",
     "SpeechGenerationInputPayload",
     "SpeechGenerationOutputPayload",
     "TTSAdapterInputPayload",
@@ -301,4 +309,129 @@ class AudioQCOutputPayload(Contract):
     narration_text_hash: Sha256Hex
     omitted_phrases: list[NonEmptyStr] = Field(default_factory=list)
     changed_phrases: list[NonEmptyStr] = Field(default_factory=list)
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+
+class CompositionInputPayload(Contract):
+    """Input payload for the composition capability."""
+
+    schema_version: Literal["composition-input.v1"]
+    cut_id: OpaqueId
+    script_id: OpaqueId
+    speech_manifest_id: OpaqueId
+    visual_intent_ids: list[OpaqueId] = Field(default_factory=list)
+    asset_instance_ids: list[OpaqueId] = Field(default_factory=list)
+    render_profile_id: OpaqueId
+    duration_policy_id: OpaqueId
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_composition_input(self) -> CompositionInputPayload:
+        for field_name in ("visual_intent_ids", "asset_instance_ids"):
+            values = getattr(self, field_name)
+            if len(set(values)) != len(values):
+                raise ValueError(f"{field_name} must not contain duplicates")
+        return self
+
+
+class CompositionOutputPayload(Contract):
+    """Output payload for the composition capability."""
+
+    schema_version: Literal["composition-output.v1"]
+    composition_artifact_id: OpaqueId
+    cut_id: OpaqueId
+    render_profile_id: OpaqueId
+    sequence_count: PositiveInt
+    scene_count: PositiveInt
+    shot_count: PositiveInt
+    layer_count: PositiveInt
+    audio_track_count: NonNegativeInt
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+
+class RenderingInputPayload(Contract):
+    """Input payload for the rendering capability."""
+
+    schema_version: Literal["rendering-input.v1"]
+    composition_artifact_id: OpaqueId
+    render_profile_id: OpaqueId
+    chunk_spec: Literal["COMPLETE_CUT", "CHUNKED"] = "COMPLETE_CUT"
+    chunk_frame_ranges: list[tuple[NonNegativeInt, PositiveInt]] = Field(
+        default_factory=list
+    )
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+
+class RenderingOutputPayload(Contract):
+    """Output payload for the rendering capability."""
+
+    schema_version: Literal["rendering-output.v1"]
+    composition_artifact_id: OpaqueId
+    render_profile_id: OpaqueId
+    chunk_manifest_ids: list[OpaqueId] = Field(default_factory=list)
+    complete_cut_artifact_id: OpaqueId | None = None
+    chunked: bool = False
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_rendering_output(self) -> RenderingOutputPayload:
+        if len(set(self.chunk_manifest_ids)) != len(self.chunk_manifest_ids):
+            raise ValueError("chunk_manifest_ids must not contain duplicates")
+        if not self.chunked and self.complete_cut_artifact_id is None:
+            raise ValueError("complete_cut_artifact_id required when not chunked")
+        if self.chunked and not self.chunk_manifest_ids:
+            raise ValueError("chunk_manifest_ids required when chunked")
+        return self
+
+
+class AssemblyInputPayload(Contract):
+    """Input payload for the assembly capability."""
+
+    schema_version: Literal["assembly-input.v1"]
+    composition_artifact_id: OpaqueId
+    render_profile_id: OpaqueId
+    chunk_manifest_ids: list[OpaqueId] = Field(default_factory=list)
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_assembly_input(self) -> AssemblyInputPayload:
+        if len(set(self.chunk_manifest_ids)) != len(self.chunk_manifest_ids):
+            raise ValueError("chunk_manifest_ids must not contain duplicates")
+        if not self.chunk_manifest_ids:
+            raise ValueError("chunk_manifest_ids must not be empty")
+        return self
+
+
+class AssemblyOutputPayload(Contract):
+    """Output payload for the assembly capability."""
+
+    schema_version: Literal["assembly-output.v1"]
+    assembly_artifact_id: OpaqueId
+    cut_id: OpaqueId
+    composition_artifact_id: OpaqueId
+    render_profile_id: OpaqueId
+    output_artifact_id: OpaqueId
+    continuity_checks_passed: bool
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+
+class ShortDerivativeInputPayload(Contract):
+    """Input payload for the short_derivative capability."""
+
+    schema_version: Literal["short-derivative-input.v1"]
+    cut_id: OpaqueId
+    source_composition_artifact_id: OpaqueId
+    target_render_profile_id: OpaqueId
+    selection_manifest_id: OpaqueId
+    metadata: ExtensionObject = Field(default_factory=dict)
+
+
+class ShortDerivativeOutputPayload(Contract):
+    """Output payload for the short_derivative capability."""
+
+    schema_version: Literal["short-derivative-output.v1"]
+    short_cut_artifact_id: OpaqueId
+    selection_manifest_id: OpaqueId
+    target_render_profile_id: OpaqueId
+    output_artifact_id: OpaqueId
     metadata: ExtensionObject = Field(default_factory=dict)

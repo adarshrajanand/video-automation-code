@@ -1,0 +1,20 @@
+{
+  "render_profile_id": "landscape_1080p_30_v1",
+  "name": "Landscape 1080p30",
+  "schema_version": "render-profile.v1",
+  "width": 1920,
+  "height": 1080,
+  "frame_rate": 30,
+  "video_codec": "libx264",
+  "video_bitrate_kbps": 8000,
+  "audio_codec": "aac",
+  "audio_bitrate_kbps": 192,
+  "audio_sample_rate": 48000,
+  "pixel_format": "yuv420p",
+  "color_space": "bt709",
+  "profile": "high",
+  "level": "4.1",
+  "preset": "medium",
+  "crf": 18,
+  "metadata": {}
+}

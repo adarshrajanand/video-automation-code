@@ -1,0 +1,11 @@
+{
+  "audio_track_id": "audio_track_01",
+  "kind": "VOICE",
+  "schema_version": "composition-audio-track-spec.v1",
+  "start_frame": 0,
+  "end_frame": 300,
+  "audio_artifact_id": "artifact_audio_01",
+  "volume": 1.0,
+  "fade_in_frames": 0,
+  "fade_out_frames": 0
+}

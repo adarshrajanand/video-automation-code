@@ -531,8 +531,153 @@ def create_content_stage_success_outcome(capability: str) -> ScriptedOutcome:
         return create_asr_alignment_success_outcome()
     elif capability == "audio_qc":
         return create_audio_qc_success_outcome()
+    elif capability == "composition":
+        return create_composition_success_outcome()
+    elif capability == "rendering":
+        return create_rendering_success_outcome()
+    elif capability == "assembly":
+        return create_assembly_success_outcome()
+    elif capability == "short_derivative":
+        return create_short_derivative_success_outcome()
     else:
         return create_success_outcome()
+
+
+# FV-09: Composition, rendering, assembly, short_derivative outcome factories
+
+
+def create_composition_success_outcome(
+    sequence_count: int = 3,
+    scene_count: int = 10,
+    shot_count: int = 25,
+    layer_count: int = 50,
+    audio_track_count: int = 5,
+) -> ScriptedOutcome:
+    """Create a successful composition outcome with deterministic artifact IDs."""
+    artifact_ids = [f"artifact_composition_{i:02d}" for i in range(1, 4)]
+    artifact_ids.append(f"composition_manifest_{sequence_count:02d}")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "composition",
+            "sequence_count": sequence_count,
+            "scene_count": scene_count,
+            "shot_count": shot_count,
+            "layer_count": layer_count,
+            "audio_track_count": audio_track_count,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=500,
+            output_units=1000,
+            runtime_seconds=3.0,
+            estimated_cost_minor=800,
+            actual_cost_minor=800,
+        ),
+    )
+
+
+def create_rendering_success_outcome(
+    chunked: bool = False,
+    chunk_count: int = 3,
+) -> ScriptedOutcome:
+    """Create a successful rendering outcome with deterministic artifact IDs."""
+    artifact_ids = []
+    if chunked:
+        for i in range(chunk_count):
+            artifact_ids.append(f"artifact_render_chunk_{i + 1:02d}")
+            artifact_ids.append(f"manifest_chunk_{i + 1:02d}")
+    else:
+        artifact_ids.append("artifact_complete_cut_01")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "rendering",
+            "chunked": chunked,
+            "chunk_count": chunk_count if chunked else 0,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=2000,
+            output_units=5000,
+            runtime_seconds=30.0,
+            estimated_cost_minor=2000,
+            actual_cost_minor=2000,
+        ),
+    )
+
+
+def create_assembly_success_outcome(
+    chunk_count: int = 3,
+) -> ScriptedOutcome:
+    """Create a successful assembly outcome with deterministic artifact IDs."""
+    artifact_ids = ["artifact_assembly_01", "artifact_final_cut_01"]
+    for i in range(chunk_count):
+        artifact_ids.append(f"manifest_chunk_{i + 1:02d}")
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "assembly",
+            "chunk_count": chunk_count,
+            "continuity_checks_passed": True,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=500,
+            output_units=1000,
+            runtime_seconds=5.0,
+            estimated_cost_minor=500,
+            actual_cost_minor=500,
+        ),
+    )
+
+
+def create_short_derivative_success_outcome() -> ScriptedOutcome:
+    """Create a successful short_derivative outcome with deterministic artifact IDs."""
+    artifact_ids = ["artifact_short_cut_01", "short_selection_manifest_01"]
+
+    return ScriptedOutcome(
+        schema_version="scripted-outcome.v1",
+        status="SUCCEEDED",
+        artifact_ids=artifact_ids,
+        metadata={
+            "fake": True,
+            "outcome": "success",
+            "capability": "short_derivative",
+            "vertical_composition": True,
+        },
+        usage=UsageRecord(
+            schema_version="usage.v1",
+            provider="fake",
+            model="deterministic-fixture",
+            input_units=300,
+            output_units=800,
+            runtime_seconds=4.0,
+            estimated_cost_minor=600,
+            actual_cost_minor=600,
+        ),
+    )
 
 
 # Audio-stage specific outcome factories
@@ -767,6 +912,23 @@ FAKE_OUTCOME_FACTORIES: dict[str, tuple[str, str]] = {
         "create_audio_qc_failure_outcome",
         "Audio QC failure with omitted/changed phrases",
     ),
+    # FV-09: Composition, rendering, assembly, short_derivative outcomes
+    "composition": (
+        "create_composition_success_outcome",
+        "Composition success with render manifest",
+    ),
+    "rendering": (
+        "create_rendering_success_outcome",
+        "Rendering success with chunk manifests or complete cut",
+    ),
+    "assembly": (
+        "create_assembly_success_outcome",
+        "Assembly success with final cut artifact",
+    ),
+    "short_derivative": (
+        "create_short_derivative_success_outcome",
+        "Short derivative success with vertical composition",
+    ),
 }
 
 # Export all factory functions
@@ -775,12 +937,16 @@ __all__ = [
     "FakeCapabilityProvider",
     "FakeOutcomeSpec",
     "create_asr_alignment_success_outcome",
+    "create_assembly_success_outcome",
     "create_audio_qc_failure_outcome",
     "create_audio_qc_success_outcome",
+    "create_composition_success_outcome",
     "create_content_stage_success_outcome",
     "create_failed_outcome",
+    "create_rendering_success_outcome",
     "create_research_success_outcome",
     "create_script_generation_success_outcome",
+    "create_short_derivative_success_outcome",
     "create_speech_generation_success_outcome",
     "create_success_outcome",
     "create_tts_adapter_success_outcome",

@@ -1,0 +1,75 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:RenderingInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the rendering capability.",
+  "properties": {
+    "chunk_frame_ranges": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "minimum": 0,
+            "type": "integer"
+          },
+          {
+            "minimum": 1,
+            "type": "integer"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Chunk Frame Ranges",
+      "type": "array"
+    },
+    "chunk_spec": {
+      "default": "COMPLETE_CUT",
+      "enum": [
+        "COMPLETE_CUT",
+        "CHUNKED"
+      ],
+      "title": "Chunk Spec",
+      "type": "string"
+    },
+    "composition_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Composition Artifact Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Render Profile Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "rendering-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "composition_artifact_id",
+    "render_profile_id"
+  ],
+  "title": "RenderingInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "rendering-input.v1"
+}

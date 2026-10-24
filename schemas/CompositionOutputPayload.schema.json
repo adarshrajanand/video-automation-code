@@ -1,0 +1,85 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:CompositionOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the composition capability.",
+  "properties": {
+    "audio_track_count": {
+      "minimum": 0,
+      "title": "Audio Track Count",
+      "type": "integer"
+    },
+    "composition_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Composition Artifact Id",
+      "type": "string"
+    },
+    "cut_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Cut Id",
+      "type": "string"
+    },
+    "layer_count": {
+      "minimum": 1,
+      "title": "Layer Count",
+      "type": "integer"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Render Profile Id",
+      "type": "string"
+    },
+    "scene_count": {
+      "minimum": 1,
+      "title": "Scene Count",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "composition-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sequence_count": {
+      "minimum": 1,
+      "title": "Sequence Count",
+      "type": "integer"
+    },
+    "shot_count": {
+      "minimum": 1,
+      "title": "Shot Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "composition_artifact_id",
+    "cut_id",
+    "render_profile_id",
+    "sequence_count",
+    "scene_count",
+    "shot_count",
+    "layer_count",
+    "audio_track_count"
+  ],
+  "title": "CompositionOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "composition-output.v1"
+}

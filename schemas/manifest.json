@@ -31,6 +31,24 @@
       "sha256": "23715b4840b6afffab02fa485ef54254f42add83f93b8d8231b9b58cae4d0393"
     },
     {
+      "model": "AssemblyInputPayload",
+      "schema_file": "AssemblyInputPayload.schema.json",
+      "schema_version": "assembly-input.v1",
+      "sha256": "39db3aa91227929375b6f6575edf66952fa87e1d77cc6c0b25d4a03ebcc61e84"
+    },
+    {
+      "model": "AssemblyManifest",
+      "schema_file": "AssemblyManifest.schema.json",
+      "schema_version": "assembly-manifest.v1",
+      "sha256": "1bfef308f0a666789a3790e63a26c89fc8e11737a795819e608ab8de4a051fc3"
+    },
+    {
+      "model": "AssemblyOutputPayload",
+      "schema_file": "AssemblyOutputPayload.schema.json",
+      "schema_version": "assembly-output.v1",
+      "sha256": "0c5add5a7d0c5aab814ac14c783664f5020c3ab45be73971236a92c80a199fc7"
+    },
+    {
       "model": "AudioQCInputPayload",
       "schema_file": "AudioQCInputPayload.schema.json",
       "schema_version": "audio-qc-input.v1",
@@ -103,10 +121,64 @@
       "sha256": "81b0ca9ab06e5e80b4084bf0d03e53484bd5003e6de0e41ed530b4c824fcbf4a"
     },
     {
+      "model": "CompositionAudioTrackSpec",
+      "schema_file": "CompositionAudioTrackSpec.schema.json",
+      "schema_version": "composition-audio-track-spec.v1",
+      "sha256": "5e4418e51fa4d0f9e83b6fa6ff5cbb682b4772ca8c90ee6ee1b4aadd74bfa2be"
+    },
+    {
+      "model": "CompositionAuthoringSpec",
+      "schema_file": "CompositionAuthoringSpec.schema.json",
+      "schema_version": "composition-authoring-spec.v1",
+      "sha256": "630dcb9c2e717b4ccc813d5f5ded06c3caf3d22f97eb47bbfe4fa55b97c421c0"
+    },
+    {
+      "model": "CompositionInputPayload",
+      "schema_file": "CompositionInputPayload.schema.json",
+      "schema_version": "composition-input.v1",
+      "sha256": "5765c59bd37127c59baecd09c1608577312a223a828f75e9cc24aa97e06e0aa2"
+    },
+    {
+      "model": "CompositionLayerSpec",
+      "schema_file": "CompositionLayerSpec.schema.json",
+      "schema_version": "composition-layer-spec.v1",
+      "sha256": "99159f1147a5467f696bad9f09650de91f71a0999c35c06afafefa719e1d13ed"
+    },
+    {
+      "model": "CompositionOutputPayload",
+      "schema_file": "CompositionOutputPayload.schema.json",
+      "schema_version": "composition-output.v1",
+      "sha256": "a1640fd08a6f2de748882123125a67caf702f0654ac010c1027a6bd985c52e63"
+    },
+    {
       "model": "CompositionRef",
       "schema_file": "CompositionRef.schema.json",
       "schema_version": "composition-ref.v1",
       "sha256": "6d0c74875a160e7c67d83b508cb4b72f34f68627c217260f1d1d7234f10217f3"
+    },
+    {
+      "model": "CompositionSceneSpec",
+      "schema_file": "CompositionSceneSpec.schema.json",
+      "schema_version": "composition-scene-spec.v1",
+      "sha256": "e094c6c0c952eb797d87cc8231fad0788588a1f570bb5022a06ca2b630045691"
+    },
+    {
+      "model": "CompositionSequenceSpec",
+      "schema_file": "CompositionSequenceSpec.schema.json",
+      "schema_version": "composition-sequence-spec.v1",
+      "sha256": "ab2a29455ccaae7c88effdc29b5c279a8943c3857e7920c742fa2beb25d73ba7"
+    },
+    {
+      "model": "CompositionShotSpec",
+      "schema_file": "CompositionShotSpec.schema.json",
+      "schema_version": "composition-shot-spec.v1",
+      "sha256": "760df5c428f0130d056f20e18fc81372437ab7d86e4a21e0554bd98371713f32"
+    },
+    {
+      "model": "CompositionSpec",
+      "schema_file": "CompositionSpec.schema.json",
+      "schema_version": "render-manifest.v1",
+      "sha256": "0262e479e7b35b2463de89f12a8c2d3850be41879fb35f00b0b99377f071662f"
     },
     {
       "model": "ConditionExpression",
@@ -313,6 +385,30 @@
       "sha256": "4c2f430fbec3974e336a72d022a82e75b4a0ddb88056744e40026e94df19af0c"
     },
     {
+      "model": "RenderChunkManifest",
+      "schema_file": "RenderChunkManifest.schema.json",
+      "schema_version": "render-chunk-manifest.v1",
+      "sha256": "370f7c544681fb42fb1a9048b2f18d6489d137d32deb69a78785ecf5ad7f47f0"
+    },
+    {
+      "model": "RenderProfile",
+      "schema_file": "RenderProfile.schema.json",
+      "schema_version": "render-profile.v1",
+      "sha256": "6bfdaa91b3bfbdd0e73bd98ea607c2855af30e6688e7dd5ea1060c7d497a1cf2"
+    },
+    {
+      "model": "RenderingInputPayload",
+      "schema_file": "RenderingInputPayload.schema.json",
+      "schema_version": "rendering-input.v1",
+      "sha256": "0f20857358c0e29bc2d8a2b706ba7098b94ee84cc8ce62784d3d3f0c610d3ce0"
+    },
+    {
+      "model": "RenderingOutputPayload",
+      "schema_file": "RenderingOutputPayload.schema.json",
+      "schema_version": "rendering-output.v1",
+      "sha256": "f22bc61dd4d9bb7ae316e0897bbc6c748fb4489e27e9d186e05253ccbb01f7d0"
+    },
+    {
       "model": "RepairPlan",
       "schema_file": "RepairPlan.schema.json",
       "schema_version": "repair-plan.v1",
@@ -329,6 +425,12 @@
       "schema_file": "ResearchOutputPayload.schema.json",
       "schema_version": "research-output.v1",
       "sha256": "52072c14793a4b167f5cce26822a6de4a4b8d5c89377c3b8e1f5e95486b4a7fe"
+    },
+    {
+      "model": "ResolvedArtifactRef",
+      "schema_file": "ResolvedArtifactRef.schema.json",
+      "schema_version": "resolved-artifact-ref.v1",
+      "sha256": "902ef944fd81cf0928d376c5d531b85244f8620bcee55f0eee64f29a9bba5c6b"
     },
     {
       "model": "ResourceAssignment",
@@ -407,6 +509,24 @@
       "schema_file": "Sequence.schema.json",
       "schema_version": "sequence.v1",
       "sha256": "24e5da196b78798c33466ce5b512628cf3833b39a6bb0c8f5b20d0f73de15872"
+    },
+    {
+      "model": "ShortDerivativeInputPayload",
+      "schema_file": "ShortDerivativeInputPayload.schema.json",
+      "schema_version": "short-derivative-input.v1",
+      "sha256": "ac40d8ce69273e1a8f817ab0d81aa6df70fcd41425e87ba18891aa884407054b"
+    },
+    {
+      "model": "ShortDerivativeOutputPayload",
+      "schema_file": "ShortDerivativeOutputPayload.schema.json",
+      "schema_version": "short-derivative-output.v1",
+      "sha256": "f68be38fa12068eae4dfb3c8094d1c0ed0eaccf30623285b8c5bdf9096120cf8"
+    },
+    {
+      "model": "ShortSelectionManifest",
+      "schema_file": "ShortSelectionManifest.schema.json",
+      "schema_version": "short-selection-manifest.v1",
+      "sha256": "4100990b80e526be872fd50fb1dc640872ec15807f147ce274047514e15917ee"
     },
     {
       "model": "Shot",
@@ -531,6 +651,6 @@
   ],
   "generated_by": "python -m pipeline contracts export-schemas",
   "manifest_version": "1",
-  "public_contract_count": 88,
+  "public_contract_count": 108,
   "schema_dialect": "https://json-schema.org/draft/2020-12/schema"
 }
