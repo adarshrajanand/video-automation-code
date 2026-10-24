@@ -12,6 +12,7 @@ from pipeline.contracts.editorial import (
     Sequence,
     Shot,
 )
+from pipeline.contracts.review import HumanReview, HumanReviewDecision
 from pipeline.storage.repositories.base import SqliteRepository
 
 
@@ -171,11 +172,95 @@ class CompositionRefRepository(SqliteRepository[CompositionRef]):
         return [self.model.model_validate_json(row[0]) for row in rows]
 
 
+class HumanReviewRepository(SqliteRepository[HumanReview]):
+    model = HumanReview
+    table = "human_reviews"
+    key_columns = ("review_id",)
+    columns = (
+        "review_id",
+        "run_id",
+        "stage_instance_id",
+        "gate_id",
+        "status",
+        "requested_action",
+        "created_at",
+        "resolved_at",
+    )
+    order_by = ("-created_at",)
+
+    def list(
+        self, run_id: str | None = None, status: str | None = None
+    ) -> list[HumanReview]:
+        query = "SELECT payload FROM human_reviews"
+        params: list[str] = []
+        conditions = []
+        if run_id is not None:
+            conditions.append("run_id = ?")
+            params.append(run_id)
+        if status is not None:
+            conditions.append("status = ?")
+            params.append(status)
+        if conditions:
+            query += " WHERE " + " AND ".join(conditions)
+        query += " ORDER BY created_at DESC"
+        rows = self.connection.execute(query, params).fetchall()
+        return [self.model.model_validate_json(row[0]) for row in rows]
+
+    def get_decision(self, review_id: str) -> HumanReviewDecision | None:
+        row = self.connection.execute(
+            "SELECT payload FROM human_review_decisions WHERE review_id = ? "
+            "ORDER BY decision_sequence DESC LIMIT 1",
+            (review_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        return HumanReviewDecision.model_validate_json(row[0])
+
+    def insert_decision(self, decision: HumanReviewDecision) -> None:
+        sql = (
+            "INSERT INTO human_review_decisions "
+            "(review_id, decision, reviewer, comments, target_hashes, "
+            "created_at, schema_version, payload) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        self.connection.execute(
+            sql,
+            (
+                decision.review_id,
+                decision.decision.value,
+                decision.reviewer,
+                decision.comments,
+                "",
+                decision.created_at.isoformat(),
+                decision.schema_version,
+                decision.model_dump_json(),
+            ),
+        )
+
+
+class HumanReviewDecisionRepository(SqliteRepository[HumanReviewDecision]):
+    model = HumanReviewDecision
+    table = "human_review_decisions"
+    key_columns = ("decision_sequence",)
+    columns = (
+        "decision_sequence",
+        "review_id",
+        "decision",
+        "reviewer",
+        "comments",
+        "target_hashes",
+        "created_at",
+    )
+    order_by = ("-decision_sequence",)
+
+
 __all__ = [
     "CompositionRefRepository",
     "ContentPackageRepository",
     "CutRepository",
     "EpisodeRepository",
+    "HumanReviewDecisionRepository",
+    "HumanReviewRepository",
     "LayerInstanceRepository",
     "SceneRepository",
     "SequenceRepository",

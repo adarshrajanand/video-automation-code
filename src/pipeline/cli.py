@@ -364,6 +364,158 @@ def build_parser() -> argparse.ArgumentParser:
         "--stage-instance-id",
         help="stage instance ID (generated if not provided)",
     )
+
+    # Quality commands
+    quality = subparsers.add_parser(
+        "quality",
+        help="quality gate, evaluation, and repair tooling",
+        description=(
+            "Run quality gates, inspect evaluations, and manage repair plans."
+        ),
+    )
+    quality_subparsers = quality.add_subparsers(
+        dest="quality_command", metavar="ACTION"
+    )
+    quality_eval = quality_subparsers.add_parser(
+        "evaluate",
+        help="run quality gate evaluation for a gate",
+        description=(
+            "Execute all checks for a quality gate against provided artifacts."
+        ),
+    )
+    quality_eval.add_argument(
+        "--gate-id",
+        required=True,
+        help="quality gate ID (e.g., script_gate_v1)",
+    )
+    quality_eval.add_argument(
+        "--manifest",
+        type=Path,
+        required=True,
+        help="path to QualityInputManifest JSON file",
+    )
+    quality_eval.add_argument(
+        "--artifacts-dir",
+        type=Path,
+        required=True,
+        help="directory containing target and supporting artifacts as JSON files",
+    )
+    quality_eval.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+    quality_eval.add_argument(
+        "--regeneration-count",
+        type=int,
+        default=0,
+        help="current regeneration attempt number (default: 0)",
+    )
+    quality_eval.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="output path for gate result JSON (default: stdout)",
+    )
+
+    quality_list = quality_subparsers.add_parser(
+        "list-checks",
+        help="list registered quality checks",
+        description="Print all registered quality checks with their metadata.",
+    )
+    quality_list.add_argument(
+        "--kind",
+        choices=["DETERMINISTIC", "SPECIALIZED", "SEMANTIC", "HUMAN"],
+        default=None,
+        help="filter by evaluation kind",
+    )
+    quality_list.add_argument(
+        "--gate-id",
+        default=None,
+        help="filter by gate ID (shows checks required by that gate)",
+    )
+
+    # Human review commands
+    human_review = subparsers.add_parser(
+        "human-review",
+        help="human review management",
+        description="List, show, and decide human review requests.",
+    )
+    hr_subparsers = human_review.add_subparsers(
+        dest="human_review_command", metavar="ACTION"
+    )
+    hr_list = hr_subparsers.add_parser(
+        "list",
+        help="list human review requests",
+        description="List open or resolved human review requests.",
+    )
+    hr_list.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+    hr_list.add_argument(
+        "--run-id",
+        default=None,
+        help="filter by run ID",
+    )
+    hr_list.add_argument(
+        "--status",
+        choices=["OPEN", "ASSIGNED", "RESOLVED", "EXPIRED", "CANCELLED"],
+        default=None,
+        help="filter by review status",
+    )
+    hr_show = hr_subparsers.add_parser(
+        "show",
+        help="show human review details",
+        description="Display a human review request with all details.",
+    )
+    hr_show.add_argument(
+        "review_id",
+        help="review ID to show",
+    )
+    hr_show.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+    hr_decide = hr_subparsers.add_parser(
+        "decide",
+        help="record a human review decision",
+        description=(
+            "Record a reviewer decision: APPROVE, REGENERATE_SCENE, "
+            "REGENERATE_STAGE, or REJECT."
+        ),
+    )
+    hr_decide.add_argument(
+        "review_id",
+        help="review ID to decide",
+    )
+    hr_decide.add_argument(
+        "decision",
+        choices=["APPROVE", "REGENERATE_SCENE", "REGENERATE_STAGE", "REJECT"],
+        help="review decision",
+    )
+    hr_decide.add_argument(
+        "--reviewer",
+        required=True,
+        help="reviewer identifier",
+    )
+    hr_decide.add_argument(
+        "--comments",
+        default=None,
+        help="optional reviewer comments",
+    )
+    hr_decide.add_argument(
+        "--database",
+        type=Path,
+        default=None,
+        help="SQLite database path (defaults to PIPELINE_HOME/state/pipeline.sqlite3)",
+    )
+
     return parser
 
 
@@ -421,6 +573,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_worker_command(arguments)
     if arguments.command == "capabilities":
         return _run_capabilities_command(arguments)
+    if arguments.command == "quality":
+        return _run_quality_command(arguments)
+    if arguments.command == "human-review":
+        return _run_human_review_command(arguments)
     parser.error(f"unknown command: {arguments.command}")
     return 2
 
@@ -1012,6 +1168,284 @@ def _run_db_command(arguments: argparse.Namespace) -> int:
         return 1
     print(f"Unknown db action: {arguments.db_command}", file=sys.stderr)
     return 2
+
+
+def _run_quality_command(arguments: argparse.Namespace) -> int:
+    if arguments.quality_command is None:
+        print("Usage: python -m pipeline quality {evaluate,list-checks} ...")
+        return 0
+
+    if arguments.quality_command == "list-checks":
+        return _run_quality_list_checks(arguments)
+
+    if arguments.quality_command == "evaluate":
+        return _run_quality_evaluate(arguments)
+
+    print(f"Unknown quality action: {arguments.quality_command}", file=sys.stderr)
+    return 2
+
+
+def _run_quality_list_checks(arguments: argparse.Namespace) -> int:
+    try:
+        from pipeline.contracts.vocabularies import EvaluationKind
+        from pipeline.quality.registry import get_default_registry
+
+        registry = get_default_registry()
+
+        checks = registry.get_all()
+        if arguments.kind:
+            kind = EvaluationKind(arguments.kind)
+            checks = tuple(c for c in checks if c.kind is kind)
+
+        if arguments.gate_id:
+            from pipeline.contracts.vocabularies import QUALITY_GATE_IDS
+
+            if arguments.gate_id not in QUALITY_GATE_IDS:
+                print(f"Unknown gate ID: {arguments.gate_id}", file=sys.stderr)
+                return 1
+            # Would need gate policy to filter - for now show all
+            pass
+
+        for check in checks:
+            print(f"{check.check_id} [{check.kind.value}]")
+            print(f"  Target types: {', '.join(check.target_artifact_types)}")
+            print(f"  Evaluator: {check.evaluator} v{check.evaluator_version}")
+            severity = check.severity_if_failed.value
+            print(f"  Required: {check.required}, Severity if failed: {severity}")
+            on_failure = check.on_failure.value
+            repair = check.repair_scope.value
+            print(f"  On failure: {on_failure}, Repair scope: {repair}")
+            if check.rubric_version:
+                print(f"  Rubric: {check.rubric_version}")
+            print()
+
+        print(f"Total: {len(checks)} check(s)")
+        return 0
+    except Exception as error:
+        print(
+            f"Quality list-checks failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        return 1
+
+
+def _run_quality_evaluate(arguments: argparse.Namespace) -> int:
+    try:
+        import json
+
+        from pipeline.contracts.quality import QualityGatePolicy, QualityInputManifest
+        from pipeline.contracts.vocabularies import QUALITY_GATE_IDS
+        from pipeline.quality.pipeline import (
+            run_quality_pipeline,
+        )
+        from pipeline.quality.registry import get_default_registry
+
+        if arguments.gate_id not in QUALITY_GATE_IDS:
+            print(f"Unknown gate ID: {arguments.gate_id}", file=sys.stderr)
+            return 1
+
+        # Load manifest
+        manifest = QualityInputManifest.model_validate_json(
+            arguments.manifest.read_text(encoding="utf-8")
+        )
+
+        # Load artifacts
+        artifacts = {}
+        supporting_artifacts = {}
+        artifacts_dir = arguments.artifacts_dir
+        for path in artifacts_dir.glob("*.json"):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            artifact_id = data.get("artifact_id") or path.stem
+            if artifact_id in manifest.target_artifact_ids:
+                artifacts[artifact_id] = data
+            elif artifact_id in manifest.supporting_artifact_ids:
+                supporting_artifacts[artifact_id] = data
+            else:
+                # Try to infer from content
+                if "schema_version" in data:
+                    if "script" in data.get("schema_version", ""):
+                        artifacts[artifact_id] = data
+                    elif "evidence" in data.get(
+                        "schema_version", ""
+                    ) or "claim" in data.get("schema_version", ""):
+                        supporting_artifacts[artifact_id] = data
+                    else:
+                        supporting_artifacts[artifact_id] = data
+
+        # Get gate policy (would be from registry in real implementation)
+        # For now, create a default policy for the gate
+        registry = get_default_registry()
+        gate_checks = registry.resolve_checks_for_gate(
+            tuple(
+                [
+                    "script_schema_v1",
+                    "claim_reference_integrity_v1",
+                    "script_claim_evidence_v1",
+                    "script_editorial_clarity_v1",
+                ]
+            )
+        )
+
+        # This is a simplified version - in reality would load from policy registry
+        policy = QualityGatePolicy(
+            schema_version="quality-gate-policy.v1",
+            gate_id=arguments.gate_id,
+            version="1.0",
+            required_check_ids=[c.check_id for c in gate_checks],
+            hard_failure_codes=["QUALITY.SCHEMA_INVALID", "QUALITY.UNSUPPORTED_CLAIM"],
+            pass_thresholds={
+                "claim_support": 0.8,
+                "clarity": 0.8,
+                "structure": 0.8,
+                "tone": 0.8,
+            },
+            human_review_thresholds={
+                "claim_support": 0.65,
+                "clarity": 0.65,
+                "structure": 0.65,
+                "tone": 0.65,
+            },
+            max_regenerations=2,
+            after_max_regenerations="HUMAN_REVIEW",
+        )
+
+        # Run quality pipeline
+        result = run_quality_pipeline(
+            registry=registry,
+            gate_policy=policy,
+            manifest=manifest,
+            artifacts=artifacts,
+            supporting_artifacts=supporting_artifacts,
+            regeneration_count=arguments.regeneration_count,
+            max_regenerations=policy.max_regenerations,
+            after_max_regenerations=policy.after_max_regenerations,
+        )
+
+        # Output result
+        output_data = {
+            "gate_result": result.gate_result.model_dump(mode="json"),
+            "evaluations": [e.model_dump(mode="json") for e in result.evaluations],
+        }
+        if result.repair_plan:
+            output_data["repair_plan"] = result.repair_plan.model_dump(mode="json")
+        if result.human_review:
+            output_data["human_review"] = result.human_review.model_dump(mode="json")
+
+        output_json = json.dumps(output_data, indent=2, sort_keys=True)
+
+        if arguments.output:
+            arguments.output.write_text(output_json, encoding="utf-8")
+            print(f"Quality gate result written to {arguments.output}")
+        else:
+            print(output_json)
+
+        # Exit with non-zero if gate failed
+        if result.gate_result.decision.value in ("FAIL", "HUMAN_REVIEW"):
+            return 1
+        return 0
+
+    except Exception as error:
+        print(
+            f"Quality evaluate failed: {type(error).__name__}: {error}", file=sys.stderr
+        )
+        import traceback
+
+        traceback.print_exc()
+        return 1
+
+
+def _run_human_review_command(arguments: argparse.Namespace) -> int:
+    if arguments.human_review_command is None:
+        print("Usage: python -m pipeline human-review {list,show,decide} ...")
+        return 0
+
+    try:
+        from pipeline.paths import default_database_path
+        from pipeline.storage.database import Database
+        from pipeline.storage.migrations import MigrationRunner
+
+        database_path = arguments.database or default_database_path()
+        database = Database(database_path)
+        MigrationRunner(database).migrate()
+
+        if arguments.human_review_command == "list":
+            from pipeline.contracts.vocabularies import ReviewStatus
+            from pipeline.quality.human_review import cli_human_review_list
+
+            status = ReviewStatus(arguments.status) if arguments.status else None
+            reviews = cli_human_review_list(
+                database,
+                run_id=arguments.run_id,
+                status=status.value if status else None,
+            )
+
+            if not reviews:
+                print("No human reviews found.")
+                return 0
+
+            for review in reviews:
+                rid = review.review_id
+                status = review.status.value
+                run = review.run_id
+                gate = review.gate_id
+                print(f"{rid} [{status}] run={run} gate={gate}")
+                print(f"  Artifacts: {', '.join(review.target_artifact_ids)}")
+                print(f"  Reasons: {', '.join(review.reason_codes)}")
+                print(f"  Action: {review.requested_action}")
+                print(f"  Created: {review.created_at}")
+                print()
+
+            return 0
+
+        if arguments.human_review_command == "show":
+            from pipeline.quality.human_review import cli_human_review_show
+
+            review = cli_human_review_show(database, arguments.review_id)
+            print(f"Review ID: {review.review_id}")
+            print(f"Status: {review.status.value}")
+            print(f"Run ID: {review.run_id}")
+            print(f"Stage Instance: {review.stage_instance_id}")
+            print(f"Gate: {review.gate_id}")
+            print(f"Target Artifacts: {', '.join(review.target_artifact_ids)}")
+            print(f"Target Hashes: {review.target_hashes}")
+            print(f"Reason Codes: {', '.join(review.reason_codes)}")
+            print(f"Requested Action: {review.requested_action}")
+            print(f"Created: {review.created_at}")
+            print(f"Resolved: {review.resolved_at}")
+            return 0
+
+        if arguments.human_review_command == "decide":
+            from pipeline.quality.human_review import cli_human_review_decide
+
+            decision = cli_human_review_decide(
+                database=database,
+                review_id=arguments.review_id,
+                decision=arguments.decision,
+                reviewer=arguments.reviewer,
+                comments=arguments.comments,
+            )
+            print(f"Decision recorded for review {arguments.review_id}:")
+            print(f"  Decision: {decision.decision.value}")
+            print(f"  Reviewer: {decision.reviewer}")
+            print(f"  Comments: {decision.comments or '(none)'}")
+            print(f"  Created: {decision.created_at}")
+            return 0
+
+        print(
+            f"Unknown human-review action: {arguments.human_review_command}",
+            file=sys.stderr,
+        )
+        return 2
+
+    except Exception as error:
+        print(
+            f"Human review command failed: {type(error).__name__}: {error}",
+            file=sys.stderr,
+        )
+        import traceback
+
+        traceback.print_exc()
+        return 1
 
 
 if __name__ == "__main__":  # pragma: no cover
