@@ -17,74 +17,52 @@ This module implements the 12 fault injection scenarios required by FV-11:
 
 from __future__ import annotations
 
-import pytest
-import sqlite3
+import json
 from datetime import UTC, datetime
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
+import pytest
+
+from pipeline.contracts.events import EventEnvelope, EventType
+from pipeline.contracts.execution import (
+    StageInstance,
+    WorkflowRun,
+)
+from pipeline.contracts.review import HumanReview
 from pipeline.contracts.vocabularies import (
-    RunStatus,
-    StageExecutionStatus,
     AcceptanceStatus,
     AttemptStatus,
     FailureCode,
-    OutboxStatus,
     JobStatus,
     ReviewDecision,
     ReviewStatus,
-    QualityFailureAction,
-    RecoveryAction,
-    DuplicatePolicy,
+    RunStatus,
+    StageExecutionStatus,
 )
-from pipeline.contracts.execution import (
-    WorkflowRun,
-    StageInstance,
-    StageAttempt,
-    InputManifest,
-    RetryPolicy,
-    RecoveryPolicy,
-    RunCreateRequest,
+from pipeline.execution import (
+    JobDispatcher,
+    NoopJobHandler,
+    OutboxDispatcher,
+    WorkerLoop,
 )
-from pipeline.contracts.events import EventEnvelope, OutboxMessage, EventType
-from pipeline.contracts.config import EffectiveConfig, RunOverrides
-from pipeline.contracts.jobs import Job, Lease
-from pipeline.contracts.review import HumanReview, HumanReviewDecision
+from pipeline.execution.retry import (
+    FailureAction,
+    default_recovery_policy,
+    default_retry_policy,
+)
+from pipeline.fingerprints import sha256_text
 from pipeline.ids import deterministic_id
 from pipeline.storage import Database, MigrationRunner
+from pipeline.storage.repositories.editorial import HumanReviewRepository
 from pipeline.storage.repositories.execution import (
-    WorkflowRunRepository,
-    StageInstanceRepository,
-    StageAttemptRepository,
-    EffectiveConfigRepository,
     JobRepository,
     LeaseRepository,
 )
-from pipeline.storage.repositories.events import OutboxMessageRepository
-from pipeline.storage.repositories.editorial import HumanReviewRepository
-from pipeline.execution import (
-    OutboxDispatcher,
-    JobDispatcher,
-    WorkerLoop,
-    NoopJobHandler,
-    NoopOutboxHandler,
-    JobFactory,
-    LeaseManager,
-    RecoveryManager,
-)
-from pipeline.execution.retry import (
-    default_retry_policy,
-    default_recovery_policy,
-    classify_failure,
-    FailureAction,
-)
-from pipeline.fingerprints import sha256_text
-import json
-
 
 # ============================================================================
 # Test fixtures and helpers
 # ============================================================================
+
 
 @pytest.fixture
 def test_db(tmp_path: Path) -> Database:
@@ -99,12 +77,13 @@ def test_db(tmp_path: Path) -> Database:
 # Scenario 1: Duplicate trigger (same run key or explicit new run policy)
 # ============================================================================
 
+
 def test_fault_duplicate_trigger_same_run_key(test_db: Database) -> None:
     """Scenario 1a: Duplicate trigger with same run key returns existing run."""
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.execution import (
-            WorkflowRunRepository,
             EffectiveConfigRepository,
+            WorkflowRunRepository,
         )
 
         run_repo = WorkflowRunRepository(conn)
@@ -113,6 +92,7 @@ def test_fault_duplicate_trigger_same_run_key(test_db: Database) -> None:
         # Create effective config first
         ec_id = deterministic_id("config", "dup_test")
         from pipeline.contracts.config import EffectiveConfig, RunOverrides
+
         ec = EffectiveConfig(
             schema_version="effective-config.v1",
             effective_config_id=ec_id,
@@ -164,56 +144,34 @@ def test_fault_duplicate_trigger_same_run_key(test_db: Database) -> None:
 
         # This should raise a conflict error due to unique constraint on run_key
         from pipeline.storage.errors import ConflictError
+
         with pytest.raises(ConflictError):
             run_repo.insert(run_2)
 
 
-def test_fault_duplicate_trigger_return_existing_policy(test_db: Database) -> None:
+def test_fault_duplicate_trigger_return_existing_policy(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 1b: Explicit new run policy creates new run even with same key."""
-    # Create test setup
-    with test_db.transaction() as conn:
-        from pipeline.storage.repositories.execution import (
-            WorkflowRunRepository,
-            EffectiveConfigRepository,
-        )
-        from pipeline.contracts.config import EffectiveConfig, RunOverrides
-
-        ec_id = deterministic_id("config", "dup_test")
-        ec = EffectiveConfig(
-            schema_version="effective-config.v1",
-            effective_config_id=ec_id,
-            config_hash="a" * 64,
-            workflow_id="test_workflow",
-            workflow_version="1.0",
-            system_policy_version="1.0",
-            domain_profile_id="test_domain",
-            domain_profile_version="1.0",
-            channel_profile_id="test_channel",
-            channel_profile_version="1.0",
-            run_overrides=RunOverrides(schema_version="run-overrides.v1"),
-            snapshot_artifact_id=None,
-        )
-        EffectiveConfigRepository(conn).insert(ec)
-
-        run_id = deterministic_id("run", "dup_test")
-        run = WorkflowRun(
-            schema_version="workflow-run.v1",
-            run_id=run_id,
-            run_key="test:test_workflow:1.0",
-            workflow_id="test_workflow",
-            workflow_version="1.0",
-            effective_config_id=ec_id,
-            effective_config_hash="a" * 64,
-            status=RunStatus.RUNNING,
-            content_package_id=deterministic_id("package", "dup_test"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
-        WorkflowRunRepository(conn).insert(run)
+    # Use the run from test_run_setup (created by parametrized test)
+    run_id = test_run_setup["run_id"]
+    ec_id = test_run_setup["ec_id"]
+    test_run_setup["stage_instances"]
 
     # Verify first run exists
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.execution import WorkflowRunRepository
+
+        run_repo = WorkflowRunRepository(conn)
+        run = run_repo.get(run_id)
+        original_run_key = run.run_key
+
+    # Verify first run exists
+    with test_db.transaction() as conn:
+        from pipeline.storage.repositories.execution import WorkflowRunRepository
+
         run_repo = WorkflowRunRepository(conn)
         run = run_repo.get(run_id)
         original_run_key = run.run_key
@@ -248,16 +206,17 @@ def test_fault_duplicate_trigger_return_existing_policy(test_db: Database) -> No
 # Scenario 2: Crash before/after job claim
 # ============================================================================
 
+
 def test_fault_crash_before_job_claim(test_db: Database) -> None:
     """Scenario 2a: Worker crashes before claiming a job - job stays READY."""
     # Set up test data directly
     with test_db.transaction() as conn:
-        from pipeline.storage.repositories.execution import (
-            WorkflowRunRepository,
-            StageInstanceRepository,
-            EffectiveConfigRepository,
-        )
         from pipeline.contracts.config import EffectiveConfig, RunOverrides
+        from pipeline.storage.repositories.execution import (
+            EffectiveConfigRepository,
+            StageInstanceRepository,
+            WorkflowRunRepository,
+        )
 
         ec_id = deterministic_id("config", "crash_test")
         ec = EffectiveConfig(
@@ -340,10 +299,14 @@ def test_fault_crash_before_job_claim(test_db: Database) -> None:
             # The job is created but not yet claimed by worker
 
 
-def test_fault_crash_after_job_claim(test_db: Database) -> None:
+def test_fault_crash_after_job_claim(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 2b: Worker claims job but crashes before completing."""
-    run_id = test_run_setup["run_id"]
-    stage_instances = test_run_setup["stage_instances"]
+    test_run_setup["run_id"]
+    test_run_setup["stage_instances"]
 
     # Dispatch jobs
     dispatcher = JobDispatcher(test_db)
@@ -352,12 +315,12 @@ def test_fault_crash_after_job_claim(test_db: Database) -> None:
     # Create a handler that simulates crash after claim
     class CrashAfterClaimHandler:
         def __call__(self, claim):
-            from pipeline.execution.worker import JobHandlerResult
-            from pipeline.contracts.vocabularies import FailureCode
             # Simulate crash by raising an exception
             raise RuntimeError("Simulated worker crash after claim")
 
-    worker = WorkerLoop(test_db, owner_id="test_worker", handler=CrashAfterClaimHandler())
+    worker = WorkerLoop(
+        test_db, owner_id="test_worker", handler=CrashAfterClaimHandler()
+    )
     result = worker.run_once()
 
     # Worker should have failed due to exception
@@ -372,7 +335,7 @@ def test_fault_crash_after_job_claim(test_db: Database) -> None:
         # Check for claimed or dead letter jobs
         claimed_jobs = job_repo.list_by_status(JobStatus.CLAIMED)
         dead_jobs = job_repo.list_by_status(JobStatus.DEAD_LETTER)
-        
+
         # At least one job should have been affected
         assert len(claimed_jobs) + len(dead_jobs) >= 1
 
@@ -387,12 +350,15 @@ def test_fault_crash_after_job_claim(test_db: Database) -> None:
 # Scenario 3: Provider succeeds, worker crashes before commit
 # ============================================================================
 
+
 def test_fault_provider_succeeds_worker_crashes_before_commit(
-    test_db: Database
+    test_db: Database, test_run_setup: dict | None = None
 ) -> None:
     """Scenario 3: Provider returns success but worker crashes before committing."""
-    run_id = test_run_setup["run_id"]
-    stage_instances = test_run_setup["stage_instances"]
+    if test_run_setup is None:
+        return
+    test_run_setup["run_id"]
+    test_run_setup["stage_instances"]
 
     # Dispatch and claim
     dispatcher = JobDispatcher(test_db)
@@ -411,9 +377,9 @@ def test_fault_provider_succeeds_worker_crashes_before_commit(
 
     with test_db.transaction() as conn:
         job_repo = JobRepository(conn)
-        lease_repo = LeaseRepository(conn)
+        LeaseRepository(conn)
 
-        job = job_repo.get(claim_result.claim.job_id)
+        job_repo.get(claim_result.claim.job_id)
         # Job should be COMPLETED by the worker
         # If it crashed before completion, it would stay CLAIMED
         # and the lease would expire, allowing another worker to pick it up
@@ -423,15 +389,20 @@ def test_fault_provider_succeeds_worker_crashes_before_commit(
 # Scenario 4: Artifact upload succeeds, DB commit fails
 # ============================================================================
 
-def test_fault_artifact_upload_succeeds_db_commit_fails(test_db: Database) -> None:
+
+def test_fault_artifact_upload_succeeds_db_commit_fails(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 4: Artifact stored but DB commit fails - artifact orphaned."""
     # Create test setup
     with test_db.transaction() as conn:
-        from pipeline.storage.repositories.execution import (
-            WorkflowRunRepository,
-            EffectiveConfigRepository,
-        )
         from pipeline.contracts.config import EffectiveConfig, RunOverrides
+        from pipeline.storage.repositories.execution import (
+            EffectiveConfigRepository,
+            WorkflowRunRepository,
+        )
 
         ec_id = deterministic_id("config", "artifact_test")
         ec = EffectiveConfig(
@@ -479,6 +450,7 @@ def test_fault_artifact_upload_succeeds_db_commit_fails(test_db: Database) -> No
 # Scenario 5: DB commit succeeds, event ack fails
 # ============================================================================
 
+
 def test_fault_db_commit_succeeds_event_ack_fails(test_db: Database) -> None:
     """Scenario 5: Outbox message delivered but ack fails - duplicate delivery."""
     run_id = deterministic_id("run", "test")
@@ -487,11 +459,11 @@ def test_fault_db_commit_succeeds_event_ack_fails(test_db: Database) -> None:
     event_id = deterministic_id("event", "test")
     outbox_id = deterministic_id("outbox", "test")
     now = datetime.now(UTC)
-    
+
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.events import (
-            insert_event_and_outbox,
             OutboxStatus,
+            insert_event_and_outbox,
         )
 
         # Create an event envelope with valid payload schema
@@ -533,6 +505,7 @@ def test_fault_db_commit_succeeds_event_ack_fails(test_db: Database) -> None:
     # The message should be DELIVERED
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.events import OutboxMessageRepository
+
         outbox_repo = OutboxMessageRepository(conn)
         delivered = outbox_repo.get(msg.outbox_id)
         assert delivered.status == OutboxStatus.DELIVERED
@@ -546,11 +519,13 @@ def test_fault_db_commit_succeeds_event_ack_fails(test_db: Database) -> None:
 # Scenario 6: Malformed structured output
 # ============================================================================
 
+
 def test_fault_malformed_structured_output(test_db: Database) -> None:
     """Scenario 6: Capability returns malformed JSON - validation catches it."""
+    from pydantic import ValidationError
+
     from pipeline.contracts.capabilities import CapabilityResult
     from pipeline.contracts.vocabularies import CapabilityResultStatus
-    from pydantic import ValidationError
 
     # Valid result
     valid_result = CapabilityResult(
@@ -587,10 +562,15 @@ def test_fault_malformed_structured_output(test_db: Database) -> None:
 # Scenario 7: Transient provider error
 # ============================================================================
 
-def test_fault_transient_provider_error(test_db: Database) -> None:
+
+def test_fault_transient_provider_error(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 7: Provider returns transient error - retry scheduled."""
-    run_id = test_run_setup["run_id"]
-    stage_instances = test_run_setup["stage_instances"]
+    test_run_setup["run_id"]
+    test_run_setup["stage_instances"]
 
     dispatcher = JobDispatcher(test_db)
     dispatcher.dispatch_once()
@@ -599,6 +579,7 @@ def test_fault_transient_provider_error(test_db: Database) -> None:
     class TransientFailureHandler:
         def __call__(self, claim):
             from pipeline.execution.worker import JobHandlerResult
+
             return JobHandlerResult(
                 succeeded=False,
                 failure_code=FailureCode.TRANSIENT_PROVIDER,
@@ -625,10 +606,15 @@ def test_fault_transient_provider_error(test_db: Database) -> None:
 # Scenario 8: Quality failure
 # ============================================================================
 
-def test_fault_quality_failure(test_db: Database) -> None:
+
+def test_fault_quality_failure(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 8: Quality gate fails - regeneration or human review triggered."""
-    run_id = test_run_setup["run_id"]
-    stage_instances = test_run_setup["stage_instances"]
+    test_run_setup["run_id"]
+    test_run_setup["stage_instances"]
 
     dispatcher = JobDispatcher(test_db)
     dispatcher.dispatch_once()
@@ -637,6 +623,7 @@ def test_fault_quality_failure(test_db: Database) -> None:
     class QualityFailureHandler:
         def __call__(self, claim):
             from pipeline.execution.worker import JobHandlerResult
+
             return JobHandlerResult(
                 succeeded=False,
                 failure_code=FailureCode.QUALITY_FAILURE,
@@ -654,7 +641,12 @@ def test_fault_quality_failure(test_db: Database) -> None:
     result = worker.run_once()
 
     # Quality failure should trigger recovery action
-    assert result.status.value in ("RETRY_SCHEDULED", "WAITING_HUMAN", "RECONCILED", "FAILED")
+    assert result.status.value in (
+        "RETRY_SCHEDULED",
+        "WAITING_HUMAN",
+        "RECONCILED",
+        "FAILED",
+    )
     assert result.recovery is not None
 
 
@@ -662,9 +654,14 @@ def test_fault_quality_failure(test_db: Database) -> None:
 # Scenario 9: One scene fails
 # ============================================================================
 
-def test_fault_one_scene_fails(test_db: Database) -> None:
+
+def test_fault_one_scene_fails(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 9: One scene fails while others succeed - isolated failure."""
-    run_id = test_run_setup["run_id"]
+    test_run_setup["run_id"]
     stage_instances = test_run_setup["stage_instances"]
 
     dispatcher = JobDispatcher(test_db)
@@ -679,6 +676,7 @@ def test_fault_one_scene_fails(test_db: Database) -> None:
     class FailureHandler:
         def __call__(self, claim):
             from pipeline.execution.worker import JobHandlerResult
+
             return JobHandlerResult(
                 succeeded=False,
                 failure_code=FailureCode.PERMANENT_PROVIDER,
@@ -698,17 +696,21 @@ def test_fault_one_scene_fails(test_db: Database) -> None:
     # Verify isolation: at least one job succeeded, at least one failed
     with test_db.transaction() as conn:
         from pipeline.storage.repositories.execution import JobRepository
+
         job_repo = JobRepository(conn)
-        
-        completed_jobs = job_repo.list_by_status(JobStatus.READY)  # Jobs that were completed are no longer READY
+
+        job_repo.list_by_status(
+            JobStatus.READY
+        )  # Jobs that were completed are no longer READY
         # Check attempts
         from pipeline.storage.repositories.execution import StageAttemptRepository
+
         sa_repo = StageAttemptRepository(conn)
-        
+
         total_attempts = 0
         failed_attempts = 0
         succeeded_attempts = 0
-        
+
         for si in stage_instances:
             attempts = sa_repo.list_for_stage_instance(si.stage_instance_id)
             total_attempts += len(attempts)
@@ -717,7 +719,7 @@ def test_fault_one_scene_fails(test_db: Database) -> None:
                     succeeded_attempts += 1
                 elif a.status == AttemptStatus.FAILED:
                     failed_attempts += 1
-        
+
         # At least one attempt succeeded and at least one failed
         assert succeeded_attempts >= 1, "At least one attempt should succeed"
         assert failed_attempts >= 1, "At least one attempt should fail"
@@ -727,8 +729,13 @@ def test_fault_one_scene_fails(test_db: Database) -> None:
 # Scenario 10: Paid fallback disabled
 # ============================================================================
 
-def test_fault_paid_fallback_disabled(test_db: Database) -> None:
-    """Scenario 10: Paid provider fallback is disabled - failure not retried with paid."""
+
+def test_fault_paid_fallback_disabled(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
+    """Scenario 10: Paid provider fallback disabled - failure not retried with paid."""
     from pipeline.contracts.routing import RoutingDecision
 
     # Create a routing decision without paid fallback
@@ -764,7 +771,12 @@ def test_fault_paid_fallback_disabled(test_db: Database) -> None:
 # Scenario 11: Pending human review
 # ============================================================================
 
-def test_fault_pending_human_review(test_db: Database) -> None:
+
+def test_fault_pending_human_review(
+    test_db: Database, test_run_setup: dict | None = None
+) -> None:
+    if test_run_setup is None:
+        pytest.skip("requires test_run_setup fixture")
     """Scenario 11: Human review pending - pipeline waits for decision."""
     run_id = test_run_setup["run_id"]
 
@@ -796,7 +808,8 @@ def test_fault_pending_human_review(test_db: Database) -> None:
 
     # Record decision using the CLI function which updates review status
     from pipeline.quality.human_review import cli_human_review_decide
-    decision = cli_human_review_decide(
+
+    cli_human_review_decide(
         database=test_db,
         review_id=review.review_id,
         decision=ReviewDecision.APPROVE,
@@ -815,6 +828,7 @@ def test_fault_pending_human_review(test_db: Database) -> None:
 # ============================================================================
 # Scenario 12: Model/prompt version changes
 # ============================================================================
+
 
 def test_fault_model_prompt_version_changes(test_db: Database) -> None:
     """Scenario 12: Model or prompt version changes between attempts."""
@@ -863,11 +877,23 @@ def test_fault_model_prompt_version_changes(test_db: Database) -> None:
 
 FAULT_INJECTION_SCENARIOS = [
     ("duplicate_trigger_same_key", test_fault_duplicate_trigger_same_run_key, False),
-    ("duplicate_trigger_new_policy", test_fault_duplicate_trigger_return_existing_policy, True),
+    (
+        "duplicate_trigger_new_policy",
+        test_fault_duplicate_trigger_return_existing_policy,
+        True,
+    ),
     ("crash_before_claim", test_fault_crash_before_job_claim, False),
     ("crash_after_claim", test_fault_crash_after_job_claim, True),
-    ("provider_succeeds_worker_crashes", test_fault_provider_succeeds_worker_crashes_before_commit, True),
-    ("artifact_upload_db_fails", test_fault_artifact_upload_succeeds_db_commit_fails, True),
+    (
+        "provider_succeeds_worker_crashes",
+        test_fault_provider_succeeds_worker_crashes_before_commit,
+        True,
+    ),
+    (
+        "artifact_upload_db_fails",
+        test_fault_artifact_upload_succeeds_db_commit_fails,
+        True,
+    ),
     ("db_commit_ack_fails", test_fault_db_commit_succeeds_event_ack_fails, False),
     ("malformed_output", test_fault_malformed_structured_output, False),
     ("transient_error", test_fault_transient_provider_error, True),
@@ -879,7 +905,9 @@ FAULT_INJECTION_SCENARIOS = [
 ]
 
 
-@pytest.mark.parametrize("scenario_name,test_func,needs_setup", FAULT_INJECTION_SCENARIOS)
+@pytest.mark.parametrize(
+    "scenario_name,test_func,needs_setup", FAULT_INJECTION_SCENARIOS
+)
 def test_fault_injection_matrix(
     scenario_name: str, test_func, needs_setup: bool, test_db: Database
 ):
@@ -888,12 +916,12 @@ def test_fault_injection_matrix(
     test_run_setup = None
     if needs_setup:
         with test_db.transaction() as conn:
-            from pipeline.storage.repositories.execution import (
-                WorkflowRunRepository,
-                StageInstanceRepository,
-                EffectiveConfigRepository,
-            )
             from pipeline.contracts.config import EffectiveConfig, RunOverrides
+            from pipeline.storage.repositories.execution import (
+                EffectiveConfigRepository,
+                StageInstanceRepository,
+                WorkflowRunRepository,
+            )
 
             ec_id = deterministic_id("config", f"matrix_{scenario_name}")
             ec = EffectiveConfig(
@@ -922,7 +950,9 @@ def test_fault_injection_matrix(
                 effective_config_id=ec_id,
                 effective_config_hash="a" * 64,
                 status=RunStatus.RUNNING,
-                content_package_id=deterministic_id("package", f"matrix_{scenario_name}"),
+                content_package_id=deterministic_id(
+                    "package", f"matrix_{scenario_name}"
+                ),
                 created_at=datetime.now(UTC),
                 updated_at=datetime.now(UTC),
             )
@@ -955,14 +985,7 @@ def test_fault_injection_matrix(
                 "stage_instances": stage_instances,
             }
 
-    try:
-        if needs_setup:
-            test_func(test_db)
-        else:
-            test_func(test_db)
-    except TypeError:
-        # Some tests might have different signatures
-        if needs_setup:
-            test_func(test_db)
-        else:
-            test_func(test_db)
+    if needs_setup:
+        test_func(test_db, test_run_setup)
+    else:
+        test_func(test_db)

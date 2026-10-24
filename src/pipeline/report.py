@@ -124,10 +124,14 @@ class ValidationReport:
             [
                 "### Stage Instances",
                 "",
-                ("| Stage Instance ID | Node | Item Key | Exec Status | "
-                 "Accept Status | Quality Gate | Active Attempt |"),
-                ("|-------------------|------|----------|-------------|---------------|"
-                 "--------------|----------------|"),
+                (
+                    "| Stage Instance ID | Node | Item Key | Exec Status | "
+                    "Accept Status | Quality Gate | Active Attempt |"
+                ),
+                (
+                    "|-------------------|------|----------|-------------|---------------|"
+                    "--------------|----------------|"
+                ),
             ]
         )
         for si in self.stage_instances:
@@ -142,10 +146,14 @@ class ValidationReport:
             [
                 "### Stage Attempts",
                 "",
-                ("| Attempt ID | Stage Instance | # | Regen # | Status | Worker | "
-                 "Started | Finished | Failure |"),
-                ("|------------|----------------|---|---------|--------|--------|"
-                 "---------|----------|---------|"),
+                (
+                    "| Attempt ID | Stage Instance | # | Regen # | Status | Worker | "
+                    "Started | Finished | Failure |"
+                ),
+                (
+                    "|------------|----------------|---|---------|--------|--------|"
+                    "---------|----------|---------|"
+                ),
             ]
         )
         for sa in self.stage_attempts:
@@ -171,10 +179,14 @@ class ValidationReport:
                 "",
                 "### Artifacts",
                 "",
-                ("| Artifact ID | Run | Slot | Type | Version | SHA256 | Size | "
-                 "Media Type | State | Producer Attempt |"),
-                ("|-------------|-----|------|------|---------|--------|------|------------"
-                 "|-------|------------------|"),
+                (
+                    "| Artifact ID | Run | Slot | Type | Version | SHA256 | Size | "
+                    "Media Type | State | Producer Attempt |"
+                ),
+                (
+                    "|-------------|-----|------|------|---------|--------|------|------------"
+                    "|-------|------------------|"
+                ),
             ]
         )
         for artifact in self.artifacts:
@@ -215,10 +227,14 @@ class ValidationReport:
         if self.output_artifacts:
             lines.extend(
                 [
-                    ("| Artifact ID | Slot | Type | Duration (s) | Resolution | "
-                     "Codec | Bitrate |"),
-                    ("|-------------|------|------|--------------|------------|"
-                     "-------|---------|"),
+                    (
+                        "| Artifact ID | Slot | Type | Duration (s) | Resolution | "
+                        "Codec | Bitrate |"
+                    ),
+                    (
+                        "|-------------|------|------|--------------|------------|"
+                        "-------|---------|"
+                    ),
                 ]
             )
             for out in self.output_artifacts:
@@ -330,10 +346,14 @@ class ValidationReport:
         if self.provider_usage:
             lines.extend(
                 [
-                    ("| Provider | Model | Calls | Total Latency (ms) | "
-                     "Total Cost (minor) |"),
-                    ("|----------|-------|-------|-------------------|"
-                     "-------------------|"),
+                    (
+                        "| Provider | Model | Calls | Total Latency (ms) | "
+                        "Total Cost (minor) |"
+                    ),
+                    (
+                        "|----------|-------|-------|-------------------|"
+                        "-------------------|"
+                    ),
                 ]
             )
             for provider, usage in self.provider_usage.items():
@@ -341,9 +361,7 @@ class ValidationReport:
                 calls = usage.get("calls", 0)
                 latency = usage.get("total_latency_ms", 0)
                 cost = usage.get("total_cost_minor", 0)
-                lines.append(
-                    f"| {provider} | {model} | {calls} | {latency} | {cost} |"
-                )
+                lines.append(f"| {provider} | {model} | {calls} | {latency} | {cost} |")
         else:
             lines.append("No provider usage data recorded.")
         lines.append("")
