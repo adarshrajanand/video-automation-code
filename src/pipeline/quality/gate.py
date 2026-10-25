@@ -112,7 +112,8 @@ def _verify_artifact_hashes(
     for artifact_id, expected_hash in manifest.target_hashes.items():
         artifact = artifacts.get(artifact_id)
         if artifact is None:
-            failure_codes.append(FailureCode.QUALITY_SCHEMA_INVALID)
+            if FailureCode.QUALITY_SCHEMA_INVALID not in failure_codes:
+                failure_codes.append(FailureCode.QUALITY_SCHEMA_INVALID)
             continue
         # Compute hash of artifact content
         if isinstance(artifact, dict) and "sha256" in artifact:
