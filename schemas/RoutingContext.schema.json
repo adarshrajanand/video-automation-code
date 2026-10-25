@@ -1,0 +1,256 @@
+{
+  "$defs": {
+    "CapabilityRequest": {
+      "additionalProperties": false,
+      "description": "Provider-neutral request for one bounded capability operation.",
+      "properties": {
+        "capability": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "capability_execution_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Capability Execution Id",
+          "type": "string"
+        },
+        "idempotency_key": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Idempotency Key",
+          "type": "string"
+        },
+        "input_artifact_ids": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Input Artifact Ids",
+          "type": "array"
+        },
+        "operation_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Operation Version",
+          "type": "string"
+        },
+        "payload": {
+          "$ref": "#/$defs/ExtensionObject"
+        },
+        "payload_fingerprint": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Payload Fingerprint",
+          "type": "string"
+        },
+        "payload_schema_version": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Payload Schema Version",
+          "type": "string"
+        },
+        "requirements": {
+          "$ref": "#/$defs/CapabilityRequirements"
+        },
+        "runtime_context": {
+          "$ref": "#/$defs/ExtensionObject"
+        },
+        "schema_version": {
+          "const": "capability-request.v1",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "capability_execution_id",
+        "capability",
+        "operation_version",
+        "payload_fingerprint",
+        "requirements",
+        "payload_schema_version",
+        "idempotency_key"
+      ],
+      "title": "CapabilityRequest",
+      "type": "object"
+    },
+    "CapabilityRequirements": {
+      "additionalProperties": false,
+      "description": "Hard eligibility requirements for one capability request.",
+      "properties": {
+        "capability": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Capability",
+          "type": "string"
+        },
+        "cost_limit_minor": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cost Limit Minor"
+        },
+        "data_classification": {
+          "default": "PUBLIC",
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Data Classification",
+          "type": "string"
+        },
+        "latency_requirement": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Latency Requirement"
+        },
+        "locale": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Locale"
+        },
+        "quality_requirement": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality Requirement"
+        },
+        "required_features": {
+          "items": {
+            "maxLength": 512,
+            "minLength": 1,
+            "pattern": "^\\S(?:.*\\S)?$",
+            "type": "string"
+          },
+          "title": "Required Features",
+          "type": "array"
+        },
+        "schema_version": {
+          "const": "capability-requirements.v1",
+          "title": "Schema Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_version",
+        "capability"
+      ],
+      "title": "CapabilityRequirements",
+      "type": "object"
+    },
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:RoutingContext",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Inputs used to select an implementation, provider, and resource.",
+  "properties": {
+    "attempt": {
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "budget_remaining_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Budget Remaining Minor"
+    },
+    "capability_request": {
+      "$ref": "#/$defs/CapabilityRequest"
+    },
+    "effective_config_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Effective Config Hash",
+      "type": "string"
+    },
+    "previous_results": {
+      "items": {
+        "$ref": "#/$defs/ExtensionObject"
+      },
+      "title": "Previous Results",
+      "type": "array"
+    },
+    "provider_health": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "provider_usage": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "routing-context.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "capability_request",
+    "effective_config_hash",
+    "attempt"
+  ],
+  "title": "RoutingContext",
+  "type": "object",
+  "x-contract-schema-version": "routing-context.v1"
+}

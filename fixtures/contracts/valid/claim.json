@@ -1,0 +1,14 @@
+{
+  "schema_version": "claim.v1",
+  "claim_id": "claim_01",
+  "text": "The Arctic ice sheet has lost 3.8 trillion metric tons of ice since 1992.",
+  "claim_type": "NUMERIC",
+  "source_ref_ids": ["src_01"],
+  "evidence_ids": ["ev_01"],
+  "confidence": 0.92,
+  "tags": ["climate", "arctic", "ice_loss", "quantitative"],
+  "metadata": {
+    "extracted_by": "research_agent_v1",
+    "verification_status": "verified"
+  }
+}

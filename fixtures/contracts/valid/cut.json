@@ -1,0 +1,11 @@
+{
+  "cut_id": "cut_long_form_16x9",
+  "episode_id": "episode_01",
+  "kind": "LONG_FORM",
+  "output_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "cut.v1",
+  "selection_manifest_id": "short_selection_01",
+  "sequence_ids": [
+    "seq_01"
+  ]
+}

@@ -1,0 +1,148 @@
+{
+  "$defs": {
+    "EvaluationKind": {
+      "enum": [
+        "DETERMINISTIC",
+        "SPECIALIZED",
+        "SEMANTIC",
+        "HUMAN"
+      ],
+      "title": "EvaluationKind",
+      "type": "string"
+    },
+    "QualityFailureAction": {
+      "enum": [
+        "REGENERATE",
+        "HUMAN_REVIEW",
+        "FAIL"
+      ],
+      "title": "QualityFailureAction",
+      "type": "string"
+    },
+    "RepairScope": {
+      "enum": [
+        "NONE",
+        "LAYER",
+        "ASSET",
+        "SHOT",
+        "SCENE",
+        "STAGE",
+        "CUT",
+        "SUBGRAPH",
+        "WORKFLOW"
+      ],
+      "title": "RepairScope",
+      "type": "string"
+    },
+    "Severity": {
+      "description": "Severity used by normalized errors and quality evidence.",
+      "enum": [
+        "INFO",
+        "MINOR",
+        "MAJOR",
+        "CRITICAL"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:QualityCheck",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One registered requirement or evaluator invocation.",
+  "properties": {
+    "check_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Check Id",
+      "type": "string"
+    },
+    "evaluator": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Evaluator",
+      "type": "string"
+    },
+    "evaluator_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Evaluator Version",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/EvaluationKind"
+    },
+    "on_failure": {
+      "$ref": "#/$defs/QualityFailureAction"
+    },
+    "repair_scope": {
+      "$ref": "#/$defs/RepairScope"
+    },
+    "required": {
+      "default": true,
+      "title": "Required",
+      "type": "boolean"
+    },
+    "required_input_types": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Required Input Types",
+      "type": "array"
+    },
+    "rubric_version": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rubric Version"
+    },
+    "schema_version": {
+      "const": "quality-check.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "severity_if_failed": {
+      "$ref": "#/$defs/Severity"
+    },
+    "target_artifact_types": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Target Artifact Types",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "check_id",
+    "target_artifact_types",
+    "kind",
+    "evaluator",
+    "evaluator_version",
+    "severity_if_failed",
+    "on_failure",
+    "repair_scope"
+  ],
+  "title": "QualityCheck",
+  "type": "object",
+  "x-contract-schema-version": "quality-check.v1"
+}

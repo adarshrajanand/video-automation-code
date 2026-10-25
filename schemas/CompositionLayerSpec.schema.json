@@ -1,0 +1,108 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {},
+    "LayerKind": {
+      "enum": [
+        "VIDEO",
+        "IMAGE",
+        "SHAPE",
+        "CHART",
+        "CODE",
+        "TEXT",
+        "CAPTION",
+        "AUDIO_VOICE",
+        "AUDIO_MUSIC",
+        "AUDIO_EFFECT",
+        "MASK",
+        "TRANSITION"
+      ],
+      "title": "LayerKind",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:CompositionLayerSpec",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One placed visual, audio, text, caption, or effect layer in a shot.",
+  "properties": {
+    "asset_instance_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Asset Instance Id"
+    },
+    "end_frame": {
+      "minimum": 1,
+      "title": "End Frame",
+      "type": "integer"
+    },
+    "kind": {
+      "$ref": "#/$defs/LayerKind"
+    },
+    "layer_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Layer Id",
+      "type": "string"
+    },
+    "payload_artifact_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Payload Artifact Id"
+    },
+    "properties": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "composition-layer-spec.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "start_frame": {
+      "minimum": 0,
+      "title": "Start Frame",
+      "type": "integer"
+    },
+    "z_index": {
+      "default": 0,
+      "title": "Z Index",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "layer_id",
+    "kind",
+    "start_frame",
+    "end_frame"
+  ],
+  "title": "CompositionLayerSpec",
+  "type": "object",
+  "x-contract-schema-version": "composition-layer-spec.v1"
+}

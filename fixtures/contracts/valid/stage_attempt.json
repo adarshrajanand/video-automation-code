@@ -1,0 +1,21 @@
+{
+  "attempt_id": "attempt_script_01",
+  "attempt_number": 1,
+  "failure_code": null,
+  "failure_message": null,
+  "fencing_token": 3,
+  "finished_at": "2026-10-21T10:05:00Z",
+  "input_artifact_ids": [
+    "artifact_topic_v1"
+  ],
+  "lease_expires_at": "2026-10-21T11:30:00Z",
+  "output_artifact_ids": [
+    "artifact_script_v1"
+  ],
+  "quality_regeneration_number": 0,
+  "schema_version": "stage-attempt.v1",
+  "stage_instance_id": "stage_script_episode",
+  "started_at": "2026-10-21T10:00:00Z",
+  "status": "SUCCEEDED",
+  "worker_id": "worker_local_01"
+}

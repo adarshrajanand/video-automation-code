@@ -1,0 +1,15 @@
+{
+  "asset_instance_id": "asset_instance_01",
+  "end_frame": 90,
+  "kind": "IMAGE",
+  "layer_id": "layer_01",
+  "payload_artifact_id": null,
+  "properties": {
+    "fit": "cover",
+    "opacity": 1.0
+  },
+  "schema_version": "layer-instance.v1",
+  "shot_id": "shot_01_01",
+  "start_frame": 0,
+  "z_index": 0
+}

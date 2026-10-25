@@ -1,0 +1,11 @@
+{
+  "cpu_cores": 4,
+  "data_classification": "INTERNAL",
+  "expected_runtime_seconds": 120,
+  "memory_mb": 8192,
+  "required_tools": [
+    "ffmpeg"
+  ],
+  "schema_version": "workload-requirements.v1",
+  "vram_mb": null
+}

@@ -1,0 +1,12 @@
+{
+  "composition_artifact_id": "artifact_composition_01",
+  "cut_id": "cut_long_form_16x9",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "composition-output.v1",
+  "sequence_count": 3,
+  "scene_count": 10,
+  "shot_count": 25,
+  "layer_count": 50,
+  "audio_track_count": 5,
+  "metadata": {}
+}

@@ -1,0 +1,8 @@
+{
+  "composition_artifact_id": "artifact_composition_01",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "rendering-input.v1",
+  "chunk_spec": "COMPLETE_CUT",
+  "chunk_frame_ranges": [],
+  "metadata": {}
+}

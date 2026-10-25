@@ -1,0 +1,13 @@
+{
+  "schema_version": "tts-adapter-input.v1",
+  "narration_text": "The Arctic is warming four times faster than the global average.",
+  "voice_id": "narrator_deep_male",
+  "provider": "elevenlabs",
+  "model": "v2",
+  "voice_config": {
+    "stability": 0.5,
+    "similarity_boost": 0.75
+  },
+  "sample_rate": 24000,
+  "metadata": {}
+}

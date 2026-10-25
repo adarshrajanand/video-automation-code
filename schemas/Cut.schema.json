@@ -1,0 +1,82 @@
+{
+  "$defs": {
+    "EditorialCutKind": {
+      "enum": [
+        "LONG_FORM",
+        "SHORT"
+      ],
+      "title": "EditorialCutKind",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:Cut",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A deliverable variant selected from episode-level editorial objects.",
+  "properties": {
+    "cut_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Cut Id",
+      "type": "string"
+    },
+    "episode_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Episode Id",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/EditorialCutKind"
+    },
+    "output_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Output Profile Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "cut.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selection_manifest_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Selection Manifest Id"
+    },
+    "sequence_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Sequence Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "cut_id",
+    "episode_id",
+    "kind",
+    "output_profile_id"
+  ],
+  "title": "Cut",
+  "type": "object",
+  "x-contract-schema-version": "cut.v1"
+}

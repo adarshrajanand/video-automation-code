@@ -1,0 +1,23 @@
+{
+  "schema_version": "speech-manifest.v1",
+  "speech_manifest_id": "manifest_01",
+  "script_id": "script_01",
+  "script_version": "v1.0",
+  "strategy": "CONTINUOUS",
+  "master_audio_artifact_id": "audio_master_01",
+  "scene_audio_artifact_ids": ["audio_scene_01", "audio_scene_02", "audio_scene_03"],
+  "voice_config_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+  "narration_text_hashes": {
+    "audio_scene_01": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+    "audio_scene_02": "b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3",
+    "audio_scene_03": "c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4"
+  },
+  "alignment_artifact_id": "alignment_01",
+  "total_duration_seconds": 45,
+  "sample_rate": 24000,
+  "metadata": {
+    "tts_provider": "elevenlabs",
+    "tts_model": "v2",
+    "voice_id": "narrator_deep_male"
+  }
+}

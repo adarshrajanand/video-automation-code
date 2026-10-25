@@ -1,0 +1,99 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ShortSelectionManifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Manifest selecting scenes/shots for a short derivative.",
+  "properties": {
+    "cut_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Cut Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "safe_area": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "short-selection-manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selected_scene_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Selected Scene Ids",
+      "type": "array"
+    },
+    "selected_shot_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Selected Shot Ids",
+      "type": "array"
+    },
+    "selection_manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Selection Manifest Id",
+      "type": "string"
+    },
+    "source_composition_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Source Composition Artifact Id",
+      "type": "string"
+    },
+    "target_aspect_ratio": {
+      "default": "9:16",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Target Aspect Ratio",
+      "type": "string"
+    },
+    "target_render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Target Render Profile Id",
+      "type": "string"
+    },
+    "vertical_composition": {
+      "default": true,
+      "title": "Vertical Composition",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "schema_version",
+    "selection_manifest_id",
+    "cut_id",
+    "source_composition_artifact_id",
+    "target_render_profile_id"
+  ],
+  "title": "ShortSelectionManifest",
+  "type": "object",
+  "x-contract-schema-version": "short-selection-manifest.v1"
+}

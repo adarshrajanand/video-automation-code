@@ -1,0 +1,79 @@
+{
+  "$id": "urn:pipeline:contract:InputManifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Frozen expected input set for one stage instance.",
+  "properties": {
+    "complete": {
+      "default": false,
+      "title": "Complete",
+      "type": "boolean"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "expected_artifact_slots": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Expected Artifact Slots",
+      "type": "array"
+    },
+    "expected_count": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Count"
+    },
+    "manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "resolved_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Resolved Artifact Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "input-manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage_instance_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Stage Instance Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "stage_instance_id",
+    "created_at"
+  ],
+  "title": "InputManifest",
+  "type": "object",
+  "x-contract-schema-version": "input-manifest.v1"
+}

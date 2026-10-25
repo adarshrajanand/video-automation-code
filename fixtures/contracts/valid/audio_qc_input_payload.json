@@ -1,0 +1,8 @@
+{
+  "schema_version": "audio-qc-input.v1",
+  "audio_artifact_id": "audio_scene_01",
+  "expected_narration_text": "The Arctic is warming four times faster than the global average.",
+  "target_loudness_lufs": -24.0,
+  "target_peak_db": -1.0,
+  "metadata": {}
+}

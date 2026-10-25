@@ -1,0 +1,55 @@
+{
+  "$id": "urn:pipeline:contract:InvalidationResult",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Outcome of one invalidation request with disjoint retained artifacts.",
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "invalidated_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Invalidated Artifact Ids",
+      "type": "array"
+    },
+    "request_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Request Id",
+      "type": "string"
+    },
+    "retained_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Retained Artifact Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "invalidation-result.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "request_id",
+    "invalidated_artifact_ids",
+    "created_at"
+  ],
+  "title": "InvalidationResult",
+  "type": "object",
+  "x-contract-schema-version": "invalidation-result.v1"
+}

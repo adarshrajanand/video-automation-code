@@ -1,0 +1,63 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ShortDerivativeOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the short_derivative capability.",
+  "properties": {
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "output_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Output Artifact Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "short-derivative-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selection_manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Selection Manifest Id",
+      "type": "string"
+    },
+    "short_cut_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Short Cut Artifact Id",
+      "type": "string"
+    },
+    "target_render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Target Render Profile Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "short_cut_artifact_id",
+    "selection_manifest_id",
+    "target_render_profile_id",
+    "output_artifact_id"
+  ],
+  "title": "ShortDerivativeOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "short-derivative-output.v1"
+}

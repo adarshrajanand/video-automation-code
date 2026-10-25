@@ -1,0 +1,11 @@
+{
+  "schema_version": "visual-planning-input.v1",
+  "script_id": "script_01",
+  "scene_ids": ["scene_01", "scene_02", "scene_03"],
+  "visual_intent_ids": ["vi_01", "vi_02", "vi_03"],
+  "style_guidance": "documentary_cinematic",
+  "color_palette": "cool_blues_whites",
+  "metadata": {
+    "platform": "youtube"
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$id": "urn:pipeline:contract:WorkloadRequirements",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Resource shape required by one capability workload.",
+  "properties": {
+    "cpu_cores": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cpu Cores"
+    },
+    "data_classification": {
+      "default": "PUBLIC",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Data Classification",
+      "type": "string"
+    },
+    "expected_runtime_seconds": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Runtime Seconds"
+    },
+    "memory_mb": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Memory Mb"
+    },
+    "required_tools": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Required Tools",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "workload-requirements.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "vram_mb": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Vram Mb"
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "WorkloadRequirements",
+  "type": "object",
+  "x-contract-schema-version": "workload-requirements.v1"
+}

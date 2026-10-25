@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "InputSelectorKind": {
+      "enum": [
+        "RUN_INPUT",
+        "DEPENDENCY_OUTPUTS",
+        "MANIFEST",
+        "POINTERS"
+      ],
+      "title": "InputSelectorKind",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:InputSelector",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Where a node obtains eligible inputs; not the resolved runtime manifest.",
+  "properties": {
+    "artifact_types": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Artifact Types",
+      "type": "array"
+    },
+    "dependency_node_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Dependency Node Ids",
+      "type": "array"
+    },
+    "kind": {
+      "$ref": "#/$defs/InputSelectorKind"
+    },
+    "schema_version": {
+      "const": "input-selector.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selection_policy": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Selection Policy"
+    }
+  },
+  "required": [
+    "schema_version",
+    "kind"
+  ],
+  "title": "InputSelector",
+  "type": "object",
+  "x-contract-schema-version": "input-selector.v1"
+}

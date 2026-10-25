@@ -1,0 +1,14 @@
+{
+  "category": "UNKNOWN_OUTCOME",
+  "code": "EXEC.TIMEOUT_UNKNOWN",
+  "message": "Provider did not return an operation outcome.",
+  "provider_status": "timeout",
+  "reconciliation_required": true,
+  "retryable": true,
+  "safe_details": {
+    "attempt": 1,
+    "timeout_seconds": 60
+  },
+  "schema_version": "normalized-error.v1",
+  "severity": "MAJOR"
+}

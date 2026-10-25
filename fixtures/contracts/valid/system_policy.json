@@ -1,0 +1,15 @@
+{
+  "allowed_providers": [
+    "local_speech_fixture"
+  ],
+  "budget_policy_id": "local_budget_v1",
+  "max_parallelism": 2,
+  "max_retry_attempts": 3,
+  "non_overridable_fields": [
+    "max_parallelism",
+    "allowed_providers"
+  ],
+  "policy_id": "system_local_v1",
+  "schema_version": "system-policy.v1",
+  "version": "1.0"
+}

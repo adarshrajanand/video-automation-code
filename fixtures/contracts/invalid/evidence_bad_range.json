@@ -1,0 +1,10 @@
+{
+  "schema_version": "evidence.v1",
+  "evidence_id": "ev_01",
+  "snapshot_id": "snap_01",
+  "claim_id": "claim_01",
+  "text_span": "test span",
+  "start_offset": 10,
+  "end_offset": 5,
+  "confidence": 0.95
+}

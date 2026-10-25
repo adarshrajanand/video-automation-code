@@ -1,0 +1,64 @@
+{
+  "$defs": {
+    "ConditionOperand": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "integer"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ConditionOperator": {
+      "enum": [
+        "ALWAYS",
+        "ALL",
+        "ANY",
+        "EQUALS",
+        "IN",
+        "GREATER_THAN",
+        "EXISTS"
+      ],
+      "title": "ConditionOperator",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:ConditionExpression",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A bounded static condition; operands are scalar JSON values only.",
+  "properties": {
+    "operands": {
+      "items": {
+        "$ref": "#/$defs/ConditionOperand"
+      },
+      "title": "Operands",
+      "type": "array"
+    },
+    "operator": {
+      "$ref": "#/$defs/ConditionOperator"
+    },
+    "schema_version": {
+      "const": "condition-expression.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "operator"
+  ],
+  "title": "ConditionExpression",
+  "type": "object",
+  "x-contract-schema-version": "condition-expression.v1"
+}

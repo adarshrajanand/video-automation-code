@@ -1,0 +1,77 @@
+{
+  "$id": "urn:pipeline:contract:CompositionAudioTrackSpec",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "An audio track spanning a frame range with optional volume envelope.",
+  "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
+    "audio_track_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Track Id",
+      "type": "string"
+    },
+    "end_frame": {
+      "minimum": 1,
+      "title": "End Frame",
+      "type": "integer"
+    },
+    "fade_in_frames": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Fade In Frames",
+      "type": "integer"
+    },
+    "fade_out_frames": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Fade Out Frames",
+      "type": "integer"
+    },
+    "kind": {
+      "enum": [
+        "VOICE",
+        "MUSIC",
+        "EFFECT",
+        "AMBIENCE"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "composition-audio-track-spec.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "start_frame": {
+      "minimum": 0,
+      "title": "Start Frame",
+      "type": "integer"
+    },
+    "volume": {
+      "default": 1.0,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Volume",
+      "type": "number"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_track_id",
+    "kind",
+    "start_frame",
+    "end_frame",
+    "audio_artifact_id"
+  ],
+  "title": "CompositionAudioTrackSpec",
+  "type": "object",
+  "x-contract-schema-version": "composition-audio-track-spec.v1"
+}

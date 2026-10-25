@@ -1,0 +1,12 @@
+{
+  "schema_version": "script-generation-input.v1",
+  "topic": "Test Topic",
+  "outline": "Test outline",
+  "claim_ids": [],
+  "evidence_ids": [],
+  "source_ref_ids": [],
+  "duration_policy_id": "",
+  "target_audience": "general",
+  "tone": "informative",
+  "language": "en"
+}

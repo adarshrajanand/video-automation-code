@@ -1,0 +1,66 @@
+{
+  "nodes": [
+    {
+      "cardinality": {
+        "count": null,
+        "expected_manifest_id": null,
+        "mode": "one_to_one",
+        "schema_version": "cardinality.v1",
+        "selection_policy": null
+      },
+      "depends_on": [
+        "script"
+      ],
+      "enabled_when": null,
+      "implementation_version": "manual-topic.v1",
+      "input_selector": {
+        "artifact_types": [],
+        "dependency_node_ids": [],
+        "kind": "RUN_INPUT",
+        "schema_version": "input-selector.v1",
+        "selection_policy": null
+      },
+      "node_id": "intake",
+      "quality_gate_id": null,
+      "recovery_policy_id": "default_recovery_v1",
+      "schema_version": "stage-node.v1",
+      "stage_name": "manual_topic"
+    },
+    {
+      "cardinality": {
+        "count": null,
+        "expected_manifest_id": null,
+        "mode": "one_to_one",
+        "schema_version": "cardinality.v1",
+        "selection_policy": null
+      },
+      "depends_on": [
+        "intake"
+      ],
+      "enabled_when": null,
+      "implementation_version": "script-generation.v1",
+      "input_selector": {
+        "artifact_types": [
+          "topic"
+        ],
+        "dependency_node_ids": [
+          "intake"
+        ],
+        "kind": "DEPENDENCY_OUTPUTS",
+        "schema_version": "input-selector.v1",
+        "selection_policy": "latest_accepted"
+      },
+      "node_id": "script",
+      "quality_gate_id": "script_gate_v1",
+      "recovery_policy_id": "default_recovery_v1",
+      "schema_version": "stage-node.v1",
+      "stage_name": "script_generation"
+    }
+  ],
+  "policy_ids": [
+    "default_recovery_v1"
+  ],
+  "schema_version": "workflow-definition.v1",
+  "version": "1.0",
+  "workflow_id": "explainer_validation_v1"
+}

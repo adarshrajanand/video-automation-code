@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:DurationPolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Policy controlling scene and script duration allocation.",
+  "properties": {
+    "intro_outro_seconds": {
+      "default": 5,
+      "minimum": 0,
+      "title": "Intro Outro Seconds",
+      "type": "integer"
+    },
+    "max_scene_seconds": {
+      "default": 30,
+      "minimum": 1,
+      "title": "Max Scene Seconds",
+      "type": "integer"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "min_scene_seconds": {
+      "default": 3,
+      "minimum": 1,
+      "title": "Min Scene Seconds",
+      "type": "integer"
+    },
+    "pause_seconds_per_comma": {
+      "default": 0.2,
+      "minimum": 0,
+      "title": "Pause Seconds Per Comma",
+      "type": "number"
+    },
+    "pause_seconds_per_period": {
+      "default": 0.5,
+      "minimum": 0,
+      "title": "Pause Seconds Per Period",
+      "type": "number"
+    },
+    "policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "duration-policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_total_seconds": {
+      "minimum": 1,
+      "title": "Target Total Seconds",
+      "type": "integer"
+    },
+    "words_per_minute": {
+      "default": 150,
+      "minimum": 1,
+      "title": "Words Per Minute",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "target_total_seconds"
+  ],
+  "title": "DurationPolicy",
+  "type": "object",
+  "x-contract-schema-version": "duration-policy.v1"
+}

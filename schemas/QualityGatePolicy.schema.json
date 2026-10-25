@@ -1,0 +1,139 @@
+{
+  "$defs": {
+    "FailureCode": {
+      "description": "Namespaced failure codes registered for recovery decisions.",
+      "enum": [
+        "EXEC.VALIDATION",
+        "EXEC.AUTHENTICATION",
+        "EXEC.AUTHORIZATION",
+        "EXEC.RATE_LIMIT",
+        "EXEC.QUOTA",
+        "EXEC.TRANSIENT_PROVIDER",
+        "EXEC.PERMANENT_PROVIDER",
+        "EXEC.INTERNAL",
+        "EXEC.TIMEOUT_UNKNOWN",
+        "MEDIA.DECODE_ERROR",
+        "MEDIA.OUTPUT_PROFILE",
+        "MEDIA.TIMELINE_INVALID",
+        "MEDIA.TECHNICAL_INTEGRITY",
+        "QUALITY.SCHEMA_INVALID",
+        "QUALITY.GENERIC",
+        "QUALITY.UNSUPPORTED_CLAIM",
+        "QUALITY.NUMERIC_CONTRADICTION",
+        "QUALITY.TTS_OMISSION",
+        "QUALITY.TTS_PRONUNCIATION",
+        "QUALITY.VISUAL_MISMATCH",
+        "QUALITY.MISSING_ASSET",
+        "QUALITY.PROVENANCE_MISSING",
+        "QUALITY.CAPTION_OVERFLOW",
+        "QUALITY.AUDIO_DECODE",
+        "MEDIA.RENDER_CORRUPT",
+        "MEDIA.AUDIO_VIDEO_DRIFT",
+        "QUALITY.REPEATED_FAILURE",
+        "RIGHTS.LICENSE_UNCERTAIN",
+        "HUMAN.REVIEW_REQUIRED",
+        "POLICY.BUDGET_EXCEEDED",
+        "POLICY.PROHIBITED_CONTENT",
+        "CONFIG.UNKNOWN_STAGE"
+      ],
+      "title": "FailureCode",
+      "type": "string"
+    },
+    "RepeatedFailureAction": {
+      "enum": [
+        "HUMAN_REVIEW",
+        "FAIL"
+      ],
+      "title": "RepeatedFailureAction",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:QualityGatePolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Versioned rules that aggregate required checks into one decision.",
+  "properties": {
+    "after_max_regenerations": {
+      "$ref": "#/$defs/RepeatedFailureAction"
+    },
+    "gate_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Gate Id",
+      "type": "string"
+    },
+    "hard_failure_codes": {
+      "items": {
+        "$ref": "#/$defs/FailureCode"
+      },
+      "title": "Hard Failure Codes",
+      "type": "array"
+    },
+    "human_review_thresholds": {
+      "patternProperties": {
+        "^\\S(?:.*\\S)?$": {
+          "type": "number"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 512,
+        "minLength": 1
+      },
+      "title": "Human Review Thresholds",
+      "type": "object"
+    },
+    "max_regenerations": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Max Regenerations",
+      "type": "integer"
+    },
+    "pass_thresholds": {
+      "patternProperties": {
+        "^\\S(?:.*\\S)?$": {
+          "type": "number"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 512,
+        "minLength": 1
+      },
+      "title": "Pass Thresholds",
+      "type": "object"
+    },
+    "required_check_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Required Check Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "quality-gate-policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "gate_id",
+    "version",
+    "required_check_ids",
+    "after_max_regenerations"
+  ],
+  "title": "QualityGatePolicy",
+  "type": "object",
+  "x-contract-schema-version": "quality-gate-policy.v1"
+}

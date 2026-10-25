@@ -1,0 +1,69 @@
+{
+  "$id": "urn:pipeline:contract:Episode",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Canonical long-form editorial work, independent of an encoded file.",
+  "properties": {
+    "content_package_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Content Package Id",
+      "type": "string"
+    },
+    "cut_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Cut Ids",
+      "type": "array"
+    },
+    "episode_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Episode Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "episode.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Artifact Id",
+      "type": "string"
+    },
+    "sequence_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Sequence Ids",
+      "type": "array"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "episode_id",
+    "content_package_id",
+    "script_artifact_id",
+    "version"
+  ],
+  "title": "Episode",
+  "type": "object",
+  "x-contract-schema-version": "episode.v1"
+}

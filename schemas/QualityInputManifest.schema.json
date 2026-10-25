@@ -1,0 +1,103 @@
+{
+  "$id": "urn:pipeline:contract:QualityInputManifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact artifact versions and hashes checked by one gate/check pair.",
+  "properties": {
+    "check_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Check Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "gate_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Gate Id",
+      "type": "string"
+    },
+    "manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Manifest Id",
+      "type": "string"
+    },
+    "policy_snapshot_artifact_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy Snapshot Artifact Id"
+    },
+    "schema_version": {
+      "const": "quality-input-manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "supporting_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Supporting Artifact Ids",
+      "type": "array"
+    },
+    "target_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Target Artifact Ids",
+      "type": "array"
+    },
+    "target_hashes": {
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Target Hashes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "gate_id",
+    "check_id",
+    "target_artifact_ids",
+    "target_hashes",
+    "created_at"
+  ],
+  "title": "QualityInputManifest",
+  "type": "object",
+  "x-contract-schema-version": "quality-input-manifest.v1"
+}

@@ -1,0 +1,14 @@
+{
+  "content_package_id": "package_01",
+  "cut_ids": [
+    "cut_long_form_16x9",
+    "cut_short_01_9x16"
+  ],
+  "episode_id": "episode_01",
+  "schema_version": "episode.v1",
+  "script_artifact_id": "artifact_script_v1",
+  "sequence_ids": [
+    "seq_01"
+  ],
+  "version": 1
+}

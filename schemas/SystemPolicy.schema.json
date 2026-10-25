@@ -1,0 +1,75 @@
+{
+  "$id": "urn:pipeline:contract:SystemPolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Non-overridable system limits and allowed providers.",
+  "properties": {
+    "allowed_providers": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Allowed Providers",
+      "type": "array"
+    },
+    "budget_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Budget Policy Id",
+      "type": "string"
+    },
+    "max_parallelism": {
+      "minimum": 1,
+      "title": "Max Parallelism",
+      "type": "integer"
+    },
+    "max_retry_attempts": {
+      "minimum": 0,
+      "title": "Max Retry Attempts",
+      "type": "integer"
+    },
+    "non_overridable_fields": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Non Overridable Fields",
+      "type": "array"
+    },
+    "policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "system-policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "version",
+    "max_parallelism",
+    "max_retry_attempts",
+    "budget_policy_id"
+  ],
+  "title": "SystemPolicy",
+  "type": "object",
+  "x-contract-schema-version": "system-policy.v1"
+}

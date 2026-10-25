@@ -1,0 +1,9 @@
+{
+  "schema_version": "claim.v1",
+  "claim_id": "claim_01",
+  "text": "Test claim",
+  "claim_type": "INVALID_TYPE",
+  "source_ref_ids": ["src_01"],
+  "evidence_ids": ["ev_01"],
+  "confidence": 0.92
+}

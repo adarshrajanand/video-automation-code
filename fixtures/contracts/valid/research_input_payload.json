@@ -1,0 +1,12 @@
+{
+  "schema_version": "research-input.v1",
+  "topic": "Climate Change Impact on Arctic Ice",
+  "focus_areas": ["ice_loss", "sea_level_rise", "ecosystem_impact"],
+  "source_kinds": ["STOCK", "PUBLIC_DOMAIN"],
+  "max_sources": 10,
+  "max_tokens_per_source": 8000,
+  "language": "en",
+  "metadata": {
+    "priority": "high"
+  }
+}
