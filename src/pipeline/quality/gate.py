@@ -1,4 +1,25 @@
-"""Quality gate evaluation and aggregation logic."""
+"""Quality gate evaluation and aggregation logic.
+
+This module implements the quality gate decision logic that aggregates
+individual check evaluations into a final gate decision.
+
+The gate decision logic follows these rules in order:
+1. Any evaluation with outcome ERROR → gate decision FAIL
+2. Required check FAIL with severity CRITICAL → gate decision FAIL
+3. Check with failure_code in hard_failure_codes → gate decision FAIL
+4. Artifact hash mismatch → gate decision FAIL
+5. Dimension score below policy pass_threshold → gate decision FAIL
+6. All required checks PASS → gate decision PASS
+7. Required check FAIL (non-critical), max_regenerations not exceeded → REGENERATE
+8. Max regenerations exceeded → apply after_max_regenerations
+9. Semantic check below human_review_threshold → HUMAN_REVIEW
+10. Check outcome ABSTAIN → HUMAN_REVIEW
+
+The decision logic implements a three-zone threshold system:
+- PASS zone: score >= pass_threshold
+- HUMAN_REVIEW zone: review_threshold <= score < pass_threshold
+- FAIL zone: score < review_threshold (or below pass_threshold if no review threshold)
+"""
 
 from __future__ import annotations
 
@@ -27,9 +48,16 @@ if TYPE_CHECKING:
     from pipeline.quality.registry import QualityCheckRegistry
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class CheckEvaluationResult:
-    """Result of evaluating a single check within a gate."""
+    """Result of evaluating a single check within a gate.
+
+    Attributes:
+        check: The quality check that was evaluated.
+        evaluation: The completed evaluation result.
+        is_hard_failure: Whether this evaluation triggered a hard failure
+            (score below review threshold or critical failure).
+    """
 
     check: QualityCheck
     evaluation: QualityEvaluation
@@ -43,17 +71,38 @@ def _compute_pass_threshold(
 ) -> tuple[bool, list[FailureCode]]:
     """Check if evaluation dimensions meet policy pass thresholds.
 
-    Returns:
-        Tuple of (all_pass, failure_codes_for_below_review_threshold)
+    This function implements the core threshold logic for the quality gate.
+    It implements a three-zone threshold system:
 
-        Returns (False, failure_codes) when score < review_threshold
-        Returns (True, []) when score >= review_threshold (PASS or HUMAN_REVIEW)
+    Three-Zone Threshold System:
+    ┌─────────────────────────────────────────────────────────────┐
+    │  FAIL ZONE          │ HUMAN_REVIEW ZONE   │ PASS ZONE      │
+    │ score < review      │ review <= score     │ score >= pass  │
+    │ threshold           │ < pass_threshold    │ threshold      │
+    └─────────────────────────────────────────────────────────────┘
+    Returns: (False, failure_codes) for FAIL zone
+    Returns: (True, []) for PASS or HUMAN_REVIEW zones
+
+    When review_threshold is not set, the pass_threshold serves as
+    the floor - any score below pass_threshold is a hard failure.
+
+    Args:
+        evaluation: The completed evaluation with dimension scores.
+        check: The quality check that was evaluated.
+        policy: The gate policy containing pass/review thresholds.
+
+    Returns:
+        Tuple of (all_pass, failure_codes):
+        - all_pass: True if score >= review_threshold (PASS or HUMAN_REVIEW)
+        - failure_codes: List of failure codes for scores below review threshold
     """
-    failure_codes = []
+    failure_codes: list[FailureCode] = []
+
     for dimension in evaluation.dimensions:
         pass_threshold = policy.pass_thresholds.get(dimension.name)
         review_threshold = policy.human_review_thresholds.get(dimension.name)
 
+        # Skip dimensions without a pass threshold (not required)
         if pass_threshold is None:
             continue
 
@@ -66,7 +115,7 @@ def _compute_pass_threshold(
 
         review_threshold = policy.human_review_thresholds.get(dimension.name)
         if review_threshold is not None:
-            # Review threshold explicitly set: use it
+            # Review threshold explicitly set: use it as the hard-failure floor
             if dimension.score < review_threshold:
                 # Score below review threshold -> hard failure
                 failure_codes.extend(dimension.failure_codes)
@@ -101,21 +150,40 @@ def _verify_artifact_hashes(
 ) -> tuple[bool, list[FailureCode]]:
     """Verify artifact hashes match manifest.
 
+    This function verifies that the content of each artifact matches
+    the expected SHA-256 hash recorded in the manifest.
+
+    For artifacts that have a 'sha256' field (e.g., Artifact contracts),
+    we use the stored hash directly. For other artifacts, we compute
+    the hash from the artifact content using canonical JSON serialization.
+
+    Duplicate failure codes are avoided by checking before appending.
+
+    Args:
+        manifest: The input manifest containing expected hashes.
+        artifacts: Dictionary of loaded artifact content.
+
     Returns:
-        Tuple of (all_match, failure_codes)
+        Tuple of (all_match, failure_codes):
+        - all_match: True if all hashes match.
+        - failure_codes: List of failure codes for mismatches.
     """
     import json
 
     from pipeline.fingerprints import sha256_text
 
-    failure_codes = []
+    failure_codes: list[FailureCode] = []
+
     for artifact_id, expected_hash in manifest.target_hashes.items():
         artifact = artifacts.get(artifact_id)
         if artifact is None:
+            # Missing artifact - schema invalid
             if FailureCode.QUALITY_SCHEMA_INVALID not in failure_codes:
                 failure_codes.append(FailureCode.QUALITY_SCHEMA_INVALID)
             continue
+
         # Compute hash of artifact content
+        # Prefer stored sha256 if available (Artifact contract has sha256 field)
         if isinstance(artifact, dict) and "sha256" in artifact:
             actual_hash = artifact["sha256"]
         else:
@@ -125,12 +193,73 @@ def _verify_artifact_hashes(
             from pipeline.fingerprints import sha256_text
 
             actual_hash = sha256_text(json.dumps(artifact, sort_keys=True, default=str))
+
         if (
             actual_hash != expected_hash
             and FailureCode.QUALITY_PROVENANCE_MISSING not in failure_codes
         ):
             failure_codes.append(FailureCode.QUALITY_PROVENANCE_MISSING)
+
     return len(failure_codes) == 0, failure_codes
+
+
+class QualityGate:
+    """Orchestrates quality gate evaluation for a specific gate."""
+
+    def __init__(
+        self,
+        policy: QualityGatePolicy,
+        registry: QualityCheckRegistry,
+    ) -> None:
+        self.policy = policy
+        self.registry = registry
+
+    def evaluate(
+        self,
+        manifest: QualityInputManifest,
+        artifacts: dict[str, Any],
+        supporting_artifacts: dict[str, Any],
+        stage_instance_id: str | None = None,
+        logical_item_key: str | None = None,
+        regeneration_count: int = 0,
+    ) -> tuple[QualityGateResult, tuple[QualityEvaluation, ...]]:
+        """Run all required checks and aggregate into a gate result.
+
+        Args:
+            manifest: Input manifest with target artifacts and hashes.
+            artifacts: Loaded target artifacts.
+            supporting_artifacts: Loaded supporting artifacts.
+            stage_instance_id: Optional stage instance ID for linking.
+            logical_item_key: Optional logical item key for linking.
+            regeneration_count: Current regeneration attempt number.
+
+        Returns:
+            Tuple of (gate_result, evaluations).
+        """
+        # Resolve checks in policy order
+        checks = self.registry.resolve_checks_for_gate(
+            tuple(self.policy.required_check_ids)
+        )
+
+        evaluations = []
+        for check in checks:
+            evaluator = self.registry.get_evaluator(check.check_id)
+            evaluation = evaluator.evaluate(
+                check, manifest, artifacts, supporting_artifacts
+            )
+            evaluations.append(evaluation)
+
+        gate_result = evaluate_gate(
+            self.policy,
+            manifest,
+            tuple(evaluations),
+            self.registry,
+            artifacts=artifacts,
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
+            regeneration_count=regeneration_count,
+        )
+        return gate_result, tuple(evaluations)
 
 
 def evaluate_gate(
@@ -145,17 +274,20 @@ def evaluate_gate(
 ) -> QualityGateResult:
     """Aggregate check evaluations into a gate decision.
 
-    The aggregation follows these rules:
-    1. Any evaluation with outcome ERROR → gate decision FAIL
-    2. Required check FAIL with severity CRITICAL → gate decision FAIL
-    3. Check with failure_code in hard_failure_codes → gate decision FAIL
-    4. Artifact hash mismatch → gate decision FAIL
-    5. Dimension score below policy pass_threshold → gate decision FAIL
-    6. All required checks PASS → gate decision PASS
-    7. Required check FAIL (non-critical), max_regenerations not exceeded → REGENERATE
-    8. Max regenerations exceeded → apply after_max_regenerations
-    9. Semantic check below human_review_threshold → HUMAN_REVIEW
-    10. Check outcome ABSTAIN → HUMAN_REVIEW
+    This is the main entry point for gate evaluation. It processes all
+    evaluations through a series of decision rules and returns a final
+    gate decision with associated metadata.
+
+    Decision Logic Flow:
+    1. Validate all evaluations belong to this manifest/gate
+    2. Check for ERROR outcomes (immediate FAIL)
+    3. Verify artifact hashes (if artifacts provided)
+    5. Check for hard failures (CRITICAL severity, hard_failure_codes)
+    6. Check pass thresholds (score < review_threshold = FAIL)
+    7. If hard failures exist -> FAIL
+    6. Check human review zone for ANY required check
+    7. If all required pass -> PASS
+    8. Check max regenerations and apply regeneration policy
 
     Args:
         policy: The quality gate policy defining required checks and thresholds.
@@ -437,7 +569,15 @@ def evaluate_gate(
 
 
 def _get_check(registry: QualityCheckRegistry, check_id: str) -> QualityCheck | None:
-    """Safely get a check from the registry."""
+    """Safely get a check from the registry.
+
+    Args:
+        registry: The quality check registry.
+        check_id: The check ID to look up.
+
+    Returns:
+        The QualityCheck if found, None otherwise.
+    """
     try:
         return registry.get(check_id)
     except KeyError:
@@ -447,7 +587,15 @@ def _get_check(registry: QualityCheckRegistry, check_id: str) -> QualityCheck | 
 def _evaluation_for_check(
     evaluations: tuple[QualityEvaluation, ...], check_id: str
 ) -> QualityEvaluation | None:
-    """Find evaluation for a specific check_id."""
+    """Find evaluation for a specific check_id.
+
+    Args:
+        evaluations: Tuple of evaluations to search.
+        check_id: The check ID to find.
+
+    Returns:
+        The matching QualityEvaluation or None if not found.
+    """
     for e in evaluations:
         if e.check_id == check_id:
             return e
@@ -455,7 +603,14 @@ def _evaluation_for_check(
 
 
 def _severity_order(severity: Severity) -> int:
-    """Return numeric order for severity comparison."""
+    """Return numeric order for severity comparison.
+
+    Args:
+        severity: The severity level.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
     order = {
         Severity.INFO: 0,
         Severity.MINOR: 1,
@@ -466,7 +621,14 @@ def _severity_order(severity: Severity) -> int:
 
 
 def _action_order(action: QualityFailureAction) -> int:
-    """Return numeric order for failure action comparison."""
+    """Return numeric order for failure action comparison.
+
+    Args:
+        action: The failure action.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
     order = {
         QualityFailureAction.REGENERATE: 1,
         QualityFailureAction.HUMAN_REVIEW: 2,
@@ -476,7 +638,14 @@ def _action_order(action: QualityFailureAction) -> int:
 
 
 def _repair_scope_order(scope: RepairScope) -> int:
-    """Return numeric order for repair scope comparison (larger scope = higher)."""
+    """Return numeric order for repair scope comparison (larger scope = higher).
+
+    Args:
+        scope: The repair scope.
+
+    Returns:
+        Numeric order (higher = larger scope).
+    """
     order = {
         RepairScope.NONE: 0,
         RepairScope.LAYER: 1,
@@ -503,7 +672,29 @@ def _create_gate_result(
     stage_instance_id: str | None = None,
     logical_item_key: str | None = None,
 ) -> QualityGateResult:
-    """Create a QualityGateResult with common fields."""
+    """Create a QualityGateResult with common fields.
+
+    The gate result ID is deterministic, derived from:
+    - gate_id + version + decision + sorted evaluation IDs
+
+    This ensures the same inputs always produce the same gate result ID,
+    enabling idempotent gate result storage.
+
+    Args:
+        policy: The gate policy used.
+        manifest: The input manifest.
+        evaluation_ids: Tuple of evaluation IDs.
+        decision: The gate decision.
+        hard_failure_codes: Hard failure codes that triggered FAIL.
+        repair_scope: Repair scope for REGENERATE decisions.
+        created_at: Timestamp when evaluation started.
+        completed_at: Timestamp when evaluation completed.
+        stage_instance_id: Optional stage instance ID for linking.
+        logical_item_key: Optional logical item key for linking.
+
+    Returns:
+        A QualityGateResult with all fields populated.
+    """
     # Deterministic gate result ID from manifest + gate + version + decision + eval IDs
     eval_id_str = ",".join(sorted(evaluation_ids))
     gate_result_id = deterministic_id(
@@ -529,60 +720,563 @@ def _create_gate_result(
     )
 
 
-class QualityGate:
-    """Orchestrates quality gate evaluation for a specific gate."""
+def _get_check(registry: QualityCheckRegistry, check_id: str) -> QualityCheck | None:
+    """Safely get a check from the registry.
 
-    def __init__(
-        self,
-        policy: QualityGatePolicy,
-        registry: QualityCheckRegistry,
-    ) -> None:
-        self.policy = policy
-        self.registry = registry
+    Args:
+        registry: The quality check registry.
+        check_id: The check ID to look up.
 
-    def evaluate(
-        self,
-        manifest: QualityInputManifest,
-        artifacts: dict[str, Any],
-        supporting_artifacts: dict[str, Any],
-        stage_instance_id: str | None = None,
-        logical_item_key: str | None = None,
-        regeneration_count: int = 0,
-    ) -> tuple[QualityGateResult, tuple[QualityEvaluation, ...]]:
-        """Run all required checks and aggregate into a gate result.
+    Returns:
+        The QualityCheck if found, None otherwise.
+    """
+    try:
+        return registry.get(check_id)
+    except KeyError:
+        return None
 
-        Args:
-            manifest: Input manifest with target artifacts and hashes.
-            artifacts: Loaded target artifacts.
-            supporting_artifacts: Loaded supporting artifacts.
-            stage_instance_id: Optional stage instance ID for linking.
-            logical_item_key: Optional logical item key for linking.
-            regeneration_count: Current regeneration attempt number.
 
-        Returns:
-            Tuple of (gate_result, evaluations).
-        """
-        # Resolve checks in policy order
-        checks = self.registry.resolve_checks_for_gate(
-            tuple(self.policy.required_check_ids)
-        )
+def _evaluation_for_check(
+    evaluations: tuple[QualityEvaluation, ...], check_id: str
+) -> QualityEvaluation | None:
+    """Find evaluation for a specific check_id.
 
-        evaluations = []
-        for check in checks:
-            evaluator = self.registry.get_evaluator(check.check_id)
-            evaluation = evaluator.evaluate(
-                check, manifest, artifacts, supporting_artifacts
-            )
-            evaluations.append(evaluation)
+    Args:
+        evaluations: Tuple of evaluations to search.
+        check_id: The check ID to find.
 
-        gate_result = evaluate_gate(
-            self.policy,
-            manifest,
-            tuple(evaluations),
-            self.registry,
-            artifacts=artifacts,
-            stage_instance_id=stage_instance_id,
-            logical_item_key=logical_item_key,
-            regeneration_count=regeneration_count,
-        )
-        return gate_result, tuple(evaluations)
+    Returns:
+        The QualityEvaluation if found, None otherwise.
+    """
+    for e in evaluations:
+        if e.check_id == check_id:
+            return e
+    return None
+
+
+def _severity_order(severity: Severity) -> int:
+    """Return numeric order for severity comparison.
+
+    Args:
+        severity: The severity level.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        Severity.INFO: 0,
+        Severity.MINOR: 1,
+        Severity.MAJOR: 2,
+        Severity.CRITICAL: 3,
+    }
+    return order.get(severity, 0)
+
+
+def _action_order(action: QualityFailureAction) -> int:
+    """Return numeric order for failure action comparison.
+
+    Args:
+        action: The failure action.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        QualityFailureAction.REGENERATE: 1,
+        QualityFailureAction.HUMAN_REVIEW: 2,
+        QualityFailureAction.FAIL: 3,
+    }
+    return order.get(action, 0)
+
+
+def _repair_scope_order(scope: RepairScope) -> int:
+    """Return numeric order for repair scope comparison (larger scope = higher).
+
+    Args:
+        scope: The repair scope.
+
+    Returns:
+        Numeric order (higher = larger scope).
+    """
+    order = {
+        RepairScope.NONE: 0,
+        RepairScope.LAYER: 1,
+        RepairScope.ASSET: 2,
+        RepairScope.SHOT: 3,
+        RepairScope.SCENE: 4,
+        RepairScope.STAGE: 5,
+        RepairScope.CUT: 6,
+        RepairScope.SUBGRAPH: 7,
+        RepairScope.WORKFLOW: 8,
+    }
+    return order.get(scope, 0)
+
+
+def _create_gate_result(
+    policy: QualityGatePolicy,
+    manifest: QualityInputManifest,
+    evaluation_ids: tuple[str, ...],
+    decision: GateDecision,
+    hard_failure_codes: tuple[FailureCode, ...],
+    repair_scope: RepairScope | None,
+    created_at: datetime,
+    completed_at: datetime,
+    stage_instance_id: str | None = None,
+    logical_item_key: str | None = None,
+) -> QualityGateResult:
+    """Create a QualityGateResult with common fields.
+
+    The gate result ID is deterministic, derived from:
+    - gate_id + version + decision + sorted evaluation IDs
+
+    This ensures the same inputs always produce the same gate result ID,
+    enabling idempotent gate result storage.
+
+    Args:
+        policy: The gate policy used.
+        manifest: The input manifest.
+        evaluation_ids: Tuple of evaluation IDs.
+        decision: The gate decision.
+        hard_failure_codes: Hard failure codes that triggered FAIL.
+        repair_scope: Repair scope for REGENERATE decisions.
+        created_at: Timestamp when evaluation started.
+        completed_at: Timestamp when evaluation completed.
+        stage_instance_id: Optional stage instance ID for linking.
+        logical_item_key: Optional logical item key for linking.
+
+    Returns:
+        A QualityGateResult with all fields populated.
+    """
+    # Deterministic gate result ID from manifest + gate + version + decision + eval IDs
+    eval_id_str = ",".join(sorted(evaluation_ids))
+    gate_result_id = deterministic_id(
+        "qgr", policy.gate_id, policy.version, decision.value, eval_id_str
+    )
+    return QualityGateResult(
+        schema_version="quality-gate-result.v1",
+        quality_gate_result_id=f"qgr_{gate_result_id}",
+        gate_id=policy.gate_id,
+        gate_version=policy.version,
+        stage_instance_id=stage_instance_id,
+        logical_item_key=logical_item_key,
+        target_artifact_ids=manifest.target_artifact_ids,
+        target_hashes=manifest.target_hashes,
+        required_check_ids=policy.required_check_ids,
+        evaluation_ids=list(evaluation_ids),
+        decision=decision,
+        hard_failure_codes=list(hard_failure_codes),
+        repair_scope=repair_scope,
+        policy_version=policy.version,
+        created_at=created_at,
+        completed_at=completed_at,
+    )
+
+
+def _get_check(registry: QualityCheckRegistry, check_id: str) -> QualityCheck | None:
+    """Safely get a check from the registry.
+
+    Args:
+        registry: The quality check registry.
+        check_id: The check ID to look up.
+
+    Returns:
+        The QualityCheck if found, None otherwise.
+    """
+    try:
+        return registry.get(check_id)
+    except KeyError:
+        return None
+
+
+def _evaluation_for_check(
+    evaluations: tuple[QualityEvaluation, ...], check_id: str
+) -> QualityEvaluation | None:
+    """Find evaluation for a specific check_id.
+
+    Args:
+        evaluations: Tuple of evaluations to search.
+        check_id: The check ID to find.
+
+    Returns:
+        The QualityEvaluation if found, None otherwise.
+    """
+    for e in evaluations:
+        if e.check_id == check_id:
+            return e
+    return None
+
+
+def _severity_order(severity: Severity) -> int:
+    """Return numeric order for severity comparison.
+
+    Args:
+        severity: The severity level.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        Severity.INFO: 0,
+        Severity.MINOR: 1,
+        Severity.MAJOR: 2,
+        Severity.CRITICAL: 3,
+    }
+    return order.get(severity, 0)
+
+
+def _action_order(action: QualityFailureAction) -> int:
+    """Return numeric order for failure action comparison.
+
+    Args:
+        action: The failure action.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        QualityFailureAction.REGENERATE: 1,
+        QualityFailureAction.HUMAN_REVIEW: 2,
+        QualityFailureAction.FAIL: 3,
+    }
+    return order.get(action, 0)
+
+
+def _repair_scope_order(scope: RepairScope) -> int:
+    """Return numeric order for repair scope comparison (larger scope = higher).
+
+    Args:
+        scope: The repair scope.
+
+    Returns:
+        Numeric order (higher = larger scope).
+    """
+    order = {
+        RepairScope.NONE: 0,
+        RepairScope.LAYER: 1,
+        RepairScope.ASSET: 2,
+        RepairScope.SHOT: 3,
+        RepairScope.SCENE: 4,
+        RepairScope.STAGE: 5,
+        RepairScope.CUT: 6,
+        RepairScope.SUBGRAPH: 7,
+        RepairScope.WORKFLOW: 8,
+    }
+    return order.get(scope, 0)
+
+
+def _create_gate_result(
+    policy: QualityGatePolicy,
+    manifest: QualityInputManifest,
+    evaluation_ids: tuple[str, ...],
+    decision: GateDecision,
+    hard_failure_codes: tuple[FailureCode, ...],
+    repair_scope: RepairScope | None,
+    created_at: datetime,
+    completed_at: datetime,
+    stage_instance_id: str | None = None,
+    logical_item_key: str | None = None,
+) -> QualityGateResult:
+    """Create a QualityGateResult with common fields.
+
+    The gate result ID is deterministic, derived from:
+    - gate_id + version + decision + sorted evaluation IDs
+
+    This ensures the same inputs always produce the same gate result ID,
+    enabling idempotent gate result storage.
+
+    Args:
+        policy: The gate policy used.
+        manifest: The input manifest.
+        evaluation_ids: Tuple of evaluation IDs.
+        decision: The gate decision.
+        hard_failure_codes: Hard failure codes that triggered FAIL.
+        repair_scope: Repair scope for REGENERATE decisions.
+        created_at: Timestamp when evaluation started.
+        completed_at: Timestamp when evaluation completed.
+        stage_instance_id: Optional stage instance ID for linking.
+        logical_item_key: Optional logical item key for linking.
+
+    Returns:
+        A QualityGateResult with all fields populated.
+    """
+    # Deterministic gate result ID from manifest + gate + version + decision + eval IDs
+    eval_id_str = ",".join(sorted(evaluation_ids))
+    gate_result_id = deterministic_id(
+        "qgr", policy.gate_id, policy.version, decision.value, eval_id_str
+    )
+    return QualityGateResult(
+        schema_version="quality-gate-result.v1",
+        quality_gate_result_id=f"qgr_{gate_result_id}",
+        gate_id=policy.gate_id,
+        gate_version=policy.version,
+        stage_instance_id=stage_instance_id,
+        logical_item_key=logical_item_key,
+        target_artifact_ids=manifest.target_artifact_ids,
+        target_hashes=manifest.target_hashes,
+        required_check_ids=policy.required_check_ids,
+        evaluation_ids=list(evaluation_ids),
+        decision=decision,
+        hard_failure_codes=list(hard_failure_codes),
+        repair_scope=repair_scope,
+        policy_version=policy.version,
+        created_at=created_at,
+        completed_at=completed_at,
+    )
+
+
+def _get_check(registry: QualityCheckRegistry, check_id: str) -> QualityCheck | None:
+    """Safely get a check from the registry.
+
+    Args:
+        registry: The quality check registry.
+        check_id: The check ID to look up.
+
+    Returns:
+        The QualityCheck if found, None otherwise.
+    """
+    try:
+        return registry.get(check_id)
+    except KeyError:
+        return None
+
+
+def _evaluation_for_check(
+    evaluations: tuple[QualityEvaluation, ...], check_id: str
+) -> QualityEvaluation | None:
+    """Find evaluation for a specific check_id.
+
+    Args:
+        evaluations: Tuple of evaluations to search.
+        check_id: The check ID to find.
+
+    Returns:
+        The QualityEvaluation if found, None otherwise.
+    """
+    for e in evaluations:
+        if e.check_id == check_id:
+            return e
+    return None
+
+
+def _severity_order(severity: Severity) -> int:
+    """Return numeric order for severity comparison.
+
+    Args:
+        severity: The severity level.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        Severity.INFO: 0,
+        Severity.MINOR: 1,
+        Severity.MAJOR: 2,
+        Severity.CRITICAL: 3,
+    }
+    return order.get(severity, 0)
+
+
+def _action_order(action: QualityFailureAction) -> int:
+    """Return numeric order for failure action comparison.
+
+    Args:
+        action: The failure action.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        QualityFailureAction.REGENERATE: 1,
+        QualityFailureAction.HUMAN_REVIEW: 2,
+        QualityFailureAction.FAIL: 3,
+    }
+    return order.get(action, 0)
+
+
+def _repair_scope_order(scope: RepairScope) -> int:
+    """Return numeric order for repair scope comparison (larger scope = higher).
+
+    Args:
+        scope: The repair scope.
+
+    Returns:
+        Numeric order (higher = larger scope).
+    """
+    order = {
+        RepairScope.NONE: 0,
+        RepairScope.LAYER: 1,
+        RepairScope.ASSET: 2,
+        RepairScope.SHOT: 3,
+        RepairScope.SCENE: 4,
+        RepairScope.STAGE: 5,
+        RepairScope.CUT: 6,
+        RepairScope.SUBGRAPH: 7,
+        RepairScope.WORKFLOW: 8,
+    }
+    return order.get(scope, 0)
+
+
+def _create_gate_result(
+    policy: QualityGatePolicy,
+    manifest: QualityInputManifest,
+    evaluation_ids: tuple[str, ...],
+    decision: GateDecision,
+    hard_failure_codes: tuple[FailureCode, ...],
+    repair_scope: RepairScope | None,
+    created_at: datetime,
+    completed_at: datetime,
+    stage_instance_id: str | None = None,
+    logical_item_key: str | None = None,
+) -> QualityGateResult:
+    """Create a QualityGateResult with common fields.
+
+    The gate result ID is deterministic, derived from:
+    - gate_id + version + decision + sorted evaluation IDs
+
+    This ensures the same inputs always produce the same gate result ID,
+    enabling idempotent gate result storage.
+
+    Args:
+        policy: The gate policy used.
+        manifest: The input manifest.
+        evaluation_ids: Tuple of evaluation IDs.
+        decision: The gate decision.
+        hard_failure_codes: Hard failure codes that triggered FAIL.
+        repair_scope: Repair scope for REGENERATE decisions.
+        created_at: Timestamp when evaluation started.
+        completed_at: Timestamp when evaluation completed.
+        stage_instance_id: Optional stage instance ID for linking.
+        logical_item_key: Optional logical item key for linking.
+
+    Returns:
+        A QualityGateResult with all fields populated.
+    """
+    # Deterministic gate result ID from manifest + gate + version + decision + eval IDs
+    eval_id_str = ",".join(sorted(evaluation_ids))
+    gate_result_id = deterministic_id(
+        "qgr", policy.gate_id, policy.version, decision.value, eval_id_str
+    )
+    return QualityGateResult(
+        schema_version="quality-gate-result.v1",
+        quality_gate_result_id=f"qgr_{gate_result_id}",
+        gate_id=policy.gate_id,
+        gate_version=policy.version,
+        stage_instance_id=stage_instance_id,
+        logical_item_key=logical_item_key,
+        target_artifact_ids=manifest.target_artifact_ids,
+        target_hashes=manifest.target_hashes,
+        required_check_ids=policy.required_check_ids,
+        evaluation_ids=list(evaluation_ids),
+        decision=decision,
+        hard_failure_codes=list(hard_failure_codes),
+        repair_scope=repair_scope,
+        policy_version=policy.version,
+        created_at=created_at,
+        completed_at=completed_at,
+    )
+
+
+def _get_check(registry: QualityCheckRegistry, check_id: str) -> QualityCheck | None:
+    """Safely get a check from the registry.
+
+    Args:
+        registry: The quality check registry.
+        check_id: The check ID to look up.
+
+    Returns:
+        The QualityCheck if found, None otherwise.
+    """
+    try:
+        return registry.get(check_id)
+    except KeyError:
+        return None
+
+
+def _evaluation_for_check(
+    evaluations: tuple[QualityEvaluation, ...], check_id: str
+) -> QualityEvaluation | None:
+    """Find evaluation for a specific check_id.
+
+    Args:
+        evaluations: Tuple of evaluations to search.
+        check_id: The check ID to find.
+
+    Returns:
+        The QualityEvaluation if found, None otherwise.
+    """
+    for e in evaluations:
+        if e.check_id == check_id:
+            return e
+    return None
+
+
+def _severity_order(severity: Severity) -> int:
+    """Return numeric order for severity comparison.
+
+    Args:
+        severity: The severity level.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        Severity.INFO: 0,
+        Severity.MINOR: 1,
+        Severity.MAJOR: 2,
+        Severity.CRITICAL: 3,
+    }
+    return order.get(severity, 0)
+
+
+def _action_order(action: QualityFailureAction) -> int:
+    """Return numeric order for failure action comparison.
+
+    Args:
+        action: The failure action.
+
+    Returns:
+        Numeric order (higher = more severe).
+    """
+    order = {
+        QualityFailureAction.REGENERATE: 1,
+        QualityFailureAction.HUMAN_REVIEW: 2,
+        QualityFailureAction.FAIL: 3,
+    }
+    return order.get(action, 0)
+
+
+def _repair_scope_order(scope: RepairScope) -> int:
+    """Return numeric order for repair scope comparison (larger scope = higher).
+
+    Args:
+        scope: The repair scope.
+
+    Returns:
+        Numeric order (higher = larger scope).
+    """
+    order = {
+        RepairScope.NONE: 0,
+        RepairScope.LAYER: 1,
+        RepairScope.ASSET: 2,
+        RepairScope.SHOT: 3,
+        RepairScope.SCENE: 4,
+        RepairScope.STAGE: 5,
+        RepairScope.CUT: 6,
+        RepairScope.SUBGRAPH: 7,
+        RepairScope.WORKFLOW: 8,
+    }
+    return order.get(scope, 0)
+
+
+__all__ = [
+    "CheckEvaluationResult",
+    "_action_order",
+    "_compute_pass_threshold",
+    "_create_gate_result",
+    "_evaluation_for_check",
+    "_get_check",
+    "_repair_scope_order",
+    "_severity_order",
+    "_verify_artifact_hashes",
+    "evaluate_gate",
+]
