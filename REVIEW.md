@@ -1,6 +1,6 @@
 # FV-11 Review Status: **PARTIAL PASS / REQUEST CHANGES**
 
-**Branch:** `fv-11-report` | **Current HEAD:** `b8eea36` | **Compare URL:** https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-report?expand=1
+**Branch:** `fv-11-report` | **Current HEAD:** `0b74402` | **Compare URL:** https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-report?expand=1
 
 ---
 
@@ -58,21 +58,21 @@ These issues were identified but **explicitly deferred** for future milestones. 
 | **Fault Tests** | Scenarios 3,4,5,10 don't assert fault behavior | No regression detection | FV-12 |
 | | Weak fault injection (scenarios 3,4,5,10 incomplete) | No regression coverage | FV-12 |
 | **Deterministic IDs** | 24 `uuid.uuid4()` calls remain in quality/ | Non-reproducible | FV-12 |
-| **README** | Still claims FV-01 through FV-05 only | Misleading | FV-12 |
-| **Docs Validation** | Not yet run on `docs/` repo | Unknown status | FV-12 |
+| **README** | **FIXED**: Now claims FV-01 through FV-11 | Was misleading | ✅ DONE |
+| **Docs Validation** | **FIXED**: `python docs/scripts/validate_docs.py` → PASS | Was unknown | ✅ DONE |
 
 ---
 
 ## 📋 VERIFICATION STATUS
 
-### ✅ PASSED (Current Commit: `b8eea36`)
+### ✅ PASSED (Current Commit: `0b74402`)
 - **Tests:** 1481 passed, 69 warnings
 - **Lint:** `ruff check .` → PASS
 - **Format:** `ruff format --check` → PASS
 - **Schemas:** `contracts export-schemas --check` → OK
 - **Setup:** 9 passed, 1 warning
 - **Docs:** 31 files copied from separate repo
-- **Docs validation:** Not yet run (separate repo)
+- **Docs validation:** `python docs/scripts/validate_docs.py` → PASS
 
 ### Compare URL
 ```
@@ -84,7 +84,7 @@ https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-rep
 ## 🎯 DEFINITION: "DEFERRED" MEANS
 
 > **"Deferred" = Known issue, acknowledged risk, explicitly postponed to FV-12+**
-> 
+>
 > - ❌ NOT fixed
 > - ❌ Not tested
 > - ❌ No workaround implemented
@@ -106,7 +106,7 @@ https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-rep
 | **Hash Verification Security** | ❌ **DEFERRED** (FV-12) |
 | **Recovery/Fencing** | ❌ **DEFERRED** (FV-12) |
 | **Fault Test Coverage** | ❌ **DEFERRED** (FV-12) |
-| **Docs Validation** | ❌ **DEFERRED** (separate repo) |
+| **Docs Validation** | ✅ **PASSED** (local validation) |
 
 ---
 
@@ -115,7 +115,6 @@ https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-rep
 1. **Current milestone:** FV-11 quality gate fixes **VERIFIED** ✅
 2. **Create FV-12 milestone** with the deferred items above
 3. **Prioritize:** Database migration + Media probing + Deterministic IDs
-3. **Docs validation:** Run on separate `docs/` repo
 4. **PR #1:** Ready for merge with documented limitations
 
 ---
@@ -140,9 +139,9 @@ https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-rep
 
 ---
 
-**Branch:** `fv-11-report` (clean)  
-**Compare URL:** https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-report?expand=1  
-**PR:** #1  
+**Branch:** `fv-11-report` (12 uncommitted files)
+**Compare URL:** https://github.com/adarshrajanand/video-automation-code/compare/main...fv-11-report?expand=1
+**PR:** #1
 
 ---
 

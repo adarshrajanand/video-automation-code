@@ -1,4 +1,57 @@
-"""Capability executor with idempotency, budget guard, and persistence."""
+"""Capability executor with idempotency, budget guard, and persistence.
+
+This module implements the CapabilityExecutor which executes capability
+requests with full idempotency guarantees, budget enforcement, and
+persistence of all execution records.
+
+Architecture:
+The executor is the central coordinator for capability execution. It
+orchestrates the following flow:
+
+1. **Idempotency Check**: Looks up existing record by idempotency_key.
+   - SUCCEEDED: Returns cached result (no re-execution)
+   - IN_FLIGHT/UNKNOWN: Returns error (no re-invocation)
+   - RESERVED/FAILED/RECONCILED: Proceeds with new attempt
+
+2. **Budget Check & Reservation** (single transaction):
+   - Validates cost_limit_minor against budget
+   - Creates/updates BudgetReservation for the scope
+   - Fails fast if budget exceeded
+
+3. **Routing & Execution Persistence** (single transaction):
+   - Persists RoutingDecision and CapabilityExecution (PENDING)
+   - Updates idempotency record to IN_FLIGHT
+
+4. **Provider Invocation** (outside transaction):
+   - Calls FakeCapabilityProvider (or real provider in future)
+
+5. **Result Persistence** (single transaction):
+   - Persists CapabilityExecution, ProviderInvocation, UsageRecord
+   - Settles budget reservation (SETTLED/RELEASED/UNKNOWN)
+   - Updates idempotency record to final status
+
+Key Guarantees:
+- **Atomic Idempotency**: Check + claim + budget reserve in single transaction
+- **Fail-Closed Budget**: Requires budget_reservation_repo when
+  cost_limit_minor set
+- **Deterministic Replay**: SUCCEEDED replay returns cached result even
+  if budget exhausted
+- **No Partial Commits**: All persistence in explicit transactions
+- **Lease-Free**: No long-held transactions across provider calls
+
+Budget Enforcement:
+- Per-request limit via cost_limit_minor
+- Cumulative enforcement via BudgetReservationRepository
+- Deterministic reservation IDs from idempotency_key + scope
+- Settle on success, release on failure, UNKNOWN on timeout
+
+Idempotency Semantics:
+- SUCCEEDED: Return cached result (no provider call)
+- IN_FLIGHT: Return IN_FLIGHT error (no re-invocation)
+- UNKNOWN: Return UNKNOWN error (reconciliation needed)
+- RESERVED/FAILED/RECONCILED: Proceed with new attempt
+- Key reuse with different capability/fingerprint -> VALIDATION error
+"""
 
 from __future__ import annotations
 

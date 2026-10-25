@@ -33,8 +33,16 @@ Deterministic vs Specialized vs Semantic:
 - Semantic: LLM-based judgment, require versioned rubric, non-deterministic
   but bounded by rubric version
 
-Fail-closed behavior: All evaluators return FAIL or ERROR when required
-inputs are missing or validation cannot be performed, never assume success.
+Validation behavior: Deterministic evaluators return FAIL or ERROR when
+required artifacts are missing entirely. Some checks return PASS for
+empty-but-valid structures (no claims, no assets, no shots) since there
+is nothing to validate. However, these checks do NOT independently
+establish full structural validity for non-empty invalid inputs (e.g.,
+negative frame ranges, incomplete script/reference payloads, missing
+evidence snapshots). Callers must run separate schema validation and
+reference-integrity checks before accepting artifacts. Specialized and
+semantic evaluators may return PASS for incomplete inputs in other cases;
+see individual evaluator docs for details.
 """
 
 from __future__ import annotations
@@ -135,7 +143,10 @@ class DeterministicCheckEvaluator:
         """Execute a deterministic quality check.
 
         Dispatches to the appropriate validation method based on check.evaluator.
-        All deterministic checks are fail-closed: missing inputs = FAIL.
+        Deterministic checks are fail-closed for missing required artifacts.
+        Some checks return PASS for empty-but-valid structures (no claims to
+        verify, no assets listed, no shots in timeline) since there is nothing
+        to validate.
 
         Args:
             check: The quality check to execute.

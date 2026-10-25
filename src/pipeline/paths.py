@@ -3,6 +3,26 @@
 Runtime state lives outside version-controlled source files and may be deleted
 or archived as one unit. This module resolves and describes the layout; feature
 packages own migrations, repositories, and artifact bytes.
+
+Directory Layout:
+PIPELINE_HOME/
+├── state/
+│   └── pipeline.sqlite3          # SQLite database
+├── artifacts/
+│   ├── .staging/                  # Transient publication files
+│   └── sha256/<prefix>/<hash>     # Immutable content-addressed bytes
+├── tmp/
+│   └── <attempt-id>/workspace-*  # Attempt-scoped scratch space
+├── runtime/                       # Runtime ephemeral files
+├── logs/                          # Structured logs
+└── reports/                       # Validation reports
+
+PIPELINE_HOME Resolution:
+1. PIPELINE_HOME env var (if non-empty)
+2. $HOME/.local/share/video-automation-pipeline (default)
+$HOME falls back to Path.home() if HOME not set
+
+All paths are absolute, expanded (~), and resolved (no symlinks).
 """
 
 from __future__ import annotations

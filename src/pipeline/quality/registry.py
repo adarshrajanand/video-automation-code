@@ -8,14 +8,13 @@ evaluations correctly.
 Key Features:
 - Thread-safe: Uses RLock for concurrent access
 - Versioned: Checks are registered with explicit versions
-- Typed evaluators: Each check is bound to its evaluator factory
+- Typed evaluators: Each check is bound to its evaluator instance
 - Deterministic: No randomness in lookup or dispatch
 
 Check Registration:
 Each check is registered with its QualityCheck definition and an evaluator
-factory. The factory is a callable that produces the appropriate evaluator
 instance (DeterministicEvaluator, SpecializedEvaluator, SemanticEvaluator,
-or HumanEvaluator).
+or HumanEvaluator). The instance is used directly for evaluation.
 
 Versioning:
 - Checks are identified by check_id (e.g., "script_schema_v1")
@@ -29,7 +28,7 @@ Thread Safety:
 
 Registration Rules:
 - Duplicate check_id registration raises ValueError
-- Check must have valid evaluator factory
+- Check must have valid evaluator instance
 - Check version must match evaluator expectations
 """
 
@@ -53,10 +52,10 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class _RegisteredCheck:
-    """Internal wrapper for a registered quality check with its evaluator factory."""
+    """Internal wrapper for a registered quality check with its evaluator instance."""
 
     check: QualityCheck
-    evaluator_factory: (
+    evaluator: (
         DeterministicEvaluator
         | SpecializedEvaluator
         | SemanticEvaluator
@@ -79,30 +78,49 @@ class QualityCheckRegistry:
     def register(
         self,
         check: QualityCheck,
+        evaluator: (
+            DeterministicEvaluator
+            | SpecializedEvaluator
+            | SemanticEvaluator
+            | HumanEvaluator
+        )
+        | None = None,
         evaluator_factory: (
             DeterministicEvaluator
             | SpecializedEvaluator
             | SemanticEvaluator
             | HumanEvaluator
-        ),
+        )
+        | None = None,
     ) -> None:
-        """Register a quality check with its evaluator factory.
+        """Register a quality check with its evaluator instance.
 
         Args:
             check: The quality check definition.
-            evaluator_factory: Callable that creates an evaluator instance
-                for this check. Must match the check's ``kind``.
+            evaluator: Evaluator instance for this check. Must match the
+                check's ``kind``. (Preferred parameter name)
+            evaluator_factory: Deprecated alias for ``evaluator``. Kept for
+                backward compatibility. If both are provided, ``evaluator``
+                takes precedence.
 
         Raises:
             ValueError: If a check with the same ``check_id`` is already registered.
+            ValueError: If neither ``evaluator`` nor ``evaluator_factory`` is provided.
         """
+        # Backward compatibility: accept evaluator_factory keyword
+        actual_evaluator = evaluator if evaluator is not None else evaluator_factory
+        if actual_evaluator is None:
+            raise ValueError(
+                "Either 'evaluator' or 'evaluator_factory' must be provided"
+            )
+
         with self._lock:
             if check.check_id in self._checks:
                 raise ValueError(
                     f"Quality check {check.check_id!r} is already registered"
                 )
             self._checks[check.check_id] = _RegisteredCheck(
-                check=check, evaluator_factory=evaluator_factory
+                check=check, evaluator=actual_evaluator
             )
 
     def get(self, check_id: str) -> QualityCheck:
@@ -131,13 +149,13 @@ class QualityCheckRegistry:
         | SemanticEvaluator
         | HumanEvaluator
     ):
-        """Get the evaluator factory for a quality check.
+        """Get the evaluator instance for a quality check.
 
         Args:
             check_id: The check identifier.
 
         Returns:
-            The registered evaluator factory.
+            The registered evaluator instance.
 
         Raises:
             KeyError: If no check with the given ID is registered.
@@ -146,7 +164,7 @@ class QualityCheckRegistry:
             registered = self._checks.get(check_id)
             if registered is None:
                 raise KeyError(f"Quality check {check_id!r} is not registered")
-            return registered.evaluator_factory
+            return registered.evaluator
 
     def get_all(self) -> tuple[QualityCheck, ...]:
         """Return all registered checks in registration order."""

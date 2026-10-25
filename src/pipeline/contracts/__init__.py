@@ -3,6 +3,45 @@
 Import durable models from this package. Abstract bases are exposed for type
 constraints, but only concrete models in :data:`PUBLIC_CONTRACTS` have exported
 JSON Schemas and fixtures.
+
+Contract Philosophy:
+- **Strict**: Unknown fields rejected, scalars not coerced
+- **Identifiers**: Non-empty, opaque, prefix-prefixed (e.g., `run_abc123`)
+- **Timestamps**: Timezone-aware, normalized to UTC, ISO 8601
+- **Hashes**: Lowercase SHA-256 hex, content-addressed
+- **Extensions**: Arbitrary JSON only via explicit `ExtensionObject` fields
+- **Validation**: Cross-field invariants enforced by Pydantic validators
+
+Contract Families:
+- **Base**: Contract, NormalizedError, UTCDateTime, ExtensionObject
+- **Vocabularies**: FailureCode, FailureCategory, Severity, GateDecision, etc.
+- **Configuration**: EffectiveConfig, RunOverrides, BudgetPolicy, Profiles
+- **Workflow**: StageNode, WorkflowDefinition, CardinalityPolicy
+- **Execution**: WorkflowRun, StageInstance, StageAttempt, Job, Lease
+- **Capabilities**: CapabilityRequest/Result, BudgetReservation, IdempotencyRecord
+- **Routing**: RoutingDecision, ResourceAssignment, ResourceConstraints
+- **Content**: Script, ScriptScene, SpeechManifest, VisualIntent, Claim, Evidence
+- **Composition**: CompositionSpec, Scene, Shot, Layer, AudioTrack, RenderProfile
+- **Artifacts**: Artifact, ArtifactDependency, ArtifactPointer, Invalidation
+- **Quality**: QualityCheck, QualityEvaluation, QualityGatePolicy, RepairPlan
+- **Events**: EventEnvelope, OutboxMessage, InboxReceipt
+- **Editorial**: ContentPackage, Episode, Sequence, Scene, Shot, Layer, Cut
+- **Review**: HumanReview, HumanReviewDecision, PublicationAttempt/Request
+- **Jobs**: Job, Lease, RecoveryPolicy, RetryPolicy
+- **Routing**: RoutingDecision, ResourceAssignment, ResourceConstraints
+- **Profiles**: DomainProfile, ChannelProfile, SystemPolicy, BudgetPolicy
+
+Contract Invariants:
+- No unknown core fields accepted (extra='forbid')
+- Cross-field references validated (artifact hashes, IDs, foreign keys)
+- Pydantic models validate on construction; mutability varies by model
+- Deterministic JSON serialization (sorted keys, UTC normalization)
+- Fixtures for every public contract in fixtures/contracts/valid/
+
+Schema Export:
+- `python -m pipeline contracts export-schemas` writes JSON Schemas to schemas/
+- Schemas are committed and checked into version control
+- `python -m pipeline contracts export-schemas --check` validates CI
 """
 
 from __future__ import annotations

@@ -1,8 +1,42 @@
 """Provider-independent capability boundary and fake provider layer.
 
-This module implements the capability registry, fake implementations, normalized
-errors, and executor for the FV-06 capability slice.
+This module implements the capability system for FV-06, providing a
+provider-independent abstraction layer for executing capabilities.
+
+Architecture:
+- **CapabilityRegistry**: Thread-safe registry mapping (capability, version)
+  to implementations with provider/model/feature/locale filtering
+- **CapabilityExecutor**: Executes capabilities with idempotency, budget
+  enforcement, and persistence
+- **FakeCapabilityProvider**: Deterministic fake provider for testing/local
+  execution with scripted outcomes
+- **Normalized Errors**: Standardized error taxonomy with categories,
+  retryability, and reconciliation requirements
+
+Key Components:
+- **CapabilityRegistry**: Maps (capability, operation_version) to
+  implementations with provider/model/feature/locale filtering
+- **CapabilityExecutor**: Executes requests with idempotency, budget
+  guard, and persistence (RoutingDecision, CapabilityExecution,
+  ProviderInvocation, CapabilityResult, UsageRecord)
+- **FakeCapabilityProvider**: Deterministic fake for testing with
+  scripted outcomes for all failure categories
+- **Normalized Errors**: Standardized error taxonomy with category,
+  retryability, and reconciliation requirements
+
+Provider Independence:
+Stages and workflows MUST call this boundary; they MUST NOT import
+provider SDKs, HTTP clients, or vendor packages directly. The executor
+accepts explicit RoutingDecision/ResourceAssignment and never makes
+network calls itself.
+
+Error Taxonomy:
+Errors are normalized to FailureCode with automatic category,
+retryability, and reconciliation derivation from
+FAILURE_CODE_CATEGORIES map.
 """
+
+from __future__ import annotations
 
 from pipeline.capabilities.errors import (
     RECONCILIATION_REQUIRED_CATEGORIES,

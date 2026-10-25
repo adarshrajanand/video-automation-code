@@ -1,4 +1,31 @@
-"""Command-line interface for the pipeline bootstrap shell."""
+"""Command-line interface for the pipeline bootstrap shell.
+
+Entry point: ``python -m pipeline``
+
+Commands:
+- ``workflow validate``: Validate workflow definition against schema
+- ``workflow readiness``: Evaluate readiness for a workflow run
+- ``outbox dispatch``: Dispatch pending outbox messages
+- ``worker run``: Run a single worker iteration
+- ``capabilities list``: List registered capability implementations
+- ``capabilities invoke``: Invoke a fake capability with scripted outcome
+- ``contracts export-schemas``: Export JSON schemas to schemas/
+- ``check-setup``: Verify local environment (python, node, ffmpeg, etc.)
+
+Architecture:
+The CLI is the single entry point for all pipeline operations. It uses
+argparse for command parsing and delegates to internal modules. All
+commands that access the database accept explicit ``--database`` path
+(defaults to ``PIPELINE_HOME/state/pipeline.sqlite3``).
+
+No external dependencies: all commands operate on local SQLite database.
+No network calls, no provider SDKs, no external credentials required.
+
+Exit Codes:
+- 0: Success
+- 1: General error / validation failure
+- 2: Invalid command usage
+"""
 
 from __future__ import annotations
 
