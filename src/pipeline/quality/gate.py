@@ -64,17 +64,27 @@ def _compute_pass_threshold(
                 failure_codes.append(FailureCode.QUALITY_GENERIC)
             continue
 
-        review_threshold = review_threshold if review_threshold is not None else 0.0
+        review_threshold = policy.human_review_thresholds.get(dimension.name)
+        if review_threshold is not None:
+            # Review threshold explicitly set: use it
+            if dimension.score < review_threshold:
+                # Score below review threshold -> hard failure
+                failure_codes.extend(dimension.failure_codes)
+                if not failure_codes:
+                    failure_codes.append(FailureCode.QUALITY_GENERIC)
+                continue
+            # Score >= review_threshold -> PASS or HUMAN_REVIEW, not a hard failure
+            continue
 
-        if dimension.score < review_threshold:
-            # Score below review threshold -> hard failure
+        # No review threshold set: use pass_threshold as the floor
+        if dimension.score < pass_threshold:
+            # Score below pass threshold -> hard failure
             failure_codes.extend(dimension.failure_codes)
             if not failure_codes:
                 failure_codes.append(FailureCode.QUALITY_GENERIC)
             continue
 
-        # Score >= review_threshold -> PASS or HUMAN_REVIEW, not a hard failure
-        # (review zone or pass zone handled elsewhere)
+        # Score >= pass_threshold -> PASS
         continue
 
     # Check for required dimensions that are missing from evaluation
@@ -114,7 +124,10 @@ def _verify_artifact_hashes(
             from pipeline.fingerprints import sha256_text
 
             actual_hash = sha256_text(json.dumps(artifact, sort_keys=True, default=str))
-        if actual_hash != expected_hash:
+        if (
+            actual_hash != expected_hash
+            and FailureCode.QUALITY_PROVENANCE_MISSING not in failure_codes
+        ):
             failure_codes.append(FailureCode.QUALITY_PROVENANCE_MISSING)
     return len(failure_codes) == 0, failure_codes
 
