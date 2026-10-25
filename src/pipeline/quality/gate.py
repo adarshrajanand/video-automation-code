@@ -44,28 +44,44 @@ def _compute_pass_threshold(
     """Check if evaluation dimensions meet policy pass thresholds.
 
     Returns:
-        Tuple of (all_pass, failure_codes_for_below_threshold)
+        Tuple of (all_pass, failure_codes_for_below_review_threshold)
+
+        Returns (False, failure_codes) when score < review_threshold
+        Returns (True, []) when score >= review_threshold (PASS or HUMAN_REVIEW)
     """
     failure_codes = []
     for dimension in evaluation.dimensions:
-        threshold = policy.pass_thresholds.get(dimension.name)
-        if threshold is None:
+        pass_threshold = policy.pass_thresholds.get(dimension.name)
+        review_threshold = policy.human_review_thresholds.get(dimension.name)
+
+        if pass_threshold is None:
             continue
+
         if dimension.score is None:
             # Missing score for a required threshold dimension
             failure_codes.extend(dimension.failure_codes)
             if not failure_codes:
                 failure_codes.append(FailureCode.QUALITY_GENERIC)
             continue
-        if dimension.score < threshold:
-            # Dimension score below pass threshold
+
+        review_threshold = review_threshold if review_threshold is not None else 0.0
+
+        if dimension.score < review_threshold:
+            # Score below review threshold -> hard failure
             failure_codes.extend(dimension.failure_codes)
             if not failure_codes:
                 failure_codes.append(FailureCode.QUALITY_GENERIC)
+            continue
+
+        # Score >= review_threshold -> PASS or HUMAN_REVIEW, not a hard failure
+        # (review zone or pass zone handled elsewhere)
+        continue
+
     # Check for required dimensions that are missing from evaluation
     for dim_name in policy.pass_thresholds:
         if not any(d.name == dim_name for d in evaluation.dimensions):
             failure_codes.append(FailureCode.QUALITY_GENERIC)
+
     return len(failure_codes) == 0, failure_codes
 
 
@@ -251,7 +267,10 @@ def evaluate_gate(
             evaluation, check, policy
         )
         if not thresholds_pass:
-            hard_failure_codes.extend(threshold_failures)
+            # Add threshold failures, avoiding duplicates
+            for fc in threshold_failures:
+                if fc not in hard_failure_codes:
+                    hard_failure_codes.append(fc)
 
     if hard_failure_codes:
         return _create_gate_result(
