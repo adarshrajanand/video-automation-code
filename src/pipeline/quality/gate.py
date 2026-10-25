@@ -267,6 +267,41 @@ def evaluate_gate(
             logical_item_key=logical_item_key,
         )
 
+    # Check human review zone for ANY required check (not just when all pass)
+    # Review zone: human_review_threshold <= score < pass_threshold
+    needs_human_review = False
+    for evaluation in evaluations:
+        check = _get_check(registry, evaluation.check_id)
+        if check is None or not check.required:
+            continue
+        for dimension in evaluation.dimensions:
+            hr_threshold = policy.human_review_thresholds.get(dimension.name)
+            pass_threshold = policy.pass_thresholds.get(dimension.name)
+            if (
+                hr_threshold is not None
+                and pass_threshold is not None
+                and dimension.score is not None
+                and hr_threshold <= dimension.score < pass_threshold
+            ):
+                needs_human_review = True
+                break
+        if needs_human_review:
+            break
+
+    if needs_human_review:
+        return _create_gate_result(
+            policy=policy,
+            manifest=manifest,
+            evaluation_ids=evaluation_ids,
+            decision=GateDecision.HUMAN_REVIEW,
+            hard_failure_codes=(),
+            repair_scope=None,
+            created_at=created_at,
+            completed_at=datetime.now(UTC),
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
+        )
+
     # Rule 6: All required checks PASS
     all_required_pass = all(
         _evaluation_for_check(evaluations, check_id) is not None
@@ -275,39 +310,6 @@ def evaluate_gate(
     )
 
     if all_required_pass:
-        # Check if any dimension score is in the human review zone
-        # Review zone: human_review_threshold <= score < pass_threshold
-        needs_human_review = False
-        for evaluation in evaluations:
-            check = _get_check(registry, evaluation.check_id)
-            if check is None or check.kind.name != "SEMANTIC":
-                continue
-            for dimension in evaluation.dimensions:
-                hr_threshold = policy.human_review_thresholds.get(dimension.name)
-                pass_threshold = policy.pass_thresholds.get(dimension.name)
-                if (
-                    hr_threshold is not None
-                    and pass_threshold is not None
-                    and dimension.score is not None
-                    and hr_threshold <= dimension.score < pass_threshold
-                ):
-                    needs_human_review = True
-                    break
-
-        if needs_human_review:
-            return _create_gate_result(
-                policy=policy,
-                manifest=manifest,
-                evaluation_ids=evaluation_ids,
-                decision=GateDecision.HUMAN_REVIEW,
-                hard_failure_codes=(),
-                repair_scope=None,
-                created_at=created_at,
-                completed_at=datetime.now(UTC),
-                stage_instance_id=stage_instance_id,
-                logical_item_key=logical_item_key,
-            )
-
         return _create_gate_result(
             policy=policy,
             manifest=manifest,

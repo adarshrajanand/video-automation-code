@@ -229,8 +229,8 @@ class DeterministicCheckEvaluator:
         schema_map = {
             "script.v1": Script,
             "script-scene.v1": ScriptScene,
-            "composition.v1": CompositionSpec,
-            "visual-plan.v1": VisualPlan,
+            "render-manifest.v1": CompositionSpec,
+            "visual-planning-input.v1": VisualPlan,
             "speech-manifest.v1": SpeechManifest,
         }
         model = schema_map.get(schema_version)
