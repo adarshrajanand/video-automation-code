@@ -1,5 +1,41 @@
 """Quality check evaluators for deterministic, specialized,
-semantic, and human checks."""
+semantic, and human checks.
+
+This module implements the four categories of quality check evaluators:
+
+1. **DeterministicCheckEvaluator**: Schema validation, reference integrity,
+   asset availability, timeline validation. Pure functions, no external deps.
+
+2. **SpecializedCheckEvaluator**: WER/CER, critical tokens, forced alignment,
+   signal quality, license compliance, A/V sync, media decode, profile
+   validation, timeline validation, assembly integrity, A/V drift,
+   short derivative integrity. May use ffprobe or algorithmic checks.
+
+3. **SemanticCheckEvaluator**: Claim/evidence support, editorial clarity,
+   visual intent coherence. LLM-based, require versioned rubrics.
+
+4. **HumanCheckEvaluator**: Human review gates. Always ABSTAIN, trigger
+   HumanReviewManager for manual review.
+
+All evaluators implement the `Evaluator` protocol and return a
+`QualityEvaluation` with dimension scores, outcome, confidence, and evidence.
+
+Evaluation ID Generation:
+- Evaluation IDs are deterministic:
+  `eval_{deterministic_id("eval", manifest_id, check_id, evaluator_version)}`
+- Provider invocation IDs for semantic:
+  `inv_{deterministic_id("inv", manifest_id, check_id, evaluator_version)}`
+- This ensures reproducible evaluation IDs across runs.
+
+Deterministic vs Specialized vs Semantic:
+- Deterministic: Pure functions, same input = same output, no external deps
+- Specialized: Algorithmic but may need external tools (ffprobe) or ML models
+- Semantic: LLM-based judgment, require versioned rubric, non-deterministic
+  but bounded by rubric version
+
+Fail-closed behavior: All evaluators return FAIL or ERROR when required
+inputs are missing or validation cannot be performed, never assume success.
+"""
 
 from __future__ import annotations
 
@@ -31,7 +67,11 @@ if TYPE_CHECKING:
 
 
 class Evaluator(Protocol):
-    """Protocol for quality check evaluators."""
+    """Protocol for quality check evaluators.
+
+    All evaluators must implement this interface to ensure consistent
+    evaluation behavior across the quality system.
+    """
 
     def evaluate(
         self,
@@ -50,6 +90,11 @@ class Evaluator(Protocol):
 
         Returns:
             A QualityEvaluation with the check outcome and evidence.
+
+        Note:
+            All evaluators must be deterministic for the same inputs.
+            Use deterministic_id() for any generated IDs.
+            Return ERROR outcome if required inputs are missing.
         """
         ...
 
@@ -66,10 +111,18 @@ class EvaluationContext:
 
 
 class DeterministicCheckEvaluator:
-    """Evaluator for deterministic checks (schema validation, reference integrity).
+    """Evaluator for deterministic checks (schema validation, reference integrity,
+    asset availability, timeline validation).
 
     Deterministic checks produce fully reproducible results given the same
     inputs. They require no external providers and complete in milliseconds.
+    No external dependencies or network calls.
+
+    Supported evaluators:
+    - deterministic_schema_validator: Validates artifact has schema_version field
+    - deterministic_reference_integrity: Checks script claims resolve to evidence
+    - deterministic_asset_availability: Verifies all assets are marked available
+    - deterministic_timeline_validator: Checks composition timeline for overlaps/gaps
     """
 
     def evaluate(
@@ -79,7 +132,20 @@ class DeterministicCheckEvaluator:
         artifacts: dict[str, Any],
         supporting_artifacts: dict[str, Any],
     ) -> QualityEvaluation:
-        """Execute a deterministic quality check."""
+        """Execute a deterministic quality check.
+
+        Dispatches to the appropriate validation method based on check.evaluator.
+        All deterministic checks are fail-closed: missing inputs = FAIL.
+
+        Args:
+            check: The quality check to execute.
+            manifest: The input manifest with target artifacts and hashes.
+            artifacts: Mapping of target artifact IDs to their loaded content.
+            supporting_artifacts: Mapping of supporting artifact IDs to content.
+
+        Returns:
+            A QualityEvaluation with the check outcome and evidence.
+        """
         started = datetime.now(UTC)
         evaluator_name = check.evaluator
         evaluator_version = check.evaluator_version
@@ -225,7 +291,29 @@ class DeterministicCheckEvaluator:
     def _validate_against_contract(
         self, artifact: dict, schema_version: str
     ) -> tuple[bool, dict | None]:
-        """Validate artifact against its declared contract model."""
+        """Validate artifact against its declared contract model.
+
+        Uses Pydantic model validation against the appropriate contract model
+        based on the artifact's declared schema_version.
+
+        Args:
+            artifact: The artifact dict to validate.
+            schema_version: The declared schema version of the artifact.
+
+        Returns:
+            Tuple of (is_valid, error_details):
+            - is_valid: True if artifact passes validation
+            - error_details: None if valid, dict with error info if invalid
+
+        Supported schema versions:
+        - script.v1 -> Script contract
+        - script-scene.v1 -> ScriptScene contract
+        - render-manifest.v1 -> CompositionSpec contract
+        - visual-planning-input.v1 -> VisualPlan contract
+        - speech-manifest.v1 -> SpeechManifest contract
+
+        Returns (False, error_dict) for unknown schema versions.
+        """
         schema_map = {
             "script.v1": Script,
             "script-scene.v1": ScriptScene,
@@ -249,7 +337,27 @@ class DeterministicCheckEvaluator:
         artifacts: dict[str, Any],
         supporting_artifacts: dict[str, Any],
     ) -> _DeterministicResult:
-        """Check that all references in the script resolve to evidence."""
+        """Check that all references in the script resolve to evidence.
+
+        Validates that every claim in the script has corresponding evidence
+        in the evidence_snapshots. Fails if claims reference missing evidence.
+
+        Args:
+            check: The quality check being executed.
+            manifest: Input manifest with target artifacts.
+            artifacts: Loaded target artifacts (script).
+            supporting_artifacts: Supporting artifacts
+            (claim_ledger, evidence_snapshots).
+
+        Returns:
+            _DeterministicResult with reference_integrity dimension.
+
+        Fail-closed behavior:
+        - Missing script artifact -> FAIL
+        - Claims with evidence_refs but no evidence_snapshots -> FAIL
+        - Claims referencing missing evidence_snapshots -> FAIL
+        - No claims -> PASS (nothing to verify)
+        """
         dimensions = []
         evidence = []
 
@@ -387,7 +495,26 @@ class DeterministicCheckEvaluator:
         manifest: QualityInputManifest,
         artifacts: dict[str, Any],
     ) -> _DeterministicResult:
-        """Validate composition timeline for overlaps and gaps."""
+        """Validate composition timeline for overlaps and gaps.
+
+        Checks that shots in the composition are properly ordered without
+        frame overlaps or gaps. Shots are sorted by order_index and
+        adjacent shots are checked for frame continuity.
+
+        Args:
+            check: The quality check being executed.
+            manifest: Input manifest with target artifacts.
+            artifacts: Loaded target artifacts (composition).
+
+        Returns:
+            _DeterministicResult with timeline_valid dimension.
+
+        Fail-closed behavior:
+        - Missing composition artifact -> FAIL
+        - Shots with overlapping frames -> FAIL (MEDIA_TIMELINE_INVALID)
+        - Shots with frame gaps -> FAIL (MEDIA_TIMELINE_INVALID)
+        - No shots -> PASS (nothing to validate)
+        """
         dimensions = []
         evidence = []
 

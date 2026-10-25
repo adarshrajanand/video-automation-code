@@ -1,4 +1,37 @@
-"""Deterministic quality check registry with versioned checks."""
+"""Deterministic quality check registry with versioned checks.
+
+This module provides a thread-safe registry for quality checks and their
+associated evaluators. The registry is the central component that maps
+quality checks to their evaluators, enabling the quality gate to dispatch
+evaluations correctly.
+
+Key Features:
+- Thread-safe: Uses RLock for concurrent access
+- Versioned: Checks are registered with explicit versions
+- Typed evaluators: Each check is bound to its evaluator factory
+- Deterministic: No randomness in lookup or dispatch
+
+Check Registration:
+Each check is registered with its QualityCheck definition and an evaluator
+factory. The factory is a callable that produces the appropriate evaluator
+instance (DeterministicEvaluator, SpecializedEvaluator, SemanticEvaluator,
+or HumanEvaluator).
+
+Versioning:
+- Checks are identified by check_id (e.g., "script_schema_v1")
+- Evaluator version tracks evaluator implementation changes
+- Rubric version controls semantic evaluator behavior
+
+Thread Safety:
+- All public methods use RLock for thread safety
+- Registration and lookup are atomic
+- Iteration is safe under concurrent modification
+
+Registration Rules:
+- Duplicate check_id registration raises ValueError
+- Check must have valid evaluator factory
+- Check version must match evaluator expectations
+"""
 
 from __future__ import annotations
 
