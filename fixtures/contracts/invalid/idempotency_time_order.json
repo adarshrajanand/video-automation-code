@@ -1,5 +1,6 @@
 {
   "capability": "speech_generation",
+  "operation_version": "v1",
   "capability_execution_id": "capexec_speech_scene_01",
   "completed_at": "2026-10-21T11:59:00Z",
   "created_at": "2026-10-21T12:00:00Z",
@@ -8,6 +9,9 @@
   "provider_invocation_id": "invocation_speech_scene_01",
   "provider_operation_id": "local-op-001",
   "request_fingerprint": "cda1d55138ab47c3fb1dba9d96b183163184c5d7f579445c44ebe757844e9e89",
+  "input_artifact_ids": [],
+  "required_features": [],
+  "locale": null,
   "result_artifact_ids": [
     "artifact_audio_scene_01_v1"
   ],

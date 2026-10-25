@@ -384,7 +384,11 @@ class CapabilityExecutor:
                 schema_version="idempotency-record.v1",
                 idempotency_key=request.idempotency_key,
                 capability=request.capability,
+                operation_version=request.operation_version,
                 request_fingerprint=request.payload_fingerprint,
+                input_artifact_ids=request.input_artifact_ids,
+                required_features=request.requirements.required_features or [],
+                locale=request.requirements.locale,
                 provider=routing_decision.provider,
                 status=IdempotencyStatus.RESERVED,
                 capability_execution_id=request.capability_execution_id,
@@ -404,7 +408,64 @@ class CapabilityExecutor:
         routing_decision: RoutingDecision,
         record: IdempotencyRecord,
     ) -> ExecutionResult:
-        """Return prior result for completed idempotent replay."""
+        """Return prior result for completed idempotent replay.
+
+        Validates that the request matches the original execution parameters
+        to prevent replay with different parameters.
+        """
+        # Validate that the request matches the original execution
+        if record.operation_version != request.operation_version:
+            msg = (
+                f"Idempotency key {record.idempotency_key!r} was used for "
+                f"operation version {record.operation_version!r}, cannot replay "
+                f"with {request.operation_version!r}"
+            )
+            error = create_normalized_error(
+                FailureCode.VALIDATION,
+                msg,
+                safe_details={"idempotency_key": record.idempotency_key},
+            )
+            return ExecutionError(normalized_error=error, idempotency_record=record)
+
+        if record.input_artifact_ids != request.input_artifact_ids:
+            msg = (
+                f"Idempotency key {record.idempotency_key!r} was used for "
+                f"different input artifacts"
+            )
+            error = create_normalized_error(
+                FailureCode.VALIDATION,
+                msg,
+                safe_details={"idempotency_key": record.idempotency_key},
+            )
+            return ExecutionError(normalized_error=error, idempotency_record=record)
+
+        if set(record.required_features) != set(
+            request.requirements.required_features or []
+        ):
+            msg = (
+                f"Idempotency key {record.idempotency_key!r} was used for "
+                f"different required features"
+            )
+            error = create_normalized_error(
+                FailureCode.VALIDATION,
+                msg,
+                safe_details={"idempotency_key": record.idempotency_key},
+            )
+            return ExecutionError(normalized_error=error, idempotency_record=record)
+
+        if record.locale != request.requirements.locale:
+            msg = (
+                f"Idempotency key {record.idempotency_key!r} was used for "
+                f"locale {record.locale!r}, cannot replay with "
+                f"{request.requirements.locale!r}"
+            )
+            error = create_normalized_error(
+                FailureCode.VALIDATION,
+                msg,
+                safe_details={"idempotency_key": record.idempotency_key},
+            )
+            return ExecutionError(normalized_error=error, idempotency_record=record)
+
         # Fetch the prior capability execution and result
         with self._database.connection() as conn:
             exec_repo = CapabilityExecutionRepository(conn)

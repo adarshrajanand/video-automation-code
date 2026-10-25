@@ -262,7 +262,7 @@
       "model": "IdempotencyRecord",
       "schema_file": "IdempotencyRecord.schema.json",
       "schema_version": "idempotency-record.v1",
-      "sha256": "c12a897137abdcebc4fccc573a5fcee5afa8531b59632ccd7dc200071444147b"
+      "sha256": "7865d9b1455747557dbb34732ccec062d9dfc28898dc510381c9fdf59cd86553"
     },
     {
       "model": "InboxReceipt",

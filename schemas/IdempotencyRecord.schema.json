@@ -57,6 +57,38 @@
       "title": "Idempotency Key",
       "type": "string"
     },
+    "input_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Input Artifact Ids",
+      "type": "array"
+    },
+    "locale": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Locale"
+    },
+    "operation_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Operation Version",
+      "type": "string"
+    },
     "provider": {
       "anyOf": [
         {
@@ -109,6 +141,16 @@
       "title": "Request Fingerprint",
       "type": "string"
     },
+    "required_features": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Required Features",
+      "type": "array"
+    },
     "result_artifact_ids": {
       "items": {
         "maxLength": 256,
@@ -132,6 +174,7 @@
     "schema_version",
     "idempotency_key",
     "capability",
+    "operation_version",
     "request_fingerprint",
     "status",
     "capability_execution_id",

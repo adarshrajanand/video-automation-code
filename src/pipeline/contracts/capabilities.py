@@ -186,7 +186,11 @@ class IdempotencyRecord(Contract):
     schema_version: Literal["idempotency-record.v1"]
     idempotency_key: NonEmptyStr
     capability: NonEmptyStr
+    operation_version: NonEmptyStr
     request_fingerprint: Sha256Hex
+    input_artifact_ids: list[OpaqueId] = Field(default_factory=list)
+    required_features: list[NonEmptyStr] = Field(default_factory=list)
+    locale: NonEmptyStr | None = None
     provider: NonEmptyStr | None = None
     status: IdempotencyStatus
     capability_execution_id: OpaqueId
@@ -200,6 +204,10 @@ class IdempotencyRecord(Contract):
     def _validate_idempotency_record(self) -> IdempotencyRecord:
         if len(set(self.result_artifact_ids)) != len(self.result_artifact_ids):
             raise ValueError("result_artifact_ids must not contain duplicates")
+        if len(set(self.input_artifact_ids)) != len(self.input_artifact_ids):
+            raise ValueError("input_artifact_ids must not contain duplicates")
+        if len(set(self.required_features)) != len(self.required_features):
+            raise ValueError("required_features must not contain duplicates")
         if self.completed_at is not None and self.completed_at < self.created_at:
             raise ValueError("completed_at must not be earlier than created_at")
         return self

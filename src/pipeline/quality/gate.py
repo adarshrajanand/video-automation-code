@@ -197,19 +197,20 @@ def evaluate_gate(
             )
 
     # Rule 1: Check for ERROR outcomes
-    for _evaluation in evaluations:
-        return _create_gate_result(
-            policy=policy,
-            manifest=manifest,
-            evaluation_ids=evaluation_ids,
-            decision=GateDecision.FAIL,
-            hard_failure_codes=[FailureCode.QUALITY_GENERIC],
-            repair_scope=None,
-            created_at=created_at,
-            completed_at=datetime.now(UTC),
-            stage_instance_id=stage_instance_id,
-            logical_item_key=logical_item_key,
-        )
+    for evaluation in evaluations:
+        if evaluation.outcome is CheckOutcome.ERROR:
+            return _create_gate_result(
+                policy=policy,
+                manifest=manifest,
+                evaluation_ids=evaluation_ids,
+                decision=GateDecision.FAIL,
+                hard_failure_codes=[FailureCode.QUALITY_GENERIC],
+                repair_scope=None,
+                created_at=created_at,
+                completed_at=datetime.now(UTC),
+                stage_instance_id=stage_instance_id,
+                logical_item_key=logical_item_key,
+            )
 
     # Rule 4: Artifact hash verification (if artifacts provided)
     if artifacts is not None:
