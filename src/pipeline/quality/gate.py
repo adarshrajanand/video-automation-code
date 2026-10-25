@@ -62,6 +62,10 @@ def _compute_pass_threshold(
             failure_codes.extend(dimension.failure_codes)
             if not failure_codes:
                 failure_codes.append(FailureCode.QUALITY_GENERIC)
+    # Check for required dimensions that are missing from evaluation
+    for dim_name in policy.pass_thresholds:
+        if not any(d.name == dim_name for d in evaluation.dimensions):
+            failure_codes.append(FailureCode.QUALITY_GENERIC)
     return len(failure_codes) == 0, failure_codes
 
 

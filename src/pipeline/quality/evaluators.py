@@ -7,6 +7,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any, Protocol
 
+from pipeline.contracts.capability_payloads import (
+    VisualPlanningInputPayload as VisualPlan,
+)
+from pipeline.contracts.composition import CompositionSpec
+from pipeline.contracts.content import Script, ScriptScene, SpeechManifest
 from pipeline.contracts.quality import (
     EvaluationDimension,
     QualityCheck,
@@ -159,23 +164,45 @@ class DeterministicCheckEvaluator:
                 failure_codes.append(FailureCode.QUALITY_SCHEMA_INVALID)
                 continue
 
-            # In a real implementation, this would validate against the actual schema
-            # For now, we check if the artifact has a schema_version field
-            is_valid = isinstance(artifact, dict) and "schema_version" in artifact
+            # Validate against the declared schema using contract models
+            is_valid = False
+            error_details = None
+            schema_version = artifact.get("schema_version")
+            if not schema_version:
+                is_valid = False
+                error_details = {"error": "Missing schema_version field"}
+            else:
+                try:
+                    is_valid, error_details = self._validate_against_contract(
+                        artifact, schema_version
+                    )
+                except Exception as e:
+                    is_valid = False
+                    error_details = {"error": f"Validation error: {e!s}"}
+
+            if is_valid:
+                score = 1.0
+                severity = Severity.INFO
+                failure_codes_list = []
+            else:
+                score = 0.0
+                severity = Severity.CRITICAL
+                failure_codes_list = [FailureCode.QUALITY_SCHEMA_INVALID]
+
             dimensions.append(
                 EvaluationDimension(
                     schema_version="evaluation-dimension.v1",
                     name="schema_valid",
-                    score=1.0 if is_valid else 0.0,
+                    score=score,
                     threshold=1.0,
-                    severity=Severity.CRITICAL if not is_valid else Severity.INFO,
-                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID]
-                    if not is_valid
-                    else [],
+                    severity=severity,
+                    failure_codes=failure_codes_list,
                     evidence_refs=[f"evidence_{artifact_id}"],
                     details={
                         "artifact_id": artifact_id,
-                        "has_schema_version": is_valid,
+                        "schema_version": schema_version,
+                        "valid": is_valid,
+                        **(error_details or {}),
                     },
                 )
             )
@@ -184,6 +211,7 @@ class DeterministicCheckEvaluator:
                     "artifact_id": artifact_id,
                     "check": "schema_validation",
                     "valid": is_valid,
+                    **(error_details or {}),
                 }
             )
             if not is_valid:
@@ -193,6 +221,26 @@ class DeterministicCheckEvaluator:
         return _DeterministicResult(
             dimensions=dimensions, outcome=outcome, evidence=evidence
         )
+
+    def _validate_against_contract(
+        self, artifact: dict, schema_version: str
+    ) -> tuple[bool, dict | None]:
+        """Validate artifact against its declared contract model."""
+        schema_map = {
+            "script.v1": Script,
+            "script-scene.v1": ScriptScene,
+            "composition.v1": CompositionSpec,
+            "visual-plan.v1": VisualPlan,
+            "speech-manifest.v1": SpeechManifest,
+        }
+        model = schema_map.get(schema_version)
+        if model is None:
+            return False, {"error": f"Unknown schema version: {schema_version}"}
+        try:
+            model.model_validate(artifact)
+            return True, None
+        except Exception as e:
+            return False, {"error": f"Schema validation failed: {e!s}"}
 
     def _check_reference_integrity(
         self,

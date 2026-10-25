@@ -202,6 +202,64 @@ class CapabilityExecutor:
                     request, context, routing_decision, existing_record
                 )
 
+            # For RESERVED, FAILED, or RECONCILED: validate before retrying
+            if existing_record.operation_version != request.operation_version:
+                msg = (
+                    f"Idempotency key {idempotency_key!r} was used for "
+                    f"operation version {existing_record.operation_version!r}, cannot "
+                    f"retry with {request.operation_version!r}"
+                )
+                error = create_normalized_error(
+                    FailureCode.VALIDATION,
+                    msg,
+                    safe_details={"idempotency_key": idempotency_key},
+                )
+                return ExecutionError(
+                    normalized_error=error, idempotency_record=existing_record
+                )
+
+            if existing_record.input_artifact_ids != request.input_artifact_ids:
+                msg = (
+                    f"Idempotency key {idempotency_key!r} was used for "
+                    f"different input artifacts"
+                )
+                error = create_normalized_error(
+                    FailureCode.VALIDATION,
+                    msg,
+                    safe_details={"idempotency_key": idempotency_key},
+                )
+                return ExecutionError(
+                    normalized_error=error, idempotency_record=existing_record
+                )
+
+            if set(existing_record.required_features) != set(
+                request.requirements.required_features or []
+            ):
+                msg = (
+                    f"Idempotency key {idempotency_key!r} was used for "
+                    f"different required features"
+                )
+                error = create_normalized_error(
+                    FailureCode.VALIDATION,
+                    msg,
+                    safe_details={"idempotency_key": idempotency_key},
+                )
+                return ExecutionError(
+                    normalized_error=error, idempotency_record=existing_record
+                )
+
+            if existing_record.locale != request.requirements.locale:
+                error = create_normalized_error(
+                    FailureCode.VALIDATION,
+                    f"Idempotency key {idempotency_key!r} was used for locale "
+                    f"{existing_record.locale!r}, cannot retry with "
+                    f"{request.requirements.locale!r}",
+                    safe_details={"idempotency_key": idempotency_key},
+                )
+                return ExecutionError(
+                    normalized_error=error, idempotency_record=existing_record
+                )
+
             # At this point, status is RESERVED, FAILED, or RECONCILED
             # We will proceed with a new attempt
 
@@ -652,41 +710,41 @@ class CapabilityExecutor:
                     existing_cost = existing_reservation.reserved_cost_minor
                 committed_minor -= existing_cost
 
-            # If existing reservation is RELEASED, we'll create a new one below
+            # For RELEASED reservations, we update them in place to avoid
+            # unique constraint violation on (idempotency_key, scope_type, scope_id)
             # For other statuses, we update the existing one
-            if existing_reservation.status != BudgetReservationStatus.RELEASED:
-                if committed_minor + estimated > cost_limit:
-                    msg = (
-                        f"Budget exceeded: committed {committed_minor} + "
-                        f"estimated {estimated} > limit {cost_limit} "
-                        f"(scope {scope_type.value}:{scope_id})"
-                    )
-                    error = create_normalized_error(
-                        FailureCode.POLICY_BUDGET_EXCEEDED,
-                        msg,
-                        safe_details={
-                            "committed_minor": committed_minor,
-                            "estimated_minor": estimated,
-                            "limit_minor": cost_limit,
-                            "scope_type": scope_type.value,
-                            "scope_id": scope_id,
-                        },
-                        severity="CRITICAL",
-                    )
-                    return _BudgetCheckResult(allowed=False, error=error)
-
-                # Update existing reservation
-                updated = existing_reservation.model_copy(
-                    update={
-                        "status": BudgetReservationStatus.RESERVED,
-                        "estimated_cost_minor": estimated,
-                        "reserved_cost_minor": estimated,
-                        "actual_cost_minor": None,
-                        "settled_at": None,
-                    }
+            if committed_minor + estimated > cost_limit:
+                msg = (
+                    f"Budget exceeded: committed {committed_minor} + "
+                    f"estimated {estimated} > limit {cost_limit} "
+                    f"(scope {scope_type.value}:{scope_id})"
                 )
-                budget_repo.update(updated)
-                return _BudgetCheckResult(allowed=True, reservation=updated)
+                error = create_normalized_error(
+                    FailureCode.POLICY_BUDGET_EXCEEDED,
+                    msg,
+                    safe_details={
+                        "committed_minor": committed_minor,
+                        "estimated_minor": estimated,
+                        "limit_minor": cost_limit,
+                        "scope_type": scope_type.value,
+                        "scope_id": scope_id,
+                    },
+                    severity=Severity.CRITICAL,
+                )
+                return _BudgetCheckResult(allowed=False, error=error)
+
+            # Update existing reservation (including RELEASED ones)
+            updated = existing_reservation.model_copy(
+                update={
+                    "status": BudgetReservationStatus.RESERVED,
+                    "estimated_cost_minor": estimated,
+                    "reserved_cost_minor": estimated,
+                    "actual_cost_minor": None,
+                    "settled_at": None,
+                }
+            )
+            budget_repo.update(updated)
+            return _BudgetCheckResult(allowed=True, reservation=updated)
 
         # No existing reservation; check cumulative limit
         if committed_minor + estimated > cost_limit:
