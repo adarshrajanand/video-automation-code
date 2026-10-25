@@ -183,13 +183,14 @@ class ThresholdRegistry:
         if not (0.0 <= new_review <= new_pass <= 1.0):
             raise ValueError("Invalid threshold values")
 
-        # Use model_copy for Pydantic model (frozen) instead of __dict__
-        updated = current.model_copy(
-            update={
-                "pass_threshold": new_pass,
-                "review_threshold": new_review,
-                "updated_at": datetime.now(UTC),
-            }
+        # Use dataclasses.replace for frozen dataclass instead of model_copy
+        from dataclasses import replace
+
+        updated = replace(
+            current,
+            pass_threshold=new_pass,
+            review_threshold=new_review,
+            updated_at=datetime.now(UTC),
         )
         self._thresholds[key] = updated
         return updated

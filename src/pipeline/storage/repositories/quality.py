@@ -26,23 +26,9 @@ class QualityEvaluationRepository(SqliteRepository[QualityEvaluation]):
         "logical_item_key",
         "scene_id",
         "shot_id",
-        "target_artifact_ids",
-        "target_hashes",
-        "evaluation_input_manifest_id",
         "gate_id",
         "check_id",
-        "evaluator",
-        "evaluator_version",
-        "rubric_version",
-        "dimensions",
         "outcome",
-        "confidence",
-        "abstained",
-        "evidence",
-        "estimated_cost_minor",
-        "actual_cost_minor",
-        "provider_invocation_id",
-        "latency_ms",
         "created_at",
     )
     order_by = ("created_at", "evaluation_id")
@@ -98,13 +84,7 @@ class QualityGateResultRepository(SqliteRepository[QualityGateResult]):
         "gate_version",
         "stage_instance_id",
         "logical_item_key",
-        "target_artifact_ids",
-        "target_hashes",
-        "required_check_ids",
-        "evaluation_ids",
         "decision",
-        "hard_failure_codes",
-        "repair_scope",
         "policy_version",
         "created_at",
         "completed_at",
@@ -160,13 +140,7 @@ class QualityInputManifestRepository(SqliteRepository[QualityInputManifest]):
         "manifest_id",
         "gate_id",
         "check_id",
-        "target_artifact_ids",
-        "target_hashes",
-        "supporting_artifact_ids",
-        "policy_snapshot_artifact_id",
         "created_at",
-        "schema_version",
-        "payload",
     )
     order_by = ("created_at", "manifest_id")
 
@@ -196,11 +170,7 @@ class RepairPlanRepository(SqliteRepository[RepairPlan]):
     columns = (
         "repair_plan_id",
         "source_gate_result_id",
-        "reason_codes",
-        "target_artifact_ids",
-        "target_stage_instance_ids",
         "invalidation_scope",
-        "max_attempts",
         "created_at",
     )
     order_by = ("created_at", "repair_plan_id")

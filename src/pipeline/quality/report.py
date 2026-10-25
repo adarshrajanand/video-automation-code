@@ -7,8 +7,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from pipeline.contracts.quality import QualityEvaluation, QualityGateResult
-from pipeline.contracts.vocabularies import CheckOutcome, GateDecision
+from pipeline.contracts.vocabularies import CheckOutcome
 from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
@@ -121,15 +120,124 @@ class QualityReportGenerator:
         period_end: datetime | None = None,
     ) -> QualityReport:
         """Generate a quality report for the given filters."""
-        # In a real implementation, this would query the database for
-        # QualityGateResult and QualityEvaluation records
-        # For now, return a template report
-        return QualityReport(
+        with self.database.connection() as conn:
+            from pipeline.storage.repositories.quality import (
+                QualityEvaluationRepository,
+                QualityGateResultRepository,
+            )
+
+            eval_repo = QualityEvaluationRepository(conn)
+            gate_repo = QualityGateResultRepository(conn)
+
+            # Query gate results
+            if run_ids:
+                gate_results = []
+                for run_id in run_ids:
+                    gate_results.extend(gate_repo.list_for_run(run_id))
+            elif gate_ids:
+                gate_results = []
+                for gate_id in gate_ids:
+                    gate_results.extend(gate_repo.list_for_gate(gate_id))
+            else:
+                # Get all gate results (could be large, but we need to filter)
+                gate_results = gate_repo.list()
+
+            # Filter by period if specified
+            if period_start:
+                gate_results = [g for g in gate_results if g.created_at >= period_start]
+            if period_end:
+                gate_results = [
+                    g
+                    for g in gate_results
+                    if g.completed_at and g.completed_at <= period_end
+                ]
+
+            # Query evaluations
+            if run_ids:
+                evaluations = []
+                for run_id in run_ids:
+                    evaluations.extend(eval_repo.list_for_run(run_id))
+            elif gate_ids:
+                evaluations = []
+                for gate_id in gate_ids:
+                    evaluations.extend(eval_repo.list_for_gate(gate_id))
+            else:
+                evaluations = eval_repo.list()
+
+            # Filter by period
+            if period_start:
+                evaluations = [e for e in evaluations if e.created_at >= period_start]
+            if period_end:
+                evaluations = [e for e in evaluations if e.created_at <= period_end]
+
+        # Build report
+        report = QualityReport(
             run_ids=run_ids or [],
             gate_ids=gate_ids or [],
             period_start=period_start,
             period_end=period_end,
         )
+
+        report.total_gates = len(gate_results)
+        report.pass_count = sum(1 for g in gate_results if g.decision.value == "PASS")
+        report.regenerate_count = sum(
+            1 for g in gate_results if g.decision.value == "REGENERATE"
+        )
+        report.human_review_count = sum(
+            1 for g in gate_results if g.decision.value == "HUMAN_REVIEW"
+        )
+        report.fail_count = sum(1 for g in gate_results if g.decision.value == "FAIL")
+
+        report.total_checks = len(evaluations)
+        report.check_pass_count = sum(
+            1 for e in evaluations if e.outcome is CheckOutcome.PASS
+        )
+        report.check_fail_count = sum(
+            1 for e in evaluations if e.outcome is CheckOutcome.FAIL
+        )
+        report.check_abstain_count = sum(
+            1 for e in evaluations if e.outcome is CheckOutcome.ABSTAIN
+        )
+        report.check_error_count = sum(
+            1 for e in evaluations if e.outcome is CheckOutcome.ERROR
+        )
+
+        # Calculate metrics
+        if report.total_checks > 0:
+            report.false_pass_rate = 0.0  # Would need gold set
+            report.false_reject_rate = 0.0
+            report.abstention_rate = report.check_abstain_count / report.total_checks
+            report.escalation_rate = report.human_review_count / max(
+                report.total_gates, 1
+            )
+
+        # Latency and cost
+        if evaluations:
+            latencies = [e.latency_ms or 0 for e in evaluations]
+            report.avg_latency_ms = sum(latencies) / len(latencies)
+            sorted_latencies = sorted(latencies)
+            p95_idx = int(0.95 * len(sorted_latencies))
+            report.p95_latency_ms = sorted_latencies[
+                min(p95_idx, len(sorted_latencies) - 1)
+            ]
+
+            costs = [
+                e.actual_cost_minor or e.estimated_cost_minor or 0 for e in evaluations
+            ]
+            report.total_cost_minor = sum(costs)
+            report.avg_cost_per_gate_minor = report.total_cost_minor / max(
+                report.total_gates, 1
+            )
+
+        # Failure code distribution
+        failure_codes = {}
+        for eval_record in evaluations:
+            for dim in eval_record.dimensions:
+                for fc in dim.failure_codes:
+                    failure_codes[fc.value] = failure_codes.get(fc.value, 0) + 1
+        report.failure_code_distribution = failure_codes
+
+        return report
 
     def generate_for_run(self, run_id: str) -> QualityReport:
         """Generate a quality report for a single workflow run."""
@@ -146,60 +254,3 @@ def generate_quality_report(
     """Convenience function to generate a quality report."""
     generator = QualityReportGenerator(database)
     return generator.generate(run_ids, gate_ids, period_start, period_end)
-
-
-@dataclass(slots=True)
-class GateQualitySummary:
-    """Summary of quality metrics for a single gate evaluation."""
-
-    gate_result: QualityGateResult
-    evaluations: tuple[QualityEvaluation, ...]
-
-    @property
-    def decision(self) -> GateDecision:
-        return self.gate_result.decision
-
-    @property
-    def all_checks_passed(self) -> bool:
-        return all(e.outcome is CheckOutcome.PASS for e in self.evaluations)
-
-    @property
-    def has_human_review_checks(self) -> bool:
-        return any(e.outcome is CheckOutcome.ABSTAIN for e in self.evaluations)
-
-    @property
-    def failed_checks(self) -> list[QualityEvaluation]:
-        return [e for e in self.evaluations if e.outcome is CheckOutcome.FAIL]
-
-    @property
-    def total_latency_ms(self) -> int:
-        return sum(e.latency_ms or 0 for e in self.evaluations)
-
-    @property
-    def total_cost_minor(self) -> int:
-        return sum(
-            e.actual_cost_minor or e.estimated_cost_minor for e in self.evaluations
-        )
-
-    def get_dimension_scores(self) -> dict[str, dict[str, float]]:
-        """Get dimension scores by check."""
-        result = {}
-        for evaluation in self.evaluations:
-            dims = {}
-            for dim in evaluation.dimensions:
-                if dim.score is not None:
-                    dims[dim.name] = {
-                        "score": dim.score,
-                        "threshold": dim.threshold or 0.0,
-                        "pass": dim.score >= (dim.threshold or 0.0),
-                    }
-            result[evaluation.check_id] = dims
-        return result
-
-    def get_failure_codes(self) -> list[str]:
-        """Get all unique failure codes from failed evaluations."""
-        codes = set()
-        for evaluation in self.evaluations:
-            for dim in evaluation.dimensions:
-                codes.update(dim.failure_codes)
-        return sorted(codes)

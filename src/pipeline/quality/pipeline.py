@@ -15,13 +15,13 @@ from pipeline.contracts.quality import (
     QualityInputManifest,
 )
 from pipeline.contracts.vocabularies import GateDecision
+from pipeline.quality.human_review import HumanReviewRequest
 
 if TYPE_CHECKING:
     from pipeline.quality.gate import QualityGate
     from pipeline.quality.human_review import (
         HumanReview,
         HumanReviewManager,
-        HumanReviewRequest,
     )
     from pipeline.quality.registry import QualityCheckRegistry
     from pipeline.quality.repair import RepairPlan, RepairPlanner

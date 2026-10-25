@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 
 # Allowlisted environment variable names (non-sensitive)
+# UV_INDEX is excluded from allowlist because it can contain credential-bearing URLs
 _ALLOWLISTED_ENV = frozenset(
     {
         "PIPELINE_HOME",
@@ -37,8 +38,18 @@ _ALLOWLISTED_ENV = frozenset(
         "CI",
         "GITHUB_ACTIONS",
         "RUNNER_OS",
-        "UV_INDEX",
         "UV_CACHE_DIR",
+    }
+)
+
+# URL schemes that may contain credentials
+_CREDENTIAL_URL_SCHEMES = frozenset(
+    {
+        "http://",
+        "https://",
+        "s3://",
+        "gs://",
+        "azure://",
     }
 )
 
@@ -78,21 +89,53 @@ def _redact_environment(env: dict[str, str]) -> dict[str, str]:
             if _is_sensitive_key(k):
                 result[k] = "[REDACTED]"
             else:
-                result[k] = v
+                # Also redact credential-bearing URLs
+                if any(v.startswith(scheme) for scheme in _CREDENTIAL_URL_SCHEMES):
+                    if "@" in v:
+                        # Has user:pass@host format
+                        from urllib.parse import urlparse
+
+                        try:
+                            parsed = urlparse(v)
+                            if parsed.username or parsed.password:
+                                result[k] = "[REDACTED]"
+                            else:
+                                result[k] = v
+                        except Exception:
+                            result[k] = "[REDACTED]"
+                    else:
+                        result[k] = v
+                else:
+                    result[k] = v
     return result
 
 
 def _redact_command_argv(argv: list[str]) -> str:
-    """Redact sensitive values in command line arguments."""
+    """Redact sensitive values in command line arguments.
+    Handles:
+    - --key=value form
+    - --key value form
+    - Neighboring options
+    """
     redacted = []
     i = 0
     while i < len(argv):
         arg = argv[i]
-        redacted.append(arg)
-        # If this arg is a sensitive flag, redact the next value
-        if arg.startswith("--") and _is_sensitive_key(arg[2:]) and i + 1 < len(argv):
+
+        # Check for --key=value form
+        if arg.startswith("--") and "=" in arg:
+            key, _value = arg.split("=", 1)
+            if _is_sensitive_key(key[2:]):
+                redacted.append(f"{key}=[REDACTED]")
+            else:
+                redacted.append(arg)
+        # Check for --key value form
+        elif arg.startswith("--") and _is_sensitive_key(arg[2:]) and i + 1 < len(argv):
+            redacted.append(arg)
             redacted.append("[REDACTED]")
             i += 1
+        else:
+            redacted.append(arg)
         i += 1
     return " ".join(redacted)
 

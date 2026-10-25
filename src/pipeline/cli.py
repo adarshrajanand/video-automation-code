@@ -419,6 +419,16 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="output path for gate result JSON (default: stdout)",
     )
+    quality_eval.add_argument(
+        "--stage-instance-id",
+        default=None,
+        help="stage instance ID for linking (optional)",
+    )
+    quality_eval.add_argument(
+        "--logical-item-key",
+        default=None,
+        help="logical item key for linking (optional)",
+    )
 
     quality_list = quality_subparsers.add_parser(
         "list-checks",
@@ -1495,6 +1505,14 @@ def _run_quality_evaluate(arguments: argparse.Namespace) -> int:
             after_max_regenerations="HUMAN_REVIEW",
         )
 
+        # Create database connection
+        database = Database(arguments.database)
+
+        # Create human review manager
+        from pipeline.quality.human_review import HumanReviewManager
+
+        human_review_manager = HumanReviewManager(database)
+
         # Run quality pipeline
         result = run_quality_pipeline(
             registry=registry,
@@ -1502,6 +1520,19 @@ def _run_quality_evaluate(arguments: argparse.Namespace) -> int:
             manifest=manifest,
             artifacts=artifacts,
             supporting_artifacts=supporting_artifacts,
+            database=database,
+            human_review_manager=human_review_manager,
+            run_id=manifest.manifest_id,  # Use manifest ID as run_id for human review
+            stage_instance_id=(
+                arguments.stage_instance_id
+                if hasattr(arguments, "stage_instance_id")
+                else None
+            ),
+            logical_item_key=(
+                arguments.logical_item_key
+                if hasattr(arguments, "logical_item_key")
+                else None
+            ),
             regeneration_count=arguments.regeneration_count,
             max_regenerations=policy.max_regenerations,
             after_max_regenerations=policy.after_max_regenerations,

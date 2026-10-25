@@ -145,8 +145,9 @@ class RepairPlanner:
     def compute_descendant_invalidation(
         self,
         repair_plan: RepairPlan,
-        workflow_dag: dict[str, list[str]],  # node_id -> list of dependent node_ids
+        workflow_dag: dict[str, list[str]],
     ) -> list[str]:
+        """Stage instance ID -> list of dependent stage_instance_ids."""
         """Compute all descendant stage instances that must be invalidated.
 
         Args:

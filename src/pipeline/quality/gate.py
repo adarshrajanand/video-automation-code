@@ -48,11 +48,16 @@ def _compute_pass_threshold(
     """
     failure_codes = []
     for dimension in evaluation.dimensions:
-        if dimension.score is None:
-            continue
-        # Check against policy pass threshold for this dimension
         threshold = policy.pass_thresholds.get(dimension.name)
-        if threshold is not None and dimension.score < threshold:
+        if threshold is None:
+            continue
+        if dimension.score is None:
+            # Missing score for a required threshold dimension
+            failure_codes.extend(dimension.failure_codes)
+            if not failure_codes:
+                failure_codes.append(FailureCode.QUALITY_GENERIC)
+            continue
+        if dimension.score < threshold:
             # Dimension score below pass threshold
             failure_codes.extend(dimension.failure_codes)
             if not failure_codes:
@@ -80,7 +85,15 @@ def _verify_artifact_hashes(
             failure_codes.append(FailureCode.QUALITY_SCHEMA_INVALID)
             continue
         # Compute hash of artifact content
-        actual_hash = sha256_text(json.dumps(artifact, sort_keys=True, default=str))
+        if isinstance(artifact, dict) and "sha256" in artifact:
+            actual_hash = artifact["sha256"]
+        else:
+            # Fallback: compute hash from artifact content using canonical JSON
+            import json
+
+            from pipeline.fingerprints import sha256_text
+
+            actual_hash = sha256_text(json.dumps(artifact, sort_keys=True, default=str))
         if actual_hash != expected_hash:
             failure_codes.append(FailureCode.QUALITY_PROVENANCE_MISSING)
     return len(failure_codes) == 0, failure_codes
@@ -128,9 +141,9 @@ def evaluate_gate(
     required_check_ids = policy.required_check_ids
     hard_failure_codes: list[FailureCode] = []
 
-    # Rule 1: Check for ERROR outcomes
+    # Validate that all evaluations belong to this manifest and gate
     for evaluation in evaluations:
-        if evaluation.outcome is CheckOutcome.ERROR:
+        if evaluation.evaluation_input_manifest_id != manifest.manifest_id:
             return _create_gate_result(
                 policy=policy,
                 manifest=manifest,
@@ -143,6 +156,60 @@ def evaluate_gate(
                 stage_instance_id=stage_instance_id,
                 logical_item_key=logical_item_key,
             )
+        if evaluation.gate_id != manifest.gate_id:
+            return _create_gate_result(
+                policy=policy,
+                manifest=manifest,
+                evaluation_ids=evaluation_ids,
+                decision=GateDecision.FAIL,
+                hard_failure_codes=[FailureCode.QUALITY_GENERIC],
+                repair_scope=None,
+                created_at=created_at,
+                completed_at=datetime.now(UTC),
+                stage_instance_id=stage_instance_id,
+                logical_item_key=logical_item_key,
+            )
+        if evaluation.target_artifact_ids != manifest.target_artifact_ids:
+            return _create_gate_result(
+                policy=policy,
+                manifest=manifest,
+                evaluation_ids=evaluation_ids,
+                decision=GateDecision.FAIL,
+                hard_failure_codes=[FailureCode.QUALITY_GENERIC],
+                repair_scope=None,
+                created_at=created_at,
+                completed_at=datetime.now(UTC),
+                stage_instance_id=stage_instance_id,
+                logical_item_key=logical_item_key,
+            )
+        if evaluation.target_hashes != manifest.target_hashes:
+            return _create_gate_result(
+                policy=policy,
+                manifest=manifest,
+                evaluation_ids=evaluation_ids,
+                decision=GateDecision.FAIL,
+                hard_failure_codes=[FailureCode.QUALITY_GENERIC],
+                repair_scope=None,
+                created_at=created_at,
+                completed_at=datetime.now(UTC),
+                stage_instance_id=stage_instance_id,
+                logical_item_key=logical_item_key,
+            )
+
+    # Rule 1: Check for ERROR outcomes
+    for _evaluation in evaluations:
+        return _create_gate_result(
+            policy=policy,
+            manifest=manifest,
+            evaluation_ids=evaluation_ids,
+            decision=GateDecision.FAIL,
+            hard_failure_codes=[FailureCode.QUALITY_GENERIC],
+            repair_scope=None,
+            created_at=created_at,
+            completed_at=datetime.now(UTC),
+            stage_instance_id=stage_instance_id,
+            logical_item_key=logical_item_key,
+        )
 
     # Rule 4: Artifact hash verification (if artifacts provided)
     if artifacts is not None:
@@ -203,7 +270,8 @@ def evaluate_gate(
     )
 
     if all_required_pass:
-        # Check if any dimension score is below human_review_threshold
+        # Check if any dimension score is in the human review zone
+        # Review zone: human_review_threshold <= score < pass_threshold
         needs_human_review = False
         for evaluation in evaluations:
             check = _get_check(registry, evaluation.check_id)
@@ -211,10 +279,12 @@ def evaluate_gate(
                 continue
             for dimension in evaluation.dimensions:
                 hr_threshold = policy.human_review_thresholds.get(dimension.name)
+                pass_threshold = policy.pass_thresholds.get(dimension.name)
                 if (
                     hr_threshold is not None
+                    and pass_threshold is not None
                     and dimension.score is not None
-                    and dimension.score < hr_threshold
+                    and hr_threshold <= dimension.score < pass_threshold
                 ):
                     needs_human_review = True
                     break

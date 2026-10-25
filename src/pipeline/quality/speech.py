@@ -384,8 +384,46 @@ def _evaluate_wer_cer_real(
     speech_manifest = supporting_artifacts.get("speech_manifest")
     asr_alignment = supporting_artifacts.get("asr_alignment")
 
-    # Get reference and hypothesis texts
-    reference = speech_manifest.get("reference_text", "") if speech_manifest else ""
+    if not speech_manifest or not asr_alignment:
+        # Missing required inputs - fail closed
+        latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        return QualityEvaluation(
+            schema_version="quality-evaluation.v1",
+            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            target_artifact_ids=manifest.target_artifact_ids,
+            target_hashes=manifest.target_hashes,
+            evaluation_input_manifest_id=manifest.manifest_id,
+            gate_id=manifest.gate_id,
+            check_id=check.check_id,
+            evaluator=check.evaluator,
+            evaluator_version=check.evaluator_version,
+            rubric_version=None,
+            dimensions=[
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="wer_cer",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing speech_manifest/asr_alignment"},
+                )
+            ],
+            outcome=CheckOutcome.FAIL,
+            confidence=Confidence.LOW,
+            abstained=False,
+            evidence=[{"error": "Missing required artifacts"}],
+            estimated_cost_minor=0,
+            actual_cost_minor=0,
+            provider_invocation_id=None,
+            latency_ms=0,
+            created_at=datetime.now(UTC),
+        )
+
+        # Get reference and hypothesis texts
+
+        reference = speech_manifest.get("reference_text", "") if speech_manifest else ""
     hypothesis = asr_alignment.get("hypothesis_text", "") if asr_alignment else ""
 
     result = SpeechQualityChecks.compute_wer_cer(reference, hypothesis)
@@ -472,6 +510,42 @@ def _evaluate_critical_tokens_real(
     asr_alignment = supporting_artifacts.get("asr_alignment")
     speech_manifest = supporting_artifacts.get("speech_manifest")
 
+    if not asr_alignment or not speech_manifest:
+        latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        return QualityEvaluation(
+            schema_version="quality-evaluation.v1",
+            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            target_artifact_ids=manifest.target_artifact_ids,
+            target_hashes=manifest.target_hashes,
+            evaluation_input_manifest_id=manifest.manifest_id,
+            gate_id=manifest.gate_id,
+            check_id=check.check_id,
+            evaluator=check.evaluator,
+            evaluator_version=check.evaluator_version,
+            rubric_version=None,
+            dimensions=[
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="critical_tokens",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing asr_alignment or speech_manifest"},
+                )
+            ],
+            outcome=CheckOutcome.FAIL,
+            confidence=Confidence.LOW,
+            abstained=False,
+            evidence=[{"error": "Missing required artifacts"}],
+            estimated_cost_minor=0,
+            actual_cost_minor=0,
+            provider_invocation_id=None,
+            latency_ms=0,
+            created_at=datetime.now(UTC),
+        )
+
     critical_tokens = (
         speech_manifest.get("critical_tokens", []) if speech_manifest else []
     )
@@ -539,6 +613,42 @@ def _evaluate_forced_alignment_real(
     asr_alignment = supporting_artifacts.get("asr_alignment")
     audio = artifacts.get(manifest.target_artifact_ids[0])
 
+    if not asr_alignment or not audio:
+        latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        return QualityEvaluation(
+            schema_version="quality-evaluation.v1",
+            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            target_artifact_ids=manifest.target_artifact_ids,
+            target_hashes=manifest.target_hashes,
+            evaluation_input_manifest_id=manifest.manifest_id,
+            gate_id=manifest.gate_id,
+            check_id=check.check_id,
+            evaluator=check.evaluator,
+            evaluator_version=check.evaluator_version,
+            rubric_version=None,
+            dimensions=[
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="forced_alignment",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing asr_alignment or audio artifact"},
+                )
+            ],
+            outcome=CheckOutcome.FAIL,
+            confidence=Confidence.LOW,
+            abstained=False,
+            evidence=[{"error": "Missing required artifacts"}],
+            estimated_cost_minor=0,
+            actual_cost_minor=0,
+            provider_invocation_id=None,
+            latency_ms=0,
+            created_at=datetime.now(UTC),
+        )
+
     expected_duration = int(audio.get("duration_seconds", 0) * 1000) if audio else 0
     result = SpeechQualityChecks.evaluate_forced_alignment(
         asr_alignment, expected_duration
@@ -603,6 +713,42 @@ def _evaluate_signal_quality_real(
     """Real signal quality evaluation."""
     audio = artifacts.get(manifest.target_artifact_ids[0])
     audio_path = audio.get("file_path", "") if audio else ""
+
+    if not audio or not audio_path:
+        latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
+        return QualityEvaluation(
+            schema_version="quality-evaluation.v1",
+            evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
+            target_artifact_ids=manifest.target_artifact_ids,
+            target_hashes=manifest.target_hashes,
+            evaluation_input_manifest_id=manifest.manifest_id,
+            gate_id=manifest.gate_id,
+            check_id=check.check_id,
+            evaluator=check.evaluator,
+            evaluator_version=check.evaluator_version,
+            rubric_version=None,
+            dimensions=[
+                EvaluationDimension(
+                    schema_version="evaluation-dimension.v1",
+                    name="signal_quality",
+                    score=0.0,
+                    threshold=1.0,
+                    severity=Severity.CRITICAL,
+                    failure_codes=[FailureCode.QUALITY_SCHEMA_INVALID],
+                    evidence_refs=[],
+                    details={"error": "Missing audio artifact or file path"},
+                )
+            ],
+            outcome=CheckOutcome.FAIL,
+            confidence=Confidence.LOW,
+            abstained=False,
+            evidence=[{"error": "Missing required artifacts"}],
+            estimated_cost_minor=0,
+            actual_cost_minor=0,
+            provider_invocation_id=None,
+            latency_ms=0,
+            created_at=datetime.now(UTC),
+        )
 
     result = SpeechQualityChecks.measure_signal_quality(audio_path)
 

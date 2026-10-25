@@ -34,7 +34,10 @@ from pipeline.contracts.routing import (
     ResourceAssignment,
     RoutingDecision,
 )
-from pipeline.contracts.vocabularies import FailureCode
+from pipeline.contracts.vocabularies import (
+    FailureCode,
+    Severity,
+)
 from pipeline.fingerprints import canonical_datetime
 from pipeline.ids import deterministic_id
 from pipeline.storage.database import Database
@@ -484,21 +487,31 @@ class CapabilityExecutor:
                 "cost_limit_minor is set but budget_reservation_repo is not provided; "
                 "cannot enforce budget limit",
                 safe_details={"cost_limit_minor": cost_limit},
-                severity="CRITICAL",
+                severity=Severity.CRITICAL,
             )
             return _BudgetCheckResult(allowed=False, error=error)
 
         # Get estimated cost from routing decision budget context
         budget_context = routing_decision.budget_context or {}
         estimated_raw = budget_context.get("estimated_cost_minor")
+        if estimated_raw is None:
+            error = create_normalized_error(
+                FailureCode.VALIDATION,
+                "budget_context.estimated_cost_minor is required "
+                "when cost_limit_minor is set",
+                safe_details={"cost_limit_minor": cost_limit},
+                severity=Severity.CRITICAL,
+            )
+            return _BudgetCheckResult(allowed=False, error=error)
         try:
-            estimated = int(estimated_raw) if estimated_raw is not None else 0
+            estimated = int(estimated_raw)
         except (TypeError, ValueError):
             error = create_normalized_error(
                 FailureCode.VALIDATION,
                 f"budget_context.estimated_cost_minor must be a non-negative integer, "
                 f"got {estimated_raw!r}",
                 safe_details={"estimated_cost_minor": estimated_raw},
+                severity=Severity.CRITICAL,
             )
             return _BudgetCheckResult(allowed=False, error=error)
 
@@ -507,6 +520,7 @@ class CapabilityExecutor:
                 FailureCode.VALIDATION,
                 "budget_context.estimated_cost_minor must be non-negative",
                 safe_details={"estimated_cost_minor": estimated_raw},
+                severity=Severity.CRITICAL,
             )
             return _BudgetCheckResult(allowed=False, error=error)
 
@@ -629,7 +643,7 @@ class CapabilityExecutor:
                     "scope_type": scope_type.value,
                     "scope_id": scope_id,
                 },
-                severity="CRITICAL",
+                severity=Severity.CRITICAL,
             )
             return _BudgetCheckResult(allowed=False, error=error)
 
