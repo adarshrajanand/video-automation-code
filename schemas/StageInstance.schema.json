@@ -1,0 +1,181 @@
+{
+  "$defs": {
+    "AcceptanceStatus": {
+      "description": "Quality-acceptance state kept separate from execution state.",
+      "enum": [
+        "NOT_REQUIRED",
+        "PENDING",
+        "PASSED",
+        "REGENERATE",
+        "HUMAN_REVIEW",
+        "FAILED"
+      ],
+      "title": "AcceptanceStatus",
+      "type": "string"
+    },
+    "StageExecutionStatus": {
+      "description": "Durable execution state of one logical stage instance.",
+      "enum": [
+        "PENDING",
+        "READY",
+        "CLAIMED",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "WAITING_HUMAN",
+        "WAITING_RETRY",
+        "CANCELLED",
+        "UNKNOWN",
+        "INVALIDATED"
+      ],
+      "title": "StageExecutionStatus",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:StageInstance",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Logical work for one workflow node and one logical item.",
+  "properties": {
+    "acceptance_status": {
+      "$ref": "#/$defs/AcceptanceStatus"
+    },
+    "accepted_output_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Accepted Output Artifact Ids",
+      "type": "array"
+    },
+    "active_attempt_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Attempt Id"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "execution_status": {
+      "$ref": "#/$defs/StageExecutionStatus"
+    },
+    "expected_input_manifest_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Input Manifest Id"
+    },
+    "logical_item_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Logical Item Key",
+      "type": "string"
+    },
+    "node_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Node Id",
+      "type": "string"
+    },
+    "quality_gate_id": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Quality Gate Id"
+    },
+    "quality_gate_result_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Quality Gate Result Id"
+    },
+    "run_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "stage-instance.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage_instance_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Stage Instance Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    }
+  },
+  "required": [
+    "schema_version",
+    "created_at",
+    "stage_instance_id",
+    "run_id",
+    "node_id",
+    "logical_item_key",
+    "execution_status",
+    "acceptance_status"
+  ],
+  "title": "StageInstance",
+  "type": "object",
+  "x-contract-schema-version": "stage-instance.v1"
+}

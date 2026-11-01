@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:CompositionInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the composition capability.",
+  "properties": {
+    "asset_instance_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Asset Instance Ids",
+      "type": "array"
+    },
+    "cut_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Cut Id",
+      "type": "string"
+    },
+    "duration_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Duration Policy Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Render Profile Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "composition-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "speech_manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Speech Manifest Id",
+      "type": "string"
+    },
+    "visual_intent_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Visual Intent Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "cut_id",
+    "script_id",
+    "speech_manifest_id",
+    "render_profile_id",
+    "duration_policy_id"
+  ],
+  "title": "CompositionInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "composition-input.v1"
+}

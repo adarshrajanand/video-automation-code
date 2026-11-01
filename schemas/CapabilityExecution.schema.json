@@ -1,0 +1,383 @@
+{
+  "$defs": {
+    "CapabilityExecutionStatus": {
+      "enum": [
+        "PENDING",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "UNKNOWN"
+      ],
+      "title": "CapabilityExecutionStatus",
+      "type": "string"
+    },
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "FailureCategory": {
+      "description": "Stable failure categories from the canonical failure-code registry.",
+      "enum": [
+        "VALIDATION",
+        "AUTHENTICATION",
+        "AUTHORIZATION",
+        "RATE_LIMIT",
+        "QUOTA",
+        "TRANSIENT",
+        "PERMANENT",
+        "UNKNOWN_OUTCOME",
+        "MEDIA",
+        "QUALITY",
+        "BUDGET",
+        "CONFIGURATION",
+        "HUMAN_REVIEW",
+        "POLICY",
+        "INTERNAL"
+      ],
+      "title": "FailureCategory",
+      "type": "string"
+    },
+    "FailureCode": {
+      "description": "Namespaced failure codes registered for recovery decisions.",
+      "enum": [
+        "EXEC.VALIDATION",
+        "EXEC.AUTHENTICATION",
+        "EXEC.AUTHORIZATION",
+        "EXEC.RATE_LIMIT",
+        "EXEC.QUOTA",
+        "EXEC.TRANSIENT_PROVIDER",
+        "EXEC.PERMANENT_PROVIDER",
+        "EXEC.INTERNAL",
+        "EXEC.TIMEOUT_UNKNOWN",
+        "MEDIA.DECODE_ERROR",
+        "MEDIA.OUTPUT_PROFILE",
+        "MEDIA.TIMELINE_INVALID",
+        "MEDIA.TECHNICAL_INTEGRITY",
+        "QUALITY.SCHEMA_INVALID",
+        "QUALITY.GENERIC",
+        "QUALITY.UNSUPPORTED_CLAIM",
+        "QUALITY.NUMERIC_CONTRADICTION",
+        "QUALITY.TTS_OMISSION",
+        "QUALITY.TTS_PRONUNCIATION",
+        "QUALITY.VISUAL_MISMATCH",
+        "QUALITY.MISSING_ASSET",
+        "QUALITY.PROVENANCE_MISSING",
+        "QUALITY.CAPTION_OVERFLOW",
+        "QUALITY.AUDIO_DECODE",
+        "MEDIA.RENDER_CORRUPT",
+        "MEDIA.AUDIO_VIDEO_DRIFT",
+        "QUALITY.REPEATED_FAILURE",
+        "RIGHTS.LICENSE_UNCERTAIN",
+        "HUMAN.REVIEW_REQUIRED",
+        "POLICY.BUDGET_EXCEEDED",
+        "POLICY.PROHIBITED_CONTENT",
+        "CONFIG.UNKNOWN_STAGE"
+      ],
+      "title": "FailureCode",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "NormalizedError": {
+      "additionalProperties": false,
+      "description": "Provider- and stage-neutral failure explanation.\n\n``category`` must agree with the canonical category registered for\n``code``. Reconciliation is explicit so unknown external outcomes cannot be\nmistaken for clean failures.",
+      "properties": {
+        "category": {
+          "$ref": "#/$defs/FailureCategory"
+        },
+        "code": {
+          "$ref": "#/$defs/FailureCode"
+        },
+        "message": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Message",
+          "type": "string"
+        },
+        "provider_status": {
+          "anyOf": [
+            {
+              "maxLength": 512,
+              "minLength": 1,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Provider Status"
+        },
+        "reconciliation_required": {
+          "default": false,
+          "title": "Reconciliation Required",
+          "type": "boolean"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "safe_details": {
+          "$ref": "#/$defs/ExtensionObject"
+        },
+        "schema_version": {
+          "const": "normalized-error.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/Severity",
+          "default": "MAJOR"
+        }
+      },
+      "required": [
+        "schema_version",
+        "code",
+        "category",
+        "retryable",
+        "message"
+      ],
+      "title": "NormalizedError",
+      "type": "object"
+    },
+    "Severity": {
+      "description": "Severity used by normalized errors and quality evidence.",
+      "enum": [
+        "INFO",
+        "MINOR",
+        "MAJOR",
+        "CRITICAL"
+      ],
+      "title": "Severity",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:CapabilityExecution",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Control-plane lifecycle record for one capability execution.",
+  "properties": {
+    "attempt_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Attempt Id",
+      "type": "string"
+    },
+    "capability": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Capability",
+      "type": "string"
+    },
+    "capability_execution_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Capability Execution Id",
+      "type": "string"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "idempotency_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "implementation_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Implementation Version",
+      "type": "string"
+    },
+    "input_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Input Artifact Ids",
+      "type": "array"
+    },
+    "normalized_error": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/NormalizedError"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "operation_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Operation Version",
+      "type": "string"
+    },
+    "output_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Output Artifact Ids",
+      "type": "array"
+    },
+    "prompt_version": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prompt Version"
+    },
+    "request_fingerprint": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Request Fingerprint",
+      "type": "string"
+    },
+    "resource_assignment_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Resource Assignment Id"
+    },
+    "routing_decision_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Routing Decision Id"
+    },
+    "rubric_version": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rubric Version"
+    },
+    "schema_version": {
+      "const": "capability-execution.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "settings_hash": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Settings Hash"
+    },
+    "started_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Started At"
+    },
+    "status": {
+      "$ref": "#/$defs/CapabilityExecutionStatus"
+    },
+    "tool_versions": {
+      "patternProperties": {
+        "^\\S(?:.*\\S)?$": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 512,
+        "minLength": 1
+      },
+      "title": "Tool Versions",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "capability_execution_id",
+    "attempt_id",
+    "capability",
+    "operation_version",
+    "implementation_version",
+    "request_fingerprint",
+    "idempotency_key",
+    "status"
+  ],
+  "title": "CapabilityExecution",
+  "type": "object",
+  "x-contract-schema-version": "capability-execution.v1"
+}

@@ -1,0 +1,8 @@
+{
+  "consumer_id": "consumer_workflow_engine",
+  "error_code": null,
+  "event_id": "event_01",
+  "processed_at": "2026-10-21T12:03:00Z",
+  "schema_version": "inbox-receipt.v1",
+  "status": "PROCESSED"
+}

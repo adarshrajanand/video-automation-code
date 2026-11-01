@@ -1,0 +1,656 @@
+{
+  "contracts": [
+    {
+      "model": "ASRAlignmentInputPayload",
+      "schema_file": "ASRAlignmentInputPayload.schema.json",
+      "schema_version": "asr-alignment-input.v1",
+      "sha256": "a24370e22f8a155d6ea3bca8725d54f58cba1c8457fbdc76c6ce8e51b89afea7"
+    },
+    {
+      "model": "ASRAlignmentOutputPayload",
+      "schema_file": "ASRAlignmentOutputPayload.schema.json",
+      "schema_version": "asr-alignment-output.v1",
+      "sha256": "29f5cb96f4e240d7ae635bf199966e6c28a28351f076131e5941f8877188c40b"
+    },
+    {
+      "model": "Artifact",
+      "schema_file": "Artifact.schema.json",
+      "schema_version": "artifact.v1",
+      "sha256": "f2deb7d5dd5793b6a4d28e51271fcbf4da105bf36184d7957b17dce08dc4c27f"
+    },
+    {
+      "model": "ArtifactDependency",
+      "schema_file": "ArtifactDependency.schema.json",
+      "schema_version": "artifact-dependency.v1",
+      "sha256": "7e63e94f1177dea4eb45e4194620cda1671a0e8d021098ffdf05356de93f8e38"
+    },
+    {
+      "model": "ArtifactPointer",
+      "schema_file": "ArtifactPointer.schema.json",
+      "schema_version": "artifact-pointer.v1",
+      "sha256": "23715b4840b6afffab02fa485ef54254f42add83f93b8d8231b9b58cae4d0393"
+    },
+    {
+      "model": "AssemblyInputPayload",
+      "schema_file": "AssemblyInputPayload.schema.json",
+      "schema_version": "assembly-input.v1",
+      "sha256": "39db3aa91227929375b6f6575edf66952fa87e1d77cc6c0b25d4a03ebcc61e84"
+    },
+    {
+      "model": "AssemblyManifest",
+      "schema_file": "AssemblyManifest.schema.json",
+      "schema_version": "assembly-manifest.v1",
+      "sha256": "1bfef308f0a666789a3790e63a26c89fc8e11737a795819e608ab8de4a051fc3"
+    },
+    {
+      "model": "AssemblyOutputPayload",
+      "schema_file": "AssemblyOutputPayload.schema.json",
+      "schema_version": "assembly-output.v1",
+      "sha256": "0c5add5a7d0c5aab814ac14c783664f5020c3ab45be73971236a92c80a199fc7"
+    },
+    {
+      "model": "AudioQCInputPayload",
+      "schema_file": "AudioQCInputPayload.schema.json",
+      "schema_version": "audio-qc-input.v1",
+      "sha256": "f3f8ddae023d02eab5f08013352f544aa7b332a6dcf762d829496c3ef3322c53"
+    },
+    {
+      "model": "AudioQCOutputPayload",
+      "schema_file": "AudioQCOutputPayload.schema.json",
+      "schema_version": "audio-qc-output.v1",
+      "sha256": "632268ddce6791f542d7e5dbcdff1ae01a89e549a292df851d16d005ec37e545"
+    },
+    {
+      "model": "AudioTiming",
+      "schema_file": "AudioTiming.schema.json",
+      "schema_version": "audio-timing.v1",
+      "sha256": "73cf05d9a6bb51fec19a0501c20422cd9ff6486f65d3ea65ea24c060adbd8a6e"
+    },
+    {
+      "model": "BudgetPolicy",
+      "schema_file": "BudgetPolicy.schema.json",
+      "schema_version": "budget-policy.v1",
+      "sha256": "1ba79bd58f6b2e90fac87fc5ddfc608ab9c3cf6e3a76e437e5989f75ba8d8410"
+    },
+    {
+      "model": "BudgetReservation",
+      "schema_file": "BudgetReservation.schema.json",
+      "schema_version": "budget-reservation.v1",
+      "sha256": "af9e1358404edfb25be2b164d6a8407c32f902ec8c541e85cbc7c30a9ce202bf"
+    },
+    {
+      "model": "CapabilityExecution",
+      "schema_file": "CapabilityExecution.schema.json",
+      "schema_version": "capability-execution.v1",
+      "sha256": "7ae98a391da4cd0cca4a198bf7b5816354b96656d96e109ee12c7115c05d040b"
+    },
+    {
+      "model": "CapabilityRequest",
+      "schema_file": "CapabilityRequest.schema.json",
+      "schema_version": "capability-request.v1",
+      "sha256": "b862d382a663f6cb7dcce0c4cb8f566ca39c661652f7d26816dc7894d86a1ef7"
+    },
+    {
+      "model": "CapabilityRequirements",
+      "schema_file": "CapabilityRequirements.schema.json",
+      "schema_version": "capability-requirements.v1",
+      "sha256": "bead5d991694612b8df5ad5017b4d8fa2371e70e956c92fd178a1a39c7843521"
+    },
+    {
+      "model": "CapabilityResult",
+      "schema_file": "CapabilityResult.schema.json",
+      "schema_version": "capability-result.v1",
+      "sha256": "d22b8af7f4d91c80f8cfd63a1092267a582a13c29af4bf94a43a7f5011ff8797"
+    },
+    {
+      "model": "CardinalityPolicy",
+      "schema_file": "CardinalityPolicy.schema.json",
+      "schema_version": "cardinality.v1",
+      "sha256": "37e58300e1ca2f790efcad2736014abb5a0f6f1040a7c0793f08a316f9f5e552"
+    },
+    {
+      "model": "ChannelProfile",
+      "schema_file": "ChannelProfile.schema.json",
+      "schema_version": "channel-profile.v1",
+      "sha256": "8290f49e86c0628b1314730d92111c1124f13443cb9a0b51a969e6157cd061ce"
+    },
+    {
+      "model": "Claim",
+      "schema_file": "Claim.schema.json",
+      "schema_version": "claim.v1",
+      "sha256": "81b0ca9ab06e5e80b4084bf0d03e53484bd5003e6de0e41ed530b4c824fcbf4a"
+    },
+    {
+      "model": "CompositionAudioTrackSpec",
+      "schema_file": "CompositionAudioTrackSpec.schema.json",
+      "schema_version": "composition-audio-track-spec.v1",
+      "sha256": "5e4418e51fa4d0f9e83b6fa6ff5cbb682b4772ca8c90ee6ee1b4aadd74bfa2be"
+    },
+    {
+      "model": "CompositionAuthoringSpec",
+      "schema_file": "CompositionAuthoringSpec.schema.json",
+      "schema_version": "composition-authoring-spec.v1",
+      "sha256": "630dcb9c2e717b4ccc813d5f5ded06c3caf3d22f97eb47bbfe4fa55b97c421c0"
+    },
+    {
+      "model": "CompositionInputPayload",
+      "schema_file": "CompositionInputPayload.schema.json",
+      "schema_version": "composition-input.v1",
+      "sha256": "5765c59bd37127c59baecd09c1608577312a223a828f75e9cc24aa97e06e0aa2"
+    },
+    {
+      "model": "CompositionLayerSpec",
+      "schema_file": "CompositionLayerSpec.schema.json",
+      "schema_version": "composition-layer-spec.v1",
+      "sha256": "99159f1147a5467f696bad9f09650de91f71a0999c35c06afafefa719e1d13ed"
+    },
+    {
+      "model": "CompositionOutputPayload",
+      "schema_file": "CompositionOutputPayload.schema.json",
+      "schema_version": "composition-output.v1",
+      "sha256": "a1640fd08a6f2de748882123125a67caf702f0654ac010c1027a6bd985c52e63"
+    },
+    {
+      "model": "CompositionRef",
+      "schema_file": "CompositionRef.schema.json",
+      "schema_version": "composition-ref.v1",
+      "sha256": "6d0c74875a160e7c67d83b508cb4b72f34f68627c217260f1d1d7234f10217f3"
+    },
+    {
+      "model": "CompositionSceneSpec",
+      "schema_file": "CompositionSceneSpec.schema.json",
+      "schema_version": "composition-scene-spec.v1",
+      "sha256": "e094c6c0c952eb797d87cc8231fad0788588a1f570bb5022a06ca2b630045691"
+    },
+    {
+      "model": "CompositionSequenceSpec",
+      "schema_file": "CompositionSequenceSpec.schema.json",
+      "schema_version": "composition-sequence-spec.v1",
+      "sha256": "ab2a29455ccaae7c88effdc29b5c279a8943c3857e7920c742fa2beb25d73ba7"
+    },
+    {
+      "model": "CompositionShotSpec",
+      "schema_file": "CompositionShotSpec.schema.json",
+      "schema_version": "composition-shot-spec.v1",
+      "sha256": "760df5c428f0130d056f20e18fc81372437ab7d86e4a21e0554bd98371713f32"
+    },
+    {
+      "model": "CompositionSpec",
+      "schema_file": "CompositionSpec.schema.json",
+      "schema_version": "render-manifest.v1",
+      "sha256": "0262e479e7b35b2463de89f12a8c2d3850be41879fb35f00b0b99377f071662f"
+    },
+    {
+      "model": "ConditionExpression",
+      "schema_file": "ConditionExpression.schema.json",
+      "schema_version": "condition-expression.v1",
+      "sha256": "c2c3229a3daec840c90322b5573e54113ce017b0ef2e8e3da763693c545dacde"
+    },
+    {
+      "model": "ContentPackage",
+      "schema_file": "ContentPackage.schema.json",
+      "schema_version": "content-package.v1",
+      "sha256": "461ee11c1f7b1cb218c48329fb6625a18828b55301b14f36a084374102f73cd1"
+    },
+    {
+      "model": "Cut",
+      "schema_file": "Cut.schema.json",
+      "schema_version": "cut.v1",
+      "sha256": "15b6727c3596cda74852d077ff9ed2e2659bac3c910882816ff178b79b55b180"
+    },
+    {
+      "model": "DomainProfile",
+      "schema_file": "DomainProfile.schema.json",
+      "schema_version": "domain-profile.v1",
+      "sha256": "cf15760d85a529c9105b853e756ee61aa8927f91bb7c58e0b8c72883ef6f6f86"
+    },
+    {
+      "model": "DurationPolicy",
+      "schema_file": "DurationPolicy.schema.json",
+      "schema_version": "duration-policy.v1",
+      "sha256": "110e34d4d6c65a2d365fc44350b99e1eb87d176cee8e0ec91e8f1cfdb13cc184"
+    },
+    {
+      "model": "EffectiveConfig",
+      "schema_file": "EffectiveConfig.schema.json",
+      "schema_version": "effective-config.v1",
+      "sha256": "1f3448d40d280f0b76a27d42c550171e22512d9727a53a17dd28c5e7acc5dee6"
+    },
+    {
+      "model": "Episode",
+      "schema_file": "Episode.schema.json",
+      "schema_version": "episode.v1",
+      "sha256": "0f336d4c433154a8ce2b3aeb60eb071995c13fb946e74c360ec96c4ab2e5cddf"
+    },
+    {
+      "model": "EvaluationDimension",
+      "schema_file": "EvaluationDimension.schema.json",
+      "schema_version": "evaluation-dimension.v1",
+      "sha256": "2822922fd3b984b5d63a1d2467a8b8d8ca0109b0245fd99b5abe179aa27d053f"
+    },
+    {
+      "model": "EventEnvelope",
+      "schema_file": "EventEnvelope.schema.json",
+      "schema_version": "event-envelope.v1",
+      "sha256": "e46c1d36c2a09590b34cf403f174a301c5a561383b4ca5d1af4900fb7cc8e60b"
+    },
+    {
+      "model": "Evidence",
+      "schema_file": "Evidence.schema.json",
+      "schema_version": "evidence.v1",
+      "sha256": "42458edf7e9a70859762c8b68ecbe5a6b3e2547986cc98a5a991e57f8ac4f1e5"
+    },
+    {
+      "model": "ExecutionContext",
+      "schema_file": "ExecutionContext.schema.json",
+      "schema_version": "execution-context.v1",
+      "sha256": "d2483ed03690ee4212cf349f93c5b3d4af7a635a682e04f6b94653e71dbabf78"
+    },
+    {
+      "model": "HumanReview",
+      "schema_file": "HumanReview.schema.json",
+      "schema_version": "human-review.v1",
+      "sha256": "b601019013375471ef7d830bc2c8b3e0f83a2926fdfa2ba7cdac057599ebdced"
+    },
+    {
+      "model": "HumanReviewDecision",
+      "schema_file": "HumanReviewDecision.schema.json",
+      "schema_version": "human-review-decision.v1",
+      "sha256": "da64fe0cf7514c71294096ecd974e8be083c9a519729d304d5e6de99cca58352"
+    },
+    {
+      "model": "IdempotencyRecord",
+      "schema_file": "IdempotencyRecord.schema.json",
+      "schema_version": "idempotency-record.v1",
+      "sha256": "7865d9b1455747557dbb34732ccec062d9dfc28898dc510381c9fdf59cd86553"
+    },
+    {
+      "model": "InboxReceipt",
+      "schema_file": "InboxReceipt.schema.json",
+      "schema_version": "inbox-receipt.v1",
+      "sha256": "2ef9e391efcf01a90eaed8ec6f18f6436cc69877df59acf737093046e0b4d641"
+    },
+    {
+      "model": "InputManifest",
+      "schema_file": "InputManifest.schema.json",
+      "schema_version": "input-manifest.v1",
+      "sha256": "3ff721e39a64b2043e9b4f12d6d51e6749e0830dece33d5d18a1151c96132226"
+    },
+    {
+      "model": "InputSelector",
+      "schema_file": "InputSelector.schema.json",
+      "schema_version": "input-selector.v1",
+      "sha256": "e674ef269557eb997feb49224d0960a02b42d3d31b205413114c2f7953cf341f"
+    },
+    {
+      "model": "InvalidationRequest",
+      "schema_file": "InvalidationRequest.schema.json",
+      "schema_version": "invalidation-request.v1",
+      "sha256": "e4e7304f4925cad182a12a22ba0453ceba00b84b24da1d3e4b184a3a2e85f4ef"
+    },
+    {
+      "model": "InvalidationResult",
+      "schema_file": "InvalidationResult.schema.json",
+      "schema_version": "invalidation-result.v1",
+      "sha256": "021ca78660d013656e28f8bdb1577933bb21867fc20edca18cbd6e5245892559"
+    },
+    {
+      "model": "Job",
+      "schema_file": "Job.schema.json",
+      "schema_version": "job.v1",
+      "sha256": "cbcb5d0ae02990ec041c6a08bdca39181347ce9682d045e134c9027cb74eab80"
+    },
+    {
+      "model": "LayerInstance",
+      "schema_file": "LayerInstance.schema.json",
+      "schema_version": "layer-instance.v1",
+      "sha256": "fa5b85eb29f0ae806afc2e1ec1dedce00be523a2ccf1e1be85fc962088bf3456"
+    },
+    {
+      "model": "Lease",
+      "schema_file": "Lease.schema.json",
+      "schema_version": "lease.v1",
+      "sha256": "3d06ac040e4d0bec13110d0fed5bec09c80d0a30fc7d89bd244dea7492799477"
+    },
+    {
+      "model": "NormalizedError",
+      "schema_file": "NormalizedError.schema.json",
+      "schema_version": "normalized-error.v1",
+      "sha256": "6a03f2789e72de8adec7348e46228590439922a09ec2986b3b2f0fc0904cba5f"
+    },
+    {
+      "model": "OutboxMessage",
+      "schema_file": "OutboxMessage.schema.json",
+      "schema_version": "outbox-message.v1",
+      "sha256": "ccded8f671749a372ee11402921933f8c02a62387c3b84d53bfe8713ef7b58b0"
+    },
+    {
+      "model": "ProviderInvocation",
+      "schema_file": "ProviderInvocation.schema.json",
+      "schema_version": "provider-invocation.v1",
+      "sha256": "c73b5f45e6b1e7cbe44e318129355238ad6f0007a08bb4464517d6d19878f040"
+    },
+    {
+      "model": "PublicationAttempt",
+      "schema_file": "PublicationAttempt.schema.json",
+      "schema_version": "publication-attempt.v1",
+      "sha256": "5de68ad306bd5d2dee76ef00fc288d208995851dbcf8bcd656b9c28ad2dba871"
+    },
+    {
+      "model": "PublicationRequest",
+      "schema_file": "PublicationRequest.schema.json",
+      "schema_version": "publication-request.v1",
+      "sha256": "f1dca7d3654c4c521cdf7e7f0c392c30422dde12a8e4e5fe5d98fdf19399f3ff"
+    },
+    {
+      "model": "QualityCheck",
+      "schema_file": "QualityCheck.schema.json",
+      "schema_version": "quality-check.v1",
+      "sha256": "9cc60995d1eb4ce2c8cfc60c5de80882419f5c7b9e5ab6234452684a0cf3ff90"
+    },
+    {
+      "model": "QualityEvaluation",
+      "schema_file": "QualityEvaluation.schema.json",
+      "schema_version": "quality-evaluation.v1",
+      "sha256": "8239a3e94f9d4b8dc5b608f338c84a780ff05a3672b43853336e06b94d7ab0ea"
+    },
+    {
+      "model": "QualityGatePolicy",
+      "schema_file": "QualityGatePolicy.schema.json",
+      "schema_version": "quality-gate-policy.v1",
+      "sha256": "5a8994fe829b84f3c24d486d28e91caf11fa99b46e53aa71d7793222d9436dbf"
+    },
+    {
+      "model": "QualityGateResult",
+      "schema_file": "QualityGateResult.schema.json",
+      "schema_version": "quality-gate-result.v1",
+      "sha256": "9633929ed3e038551f241f1d5d2e6bd06078bcfd72e45322704657f3295cd94f"
+    },
+    {
+      "model": "QualityInputManifest",
+      "schema_file": "QualityInputManifest.schema.json",
+      "schema_version": "quality-input-manifest.v1",
+      "sha256": "a305e96be5520cdfb7f6a54e312adfe91070e0a765628c368960fc20661459eb"
+    },
+    {
+      "model": "RecoveryDecision",
+      "schema_file": "RecoveryDecision.schema.json",
+      "schema_version": "recovery-decision.v1",
+      "sha256": "811869065e581e570bd3b987f5110185b9bea72c46e58e6c0f7914d71b03537f"
+    },
+    {
+      "model": "RecoveryPolicy",
+      "schema_file": "RecoveryPolicy.schema.json",
+      "schema_version": "recovery-policy.v1",
+      "sha256": "4c2f430fbec3974e336a72d022a82e75b4a0ddb88056744e40026e94df19af0c"
+    },
+    {
+      "model": "RenderChunkManifest",
+      "schema_file": "RenderChunkManifest.schema.json",
+      "schema_version": "render-chunk-manifest.v1",
+      "sha256": "370f7c544681fb42fb1a9048b2f18d6489d137d32deb69a78785ecf5ad7f47f0"
+    },
+    {
+      "model": "RenderProfile",
+      "schema_file": "RenderProfile.schema.json",
+      "schema_version": "render-profile.v1",
+      "sha256": "6bfdaa91b3bfbdd0e73bd98ea607c2855af30e6688e7dd5ea1060c7d497a1cf2"
+    },
+    {
+      "model": "RenderingInputPayload",
+      "schema_file": "RenderingInputPayload.schema.json",
+      "schema_version": "rendering-input.v1",
+      "sha256": "0f20857358c0e29bc2d8a2b706ba7098b94ee84cc8ce62784d3d3f0c610d3ce0"
+    },
+    {
+      "model": "RenderingOutputPayload",
+      "schema_file": "RenderingOutputPayload.schema.json",
+      "schema_version": "rendering-output.v1",
+      "sha256": "f22bc61dd4d9bb7ae316e0897bbc6c748fb4489e27e9d186e05253ccbb01f7d0"
+    },
+    {
+      "model": "RepairPlan",
+      "schema_file": "RepairPlan.schema.json",
+      "schema_version": "repair-plan.v1",
+      "sha256": "3f64c30f6412e224aceb4d340b9d0e64585c1006c39458df176c8cb6d6961634"
+    },
+    {
+      "model": "ResearchInputPayload",
+      "schema_file": "ResearchInputPayload.schema.json",
+      "schema_version": "research-input.v1",
+      "sha256": "838ae4a657d9756b162468a79bc98e22a2b6a61404e67ff00960b30857bcc67e"
+    },
+    {
+      "model": "ResearchOutputPayload",
+      "schema_file": "ResearchOutputPayload.schema.json",
+      "schema_version": "research-output.v1",
+      "sha256": "52072c14793a4b167f5cce26822a6de4a4b8d5c89377c3b8e1f5e95486b4a7fe"
+    },
+    {
+      "model": "ResolvedArtifactRef",
+      "schema_file": "ResolvedArtifactRef.schema.json",
+      "schema_version": "resolved-artifact-ref.v1",
+      "sha256": "902ef944fd81cf0928d376c5d531b85244f8620bcee55f0eee64f29a9bba5c6b"
+    },
+    {
+      "model": "ResourceAssignment",
+      "schema_file": "ResourceAssignment.schema.json",
+      "schema_version": "resource-assignment.v1",
+      "sha256": "e144ab76a0f329604c08d959bb8bd08300d9dd8643430b7310c1c673bf19c005"
+    },
+    {
+      "model": "ResourceConstraints",
+      "schema_file": "ResourceConstraints.schema.json",
+      "schema_version": "resource-constraints.v1",
+      "sha256": "7d92664cf8e75054661046e6440a3ea506458293edbf03b7425ee3ceff7049da"
+    },
+    {
+      "model": "RetryPolicy",
+      "schema_file": "RetryPolicy.schema.json",
+      "schema_version": "retry-policy.v1",
+      "sha256": "05218a371f082484294cb28c05d2b3affb7768f273c87854d96bf5ff246e23a5"
+    },
+    {
+      "model": "RoutingContext",
+      "schema_file": "RoutingContext.schema.json",
+      "schema_version": "routing-context.v1",
+      "sha256": "95eb94fbaf68ff428046eef29958a1bc7e1a9734f04b15f66293fe235fcdb927"
+    },
+    {
+      "model": "RoutingDecision",
+      "schema_file": "RoutingDecision.schema.json",
+      "schema_version": "routing-decision.v1",
+      "sha256": "bfc5e52c3beccc681b274f021066e7bf0a901e391b34c635a714c9e139eeada8"
+    },
+    {
+      "model": "RunCreateRequest",
+      "schema_file": "RunCreateRequest.schema.json",
+      "schema_version": "run-create-request.v1",
+      "sha256": "ce46be5e81a3501176310bf6b934f4434a7764a9dfc54f3d2ee04afed8c8d139"
+    },
+    {
+      "model": "RunOverrides",
+      "schema_file": "RunOverrides.schema.json",
+      "schema_version": "run-overrides.v1",
+      "sha256": "e6b137fbc7cb2f4fcc8309bc4e9ea750d65a088142e770337d28c796a711d0e4"
+    },
+    {
+      "model": "Scene",
+      "schema_file": "Scene.schema.json",
+      "schema_version": "scene.v1",
+      "sha256": "cbf9fa565eb961e65e2e8738452ec1dd7250440bc7bfadebb40abc6735e6040c"
+    },
+    {
+      "model": "Script",
+      "schema_file": "Script.schema.json",
+      "schema_version": "script.v1",
+      "sha256": "f7f303333d98ff803773720015aa35abfa1c137013b547c7aa0bdf2068cb0420"
+    },
+    {
+      "model": "ScriptGenerationInputPayload",
+      "schema_file": "ScriptGenerationInputPayload.schema.json",
+      "schema_version": "script-generation-input.v1",
+      "sha256": "26dde8eb3484da85e73f61b61bf63b98b7ef182a270523cd62ce5b5ad5fe5206"
+    },
+    {
+      "model": "ScriptGenerationOutputPayload",
+      "schema_file": "ScriptGenerationOutputPayload.schema.json",
+      "schema_version": "script-generation-output.v1",
+      "sha256": "21577ef48ab2b7a98741dc874b2bb08ce78a3cd7ac2c60cb2dea1ba501db7989"
+    },
+    {
+      "model": "ScriptScene",
+      "schema_file": "ScriptScene.schema.json",
+      "schema_version": "script-scene.v1",
+      "sha256": "f7a98311fd2b52c9ac2f4a9fe905bd93542019b6fa970510b8acab71f3322064"
+    },
+    {
+      "model": "Sequence",
+      "schema_file": "Sequence.schema.json",
+      "schema_version": "sequence.v1",
+      "sha256": "24e5da196b78798c33466ce5b512628cf3833b39a6bb0c8f5b20d0f73de15872"
+    },
+    {
+      "model": "ShortDerivativeInputPayload",
+      "schema_file": "ShortDerivativeInputPayload.schema.json",
+      "schema_version": "short-derivative-input.v1",
+      "sha256": "ac40d8ce69273e1a8f817ab0d81aa6df70fcd41425e87ba18891aa884407054b"
+    },
+    {
+      "model": "ShortDerivativeOutputPayload",
+      "schema_file": "ShortDerivativeOutputPayload.schema.json",
+      "schema_version": "short-derivative-output.v1",
+      "sha256": "f68be38fa12068eae4dfb3c8094d1c0ed0eaccf30623285b8c5bdf9096120cf8"
+    },
+    {
+      "model": "ShortSelectionManifest",
+      "schema_file": "ShortSelectionManifest.schema.json",
+      "schema_version": "short-selection-manifest.v1",
+      "sha256": "4100990b80e526be872fd50fb1dc640872ec15807f147ce274047514e15917ee"
+    },
+    {
+      "model": "Shot",
+      "schema_file": "Shot.schema.json",
+      "schema_version": "shot.v1",
+      "sha256": "b773814296951278d373e8a957736ba365880d9048b88ba86b7f5dfe8af50da3"
+    },
+    {
+      "model": "SourceRef",
+      "schema_file": "SourceRef.schema.json",
+      "schema_version": "source-ref.v1",
+      "sha256": "a6bc9697603fecbf95c653acf04ddce1e04ff9a3e954bc32074ce1b66bc5d070"
+    },
+    {
+      "model": "SourceSnapshot",
+      "schema_file": "SourceSnapshot.schema.json",
+      "schema_version": "source-snapshot.v1",
+      "sha256": "32f9ce9177274859dec4d517999f33b22db9f992348eb2467507897d97f4a03f"
+    },
+    {
+      "model": "SpeechGenerationInputPayload",
+      "schema_file": "SpeechGenerationInputPayload.schema.json",
+      "schema_version": "speech-generation-input.v1",
+      "sha256": "36bec7da82117d9d4845a89fec27688af448b56c95cc7973155ed0d8b886f219"
+    },
+    {
+      "model": "SpeechGenerationOutputPayload",
+      "schema_file": "SpeechGenerationOutputPayload.schema.json",
+      "schema_version": "speech-generation-output.v1",
+      "sha256": "d6e0342072d81b8e0e390d6ac09eff079753c0fea1d9a612810b55cc16b0c359"
+    },
+    {
+      "model": "SpeechManifest",
+      "schema_file": "SpeechManifest.schema.json",
+      "schema_version": "speech-manifest.v1",
+      "sha256": "3f73a1838d412d5d0ef14f2261a97defbabe0aa124a7eeaa46f9e21fe1d9faa0"
+    },
+    {
+      "model": "StageAttempt",
+      "schema_file": "StageAttempt.schema.json",
+      "schema_version": "stage-attempt.v1",
+      "sha256": "a7893c38708afdf5bb4817ce555f06eb6572d1ef2c0b4f45cbd2fd44b6b18bba"
+    },
+    {
+      "model": "StageInstance",
+      "schema_file": "StageInstance.schema.json",
+      "schema_version": "stage-instance.v1",
+      "sha256": "ed5088ae2cded654ec32576a082c6a5805877d749134d35cf72ee36de7f85ff1"
+    },
+    {
+      "model": "StageNode",
+      "schema_file": "StageNode.schema.json",
+      "schema_version": "stage-node.v1",
+      "sha256": "fff6c619e5c8a1479c8f55cfb658f85fb8be11cd1d6aaffc105c17eaad7937de"
+    },
+    {
+      "model": "SystemPolicy",
+      "schema_file": "SystemPolicy.schema.json",
+      "schema_version": "system-policy.v1",
+      "sha256": "c53421fd07da0c302b2365f142f2a47eb3fd42a254af0baeaa4988edc4186465"
+    },
+    {
+      "model": "TTSAdapterInputPayload",
+      "schema_file": "TTSAdapterInputPayload.schema.json",
+      "schema_version": "tts-adapter-input.v1",
+      "sha256": "7c36b45780e23375f22f145c1de2085edb9ba5f15dd53b2ead2fe04bf773387e"
+    },
+    {
+      "model": "TTSAdapterOutputPayload",
+      "schema_file": "TTSAdapterOutputPayload.schema.json",
+      "schema_version": "tts-adapter-output.v1",
+      "sha256": "2728671a70d1546ec45e2ac42aeb22ff09d064269326da4323c9a23d1de4e653"
+    },
+    {
+      "model": "UsageRecord",
+      "schema_file": "UsageRecord.schema.json",
+      "schema_version": "usage.v1",
+      "sha256": "f541b17e2b636380a2b60fa32cb2fa3fdabad784d17b5915b9e5b845eca336cf"
+    },
+    {
+      "model": "VisualIntent",
+      "schema_file": "VisualIntent.schema.json",
+      "schema_version": "visual-intent.v1",
+      "sha256": "4093b52fa7b56ec4446267a7d969b0375da63e286cdee4d6e9084af79cdf1ab1"
+    },
+    {
+      "model": "VisualPlanningInputPayload",
+      "schema_file": "VisualPlanningInputPayload.schema.json",
+      "schema_version": "visual-planning-input.v1",
+      "sha256": "835b259d566fbeadfd40a9c0fef2f7a90664155a64932830263cb950e38131de"
+    },
+    {
+      "model": "VisualPlanningOutputPayload",
+      "schema_file": "VisualPlanningOutputPayload.schema.json",
+      "schema_version": "visual-planning-output.v1",
+      "sha256": "690cf48330bb4a40310311a6e88daf6d9d91a9213c4ba425065fc62de37472e9"
+    },
+    {
+      "model": "WordTimestamp",
+      "schema_file": "WordTimestamp.schema.json",
+      "schema_version": "word-timestamp.v1",
+      "sha256": "8ee3ecc76a56ed616ee7133cb0f8797482bbb1b40e74fc0175723bca5e7936a9"
+    },
+    {
+      "model": "WorkflowDefinition",
+      "schema_file": "WorkflowDefinition.schema.json",
+      "schema_version": "workflow-definition.v1",
+      "sha256": "0a0e017be4fa608da00304fe0d45fbc41d83c11f8b793792857f761284b8a425"
+    },
+    {
+      "model": "WorkflowRun",
+      "schema_file": "WorkflowRun.schema.json",
+      "schema_version": "workflow-run.v1",
+      "sha256": "8e91ca5d5930d49a4150bcf1c6fd4e5357d43bfbb9936d47d52b7f03424d5e25"
+    },
+    {
+      "model": "WorkloadRequirements",
+      "schema_file": "WorkloadRequirements.schema.json",
+      "schema_version": "workload-requirements.v1",
+      "sha256": "8f1e340ab2ffd368186a38dcfd72bb6e1998217e22048f23edc2fd11dd38160a"
+    }
+  ],
+  "generated_by": "python -m pipeline contracts export-schemas",
+  "manifest_version": "1",
+  "public_contract_count": 108,
+  "schema_dialect": "https://json-schema.org/draft/2020-12/schema"
+}

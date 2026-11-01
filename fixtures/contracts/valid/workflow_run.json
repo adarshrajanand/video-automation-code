@@ -1,0 +1,13 @@
+{
+  "content_package_id": "package_01",
+  "created_at": "2026-10-21T09:00:00Z",
+  "effective_config_hash": "3b732827d3067c4965bf37e239d39635a86a110e0632b8898634c29ff0270e42",
+  "effective_config_id": "cfg_01",
+  "run_id": "run_01",
+  "run_key": "se-demo:2026-10-21",
+  "schema_version": "workflow-run.v1",
+  "status": "RUNNING",
+  "updated_at": "2026-10-21T10:00:00Z",
+  "workflow_id": "explainer_validation_v1",
+  "workflow_version": "1.0"
+}

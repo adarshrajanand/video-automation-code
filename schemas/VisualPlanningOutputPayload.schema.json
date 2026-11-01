@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:VisualPlanningOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the visual_planning capability.",
+  "properties": {
+    "asset_requirement_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Asset Requirement Ids",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "scene_count": {
+      "minimum": 1,
+      "title": "Scene Count",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "visual-planning-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "shot_plan_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Shot Plan Ids",
+      "type": "array"
+    },
+    "visual_intent_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Visual Intent Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "scene_count"
+  ],
+  "title": "VisualPlanningOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "visual-planning-output.v1"
+}

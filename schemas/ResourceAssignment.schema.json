@@ -1,0 +1,65 @@
+{
+  "$id": "urn:pipeline:contract:ResourceAssignment",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Selected placement and worker pool for one workload.",
+  "properties": {
+    "assignment_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Assignment Id",
+      "type": "string"
+    },
+    "constraints_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Constraints Hash",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "implementation_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Implementation Version",
+      "type": "string"
+    },
+    "placement_class": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Placement Class",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "resource-assignment.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "worker_pool": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Worker Pool",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "assignment_id",
+    "placement_class",
+    "worker_pool",
+    "implementation_version",
+    "constraints_hash",
+    "created_at"
+  ],
+  "title": "ResourceAssignment",
+  "type": "object",
+  "x-contract-schema-version": "resource-assignment.v1"
+}

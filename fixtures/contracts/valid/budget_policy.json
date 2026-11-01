@@ -1,0 +1,12 @@
+{
+  "default_run_cap_minor": 500,
+  "default_stage_cap_minor": 100,
+  "evaluation_cap_minor": 50,
+  "monthly_cap_minor": 5000,
+  "paid_fallback_enabled": false,
+  "policy_id": "local_budget_v1",
+  "reservation_required": true,
+  "schema_version": "budget-policy.v1",
+  "system_cap_minor": 10000,
+  "version": "1.0"
+}

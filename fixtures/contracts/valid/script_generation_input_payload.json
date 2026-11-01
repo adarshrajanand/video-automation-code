@@ -1,0 +1,15 @@
+{
+  "schema_version": "script-generation-input.v1",
+  "topic": "Climate Change Impact on Arctic Ice",
+  "outline": "1. Opening: Arctic warming rate; 2. Evidence: Ice loss measurements; 3. Causes: Greenhouse gas mechanism; 4. Consequences: Sea level and ecosystems; 5. Solutions: Mitigation pathways; 6. Call to action",
+  "claim_ids": ["claim_01", "claim_02"],
+  "evidence_ids": ["ev_01", "ev_02"],
+  "source_ref_ids": ["src_01", "src_02"],
+  "duration_policy_id": "dp_01",
+  "target_audience": "general_educated",
+  "tone": "informative_urgent",
+  "language": "en",
+  "metadata": {
+    "style": "documentary_explainer"
+  }
+}

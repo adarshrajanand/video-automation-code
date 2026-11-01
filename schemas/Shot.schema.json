@@ -1,0 +1,63 @@
+{
+  "$id": "urn:pipeline:contract:Shot",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A half-open frame range containing ordered visual layers.",
+  "properties": {
+    "end_frame": {
+      "minimum": 1,
+      "title": "End Frame",
+      "type": "integer"
+    },
+    "layer_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Layer Ids",
+      "type": "array"
+    },
+    "order_index": {
+      "minimum": 0,
+      "title": "Order Index",
+      "type": "integer"
+    },
+    "scene_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "shot.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "shot_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Shot Id",
+      "type": "string"
+    },
+    "start_frame": {
+      "minimum": 0,
+      "title": "Start Frame",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "shot_id",
+    "scene_id",
+    "order_index",
+    "start_frame",
+    "end_frame"
+  ],
+  "title": "Shot",
+  "type": "object",
+  "x-contract-schema-version": "shot.v1"
+}

@@ -1,0 +1,10 @@
+{
+  "assembly_artifact_id": "artifact_assembly_01",
+  "cut_id": "cut_long_form_16x9",
+  "composition_artifact_id": "artifact_composition_01",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "assembly-output.v1",
+  "output_artifact_id": "artifact_final_cut_01",
+  "continuity_checks_passed": true,
+  "metadata": {}
+}

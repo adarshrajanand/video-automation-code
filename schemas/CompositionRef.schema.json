@@ -1,0 +1,59 @@
+{
+  "$id": "urn:pipeline:contract:CompositionRef",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Reference to an immutable resolved composition artifact for one cut.",
+  "properties": {
+    "composition_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Composition Artifact Id",
+      "type": "string"
+    },
+    "cut_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Cut Id",
+      "type": "string"
+    },
+    "render_profile_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Render Profile Hash",
+      "type": "string"
+    },
+    "render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Render Profile Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "composition-ref.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "timebase": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Timebase",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "composition_artifact_id",
+    "cut_id",
+    "render_profile_id",
+    "render_profile_hash",
+    "timebase"
+  ],
+  "title": "CompositionRef",
+  "type": "object",
+  "x-contract-schema-version": "composition-ref.v1"
+}

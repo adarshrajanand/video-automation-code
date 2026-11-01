@@ -1,0 +1,242 @@
+{
+  "$defs": {
+    "FailureCode": {
+      "description": "Namespaced failure codes registered for recovery decisions.",
+      "enum": [
+        "EXEC.VALIDATION",
+        "EXEC.AUTHENTICATION",
+        "EXEC.AUTHORIZATION",
+        "EXEC.RATE_LIMIT",
+        "EXEC.QUOTA",
+        "EXEC.TRANSIENT_PROVIDER",
+        "EXEC.PERMANENT_PROVIDER",
+        "EXEC.INTERNAL",
+        "EXEC.TIMEOUT_UNKNOWN",
+        "MEDIA.DECODE_ERROR",
+        "MEDIA.OUTPUT_PROFILE",
+        "MEDIA.TIMELINE_INVALID",
+        "MEDIA.TECHNICAL_INTEGRITY",
+        "QUALITY.SCHEMA_INVALID",
+        "QUALITY.GENERIC",
+        "QUALITY.UNSUPPORTED_CLAIM",
+        "QUALITY.NUMERIC_CONTRADICTION",
+        "QUALITY.TTS_OMISSION",
+        "QUALITY.TTS_PRONUNCIATION",
+        "QUALITY.VISUAL_MISMATCH",
+        "QUALITY.MISSING_ASSET",
+        "QUALITY.PROVENANCE_MISSING",
+        "QUALITY.CAPTION_OVERFLOW",
+        "QUALITY.AUDIO_DECODE",
+        "MEDIA.RENDER_CORRUPT",
+        "MEDIA.AUDIO_VIDEO_DRIFT",
+        "QUALITY.REPEATED_FAILURE",
+        "RIGHTS.LICENSE_UNCERTAIN",
+        "HUMAN.REVIEW_REQUIRED",
+        "POLICY.BUDGET_EXCEEDED",
+        "POLICY.PROHIBITED_CONTENT",
+        "CONFIG.UNKNOWN_STAGE"
+      ],
+      "title": "FailureCode",
+      "type": "string"
+    },
+    "GateDecision": {
+      "description": "Aggregate control-plane action for one quality gate.",
+      "enum": [
+        "PASS",
+        "REGENERATE",
+        "HUMAN_REVIEW",
+        "FAIL"
+      ],
+      "title": "GateDecision",
+      "type": "string"
+    },
+    "RepairScope": {
+      "enum": [
+        "NONE",
+        "LAYER",
+        "ASSET",
+        "SHOT",
+        "SCENE",
+        "STAGE",
+        "CUT",
+        "SUBGRAPH",
+        "WORKFLOW"
+      ],
+      "title": "RepairScope",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:QualityGateResult",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Aggregate gate decision over exact targets and evaluation records.",
+  "properties": {
+    "completed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Completed At"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/GateDecision"
+    },
+    "evaluation_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Evaluation Ids",
+      "type": "array"
+    },
+    "gate_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Gate Id",
+      "type": "string"
+    },
+    "gate_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Gate Version",
+      "type": "string"
+    },
+    "hard_failure_codes": {
+      "items": {
+        "$ref": "#/$defs/FailureCode"
+      },
+      "title": "Hard Failure Codes",
+      "type": "array"
+    },
+    "logical_item_key": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Logical Item Key"
+    },
+    "policy_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Policy Version",
+      "type": "string"
+    },
+    "quality_gate_result_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Quality Gate Result Id",
+      "type": "string"
+    },
+    "repair_scope": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/RepairScope"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "required_check_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Required Check Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "quality-gate-result.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "stage_instance_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stage Instance Id"
+    },
+    "target_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Target Artifact Ids",
+      "type": "array"
+    },
+    "target_hashes": {
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Target Hashes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "quality_gate_result_id",
+    "gate_id",
+    "gate_version",
+    "target_artifact_ids",
+    "target_hashes",
+    "required_check_ids",
+    "evaluation_ids",
+    "decision",
+    "policy_version",
+    "created_at"
+  ],
+  "title": "QualityGateResult",
+  "type": "object",
+  "x-contract-schema-version": "quality-gate-result.v1"
+}

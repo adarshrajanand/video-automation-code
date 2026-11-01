@@ -1,0 +1,9 @@
+{
+  "active_episode_id": "episode_other",
+  "content_package_id": "package_01",
+  "episode_ids": [
+    "episode_01"
+  ],
+  "production_idea_id": "idea_01",
+  "schema_version": "content-package.v1"
+}

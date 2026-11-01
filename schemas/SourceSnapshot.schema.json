@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:SourceSnapshot",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable snapshot of source content at retrieval time.",
+  "properties": {
+    "content": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Content",
+      "type": "string"
+    },
+    "content_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "extracted_at": {
+      "format": "date-time",
+      "title": "Extracted At",
+      "type": "string"
+    },
+    "language": {
+      "default": "en",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "source-snapshot.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "snapshot_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Snapshot Id",
+      "type": "string"
+    },
+    "source_ref_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Source Ref Id",
+      "type": "string"
+    },
+    "token_count": {
+      "minimum": 1,
+      "title": "Token Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "snapshot_id",
+    "source_ref_id",
+    "content",
+    "content_hash",
+    "token_count",
+    "extracted_at"
+  ],
+  "title": "SourceSnapshot",
+  "type": "object",
+  "x-contract-schema-version": "source-snapshot.v1"
+}

@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ScriptGenerationInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the script_generation capability.",
+  "properties": {
+    "claim_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Claim Ids",
+      "type": "array"
+    },
+    "duration_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Duration Policy Id",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "language": {
+      "default": "en",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "outline": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Outline",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "script-generation-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_ref_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Source Ref Ids",
+      "type": "array"
+    },
+    "target_audience": {
+      "default": "general",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Target Audience",
+      "type": "string"
+    },
+    "tone": {
+      "default": "informative",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Tone",
+      "type": "string"
+    },
+    "topic": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Topic",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "topic",
+    "outline",
+    "duration_policy_id"
+  ],
+  "title": "ScriptGenerationInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "script-generation-input.v1"
+}

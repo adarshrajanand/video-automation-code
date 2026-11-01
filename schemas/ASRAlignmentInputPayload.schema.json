@@ -1,0 +1,55 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ASRAlignmentInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the asr_alignment capability.",
+  "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
+    "language": {
+      "default": "en",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_text": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Narration Text",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "asr-alignment-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_artifact_id",
+    "narration_text"
+  ],
+  "title": "ASRAlignmentInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "asr-alignment-input.v1"
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": "visual-planning-output.v1",
+  "visual_intent_ids": ["vi_01", "vi_02", "vi_03", "vi_04", "vi_05"],
+  "shot_plan_ids": ["shot_01", "shot_02", "shot_03", "shot_04", "shot_05"],
+  "asset_requirement_ids": ["asset_req_01", "asset_req_02", "asset_req_03"],
+  "scene_count": 3,
+  "metadata": {
+    "planning_duration_seconds": 8
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema_version": "visual-intent.v1",
+  "visual_intent_id": "vi_01",
+  "scene_id": "scene_01",
+  "description": "Test visual intent",
+  "purpose": "INVALID_PURPOSE",
+  "elements": ["element1"],
+  "overlays": [],
+  "provenance_requirements": []
+}

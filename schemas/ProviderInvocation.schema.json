@@ -1,0 +1,109 @@
+{
+  "$defs": {
+    "ProviderInvocationStatus": {
+      "enum": [
+        "STARTED",
+        "SUCCEEDED",
+        "FAILED",
+        "UNKNOWN"
+      ],
+      "title": "ProviderInvocationStatus",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:ProviderInvocation",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One external or local provider operation with its idempotency evidence.",
+  "properties": {
+    "capability_execution_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Capability Execution Id",
+      "type": "string"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "idempotency_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "invocation_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Invocation Id",
+      "type": "string"
+    },
+    "operation_id": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Operation Id"
+    },
+    "provider": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Provider",
+      "type": "string"
+    },
+    "request_fingerprint": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Request Fingerprint",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "provider-invocation.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/ProviderInvocationStatus"
+    }
+  },
+  "required": [
+    "schema_version",
+    "invocation_id",
+    "capability_execution_id",
+    "provider",
+    "idempotency_key",
+    "request_fingerprint",
+    "status",
+    "started_at"
+  ],
+  "title": "ProviderInvocation",
+  "type": "object",
+  "x-contract-schema-version": "provider-invocation.v1"
+}

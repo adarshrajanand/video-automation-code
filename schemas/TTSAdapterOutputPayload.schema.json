@@ -1,0 +1,91 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:TTSAdapterOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the tts_adapter capability.",
+  "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
+    "duration_seconds": {
+      "minimum": 0,
+      "title": "Duration Seconds",
+      "type": "number"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "model": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Model",
+      "type": "string"
+    },
+    "narration_text_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Narration Text Hash",
+      "type": "string"
+    },
+    "provider": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Provider",
+      "type": "string"
+    },
+    "sample_rate": {
+      "minimum": 1,
+      "title": "Sample Rate",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "tts-adapter-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "voice_config_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Voice Config Hash",
+      "type": "string"
+    },
+    "voice_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Voice Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_artifact_id",
+    "voice_id",
+    "provider",
+    "model",
+    "voice_config_hash",
+    "narration_text_hash",
+    "duration_seconds",
+    "sample_rate"
+  ],
+  "title": "TTSAdapterOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "tts-adapter-output.v1"
+}

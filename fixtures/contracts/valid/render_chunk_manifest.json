@@ -1,0 +1,18 @@
+{
+  "chunk_id": "chunk_01",
+  "composition_artifact_id": "artifact_composition_01",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "render-chunk-manifest.v1",
+  "start_frame": 0,
+  "end_frame": 3000,
+  "output_artifact_id": "artifact_render_chunk_01",
+  "output_uri": "file:///renders/chunk_01.mp4",
+  "output_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "output_size_bytes": 5242880,
+  "duration_frames": 3000,
+  "renderer_version": "remotion-v4.0.0",
+  "render_started_at": "2026-01-01T00:00:00Z",
+  "render_finished_at": "2026-01-01T00:05:00Z",
+  "frame_checksums": [],
+  "metadata": {}
+}

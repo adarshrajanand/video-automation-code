@@ -1,0 +1,30 @@
+{
+  "composition_artifact_id": "artifact_composition_01",
+  "cut_id": "cut_long_form_16x9",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "render_profile_hash": "98043e95a1d40f7598890fe7105c9fd57d856beab2fe1b8ecfd2e161618da94d",
+  "schema_version": "render-manifest.v1",
+  "timebase": "1/30",
+  "frame_rate": 30,
+  "width": 1920,
+  "height": 1080,
+  "duration_frames": 9000,
+  "authoring": {
+    "schema_version": "composition-authoring-spec.v1",
+    "schema_version_id": "render-manifest.v1",
+    "input_artifact_ids": [],
+    "input_artifact_hashes": {},
+    "effective_config_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "renderer_version": "remotion-v4.0.0",
+    "fonts_version": "fonts-v1.0.0",
+    "template_version": "template-v1.0.0",
+    "timebase": "1/30",
+    "frame_rate": 30,
+    "random_seed": 42
+  },
+  "sequences": [],
+  "scenes": [],
+  "shots": [],
+  "layers": [],
+  "audio_tracks": []
+}

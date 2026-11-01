@@ -1,0 +1,76 @@
+{
+  "$id": "urn:pipeline:contract:Scene",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A narration-centered semantic unit and preferred repair boundary.",
+  "properties": {
+    "claim_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Claim Ids",
+      "type": "array"
+    },
+    "narration_artifact_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Narration Artifact Id"
+    },
+    "order_index": {
+      "minimum": 0,
+      "title": "Order Index",
+      "type": "integer"
+    },
+    "scene_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "scene.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sequence_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Sequence Id",
+      "type": "string"
+    },
+    "shot_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Shot Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "scene_id",
+    "sequence_id",
+    "order_index"
+  ],
+  "title": "Scene",
+  "type": "object",
+  "x-contract-schema-version": "scene.v1"
+}

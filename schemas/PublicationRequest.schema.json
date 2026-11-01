@@ -1,0 +1,101 @@
+{
+  "$id": "urn:pipeline:contract:PublicationRequest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Exact approved hashes and metadata allowed through the publishing boundary.",
+  "properties": {
+    "approval_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Approval Ids",
+      "type": "array"
+    },
+    "approved_artifact_hashes": {
+      "minProperties": 1,
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Approved Artifact Hashes",
+      "type": "object"
+    },
+    "cut_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Cut Ids",
+      "type": "array"
+    },
+    "idempotency_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Idempotency Key",
+      "type": "string"
+    },
+    "metadata_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Metadata Artifact Id",
+      "type": "string"
+    },
+    "platform": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Platform",
+      "type": "string"
+    },
+    "publication_request_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Publication Request Id",
+      "type": "string"
+    },
+    "run_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "publication-request.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "publication_request_id",
+    "run_id",
+    "cut_ids",
+    "approved_artifact_hashes",
+    "approval_ids",
+    "platform",
+    "metadata_artifact_id",
+    "idempotency_key"
+  ],
+  "title": "PublicationRequest",
+  "type": "object",
+  "x-contract-schema-version": "publication-request.v1"
+}

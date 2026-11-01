@@ -1,0 +1,19 @@
+{
+  "approval_ids": [
+    "review_01"
+  ],
+  "approved_artifact_hashes": {
+    "artifact_long_form_v1": "d842afa0fc67433de939768df4824705257f2cf9024984dd305f35cbb90d3a01",
+    "artifact_short_v1": "45f4e07290955ed2ae83d5e0e0dd135c4dcd577e6b8f86a7ef865d49d0a118bd"
+  },
+  "cut_ids": [
+    "cut_long_form_16x9",
+    "cut_short_01_9x16"
+  ],
+  "idempotency_key": "idem_publish_run_01",
+  "metadata_artifact_id": "artifact_publication_metadata_v1",
+  "platform": "local_export",
+  "publication_request_id": "publication_request_01",
+  "run_id": "run_01",
+  "schema_version": "publication-request.v1"
+}

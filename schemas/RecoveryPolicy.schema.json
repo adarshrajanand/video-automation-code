@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "QualityFailureAction": {
+      "enum": [
+        "REGENERATE",
+        "HUMAN_REVIEW",
+        "FAIL"
+      ],
+      "title": "QualityFailureAction",
+      "type": "string"
+    },
+    "RepeatedFailureAction": {
+      "enum": [
+        "HUMAN_REVIEW",
+        "FAIL"
+      ],
+      "title": "RepeatedFailureAction",
+      "type": "string"
+    },
+    "UnknownOutcomeAction": {
+      "enum": [
+        "RECONCILE",
+        "RETRY",
+        "WAIT_HUMAN",
+        "FAIL"
+      ],
+      "title": "UnknownOutcomeAction",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:RecoveryPolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Policy for unknown, quality, and repeated execution failures.",
+  "properties": {
+    "on_quality_failure": {
+      "$ref": "#/$defs/QualityFailureAction"
+    },
+    "on_repeated_failure": {
+      "$ref": "#/$defs/RepeatedFailureAction"
+    },
+    "on_unknown_outcome": {
+      "$ref": "#/$defs/UnknownOutcomeAction"
+    },
+    "policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "retry_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Retry Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "recovery-policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "retry_policy_id",
+    "on_unknown_outcome",
+    "on_quality_failure",
+    "on_repeated_failure"
+  ],
+  "title": "RecoveryPolicy",
+  "type": "object",
+  "x-contract-schema-version": "recovery-policy.v1"
+}

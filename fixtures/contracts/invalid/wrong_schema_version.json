@@ -1,0 +1,15 @@
+{
+  "enabled_optional_stages": [
+    "short_derivative",
+    "publishing"
+  ],
+  "locale": "en-US",
+  "max_cost_minor": 500,
+  "output_profile_ids": [
+    "landscape_1080p_30_v1"
+  ],
+  "quality_profile_id": "software_explainer_high_bar_v1",
+  "schema_version": "run-overrides.v2",
+  "target_duration_seconds": 600,
+  "variant_count": 2
+}

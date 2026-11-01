@@ -1,0 +1,25 @@
+{
+  "after_max_regenerations": "HUMAN_REVIEW",
+  "gate_id": "script_gate_v1",
+  "hard_failure_codes": [
+    "QUALITY.SCHEMA_INVALID",
+    "QUALITY.UNSUPPORTED_CLAIM"
+  ],
+  "human_review_thresholds": {
+    "clarity": 0.65,
+    "editorial_quality": 0.65
+  },
+  "max_regenerations": 2,
+  "pass_thresholds": {
+    "clarity": 0.8,
+    "editorial_quality": 0.8
+  },
+  "required_check_ids": [
+    "script_schema_v1",
+    "claim_reference_integrity_v1",
+    "script_claim_evidence_v1",
+    "script_editorial_clarity_v1"
+  ],
+  "schema_version": "quality-gate-policy.v1",
+  "version": "1.0"
+}

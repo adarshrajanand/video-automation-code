@@ -1,0 +1,14 @@
+{
+  "complete": true,
+  "created_at": "2026-10-21T09:30:00Z",
+  "expected_artifact_slots": [
+    "topic"
+  ],
+  "expected_count": 2,
+  "manifest_id": "manifest_script_inputs",
+  "resolved_artifact_ids": [
+    "artifact_topic_v1"
+  ],
+  "schema_version": "input-manifest.v1",
+  "stage_instance_id": "stage_script_episode"
+}

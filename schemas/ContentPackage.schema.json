@@ -1,0 +1,60 @@
+{
+  "$id": "urn:pipeline:contract:ContentPackage",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "All related editorial inputs and deliverable references for one request.",
+  "properties": {
+    "active_episode_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Active Episode Id"
+    },
+    "content_package_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Content Package Id",
+      "type": "string"
+    },
+    "episode_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Episode Ids",
+      "type": "array"
+    },
+    "production_idea_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Production Idea Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "content-package.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "content_package_id",
+    "production_idea_id"
+  ],
+  "title": "ContentPackage",
+  "type": "object",
+  "x-contract-schema-version": "content-package.v1"
+}

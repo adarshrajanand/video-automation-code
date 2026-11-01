@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:AudioTiming",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Per-scene audio timing alignment for TTS generation.\n\nLinks a speech manifest to per-scene word-level timing derived from ASR\nforced alignment. Both continuous and scene-segmented speech strategies\nresolve to the same scene-addressable timing contract.",
+  "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
+    "audio_timing_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Timing Id",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_text_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Narration Text Hash",
+      "type": "string"
+    },
+    "sample_rate": {
+      "default": 24000,
+      "minimum": 1,
+      "title": "Sample Rate",
+      "type": "integer"
+    },
+    "scene_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Scene Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "audio-timing.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Script Version",
+      "type": "string"
+    },
+    "speech_manifest_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Speech Manifest Id",
+      "type": "string"
+    },
+    "word_timestamps": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Word Timestamps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_timing_id",
+    "speech_manifest_id",
+    "script_version",
+    "scene_id",
+    "audio_artifact_id",
+    "narration_text_hash"
+  ],
+  "title": "AudioTiming",
+  "type": "object",
+  "x-contract-schema-version": "audio-timing.v1"
+}

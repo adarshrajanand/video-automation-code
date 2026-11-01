@@ -1,0 +1,14 @@
+{
+  "schema_version": "evidence.v1",
+  "evidence_id": "ev_01",
+  "snapshot_id": "snap_01",
+  "claim_id": "claim_01",
+  "text_span": "3.8 trillion metric tons of ice since 1992",
+  "start_offset": 25,
+  "end_offset": 63,
+  "confidence": 0.95,
+  "metadata": {
+    "extraction_method": "span_highlight",
+    "verifier": "automated"
+  }
+}

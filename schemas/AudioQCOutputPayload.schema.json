@@ -1,0 +1,92 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:AudioQCOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the audio_qc capability.",
+  "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
+    "changed_phrases": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Changed Phrases",
+      "type": "array"
+    },
+    "fidelity_pass": {
+      "title": "Fidelity Pass",
+      "type": "boolean"
+    },
+    "loudness_pass": {
+      "title": "Loudness Pass",
+      "type": "boolean"
+    },
+    "measured_loudness_lufs": {
+      "title": "Measured Loudness Lufs",
+      "type": "number"
+    },
+    "measured_peak_db": {
+      "title": "Measured Peak Db",
+      "type": "number"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_text_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Narration Text Hash",
+      "type": "string"
+    },
+    "omitted_phrases": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Omitted Phrases",
+      "type": "array"
+    },
+    "peak_pass": {
+      "title": "Peak Pass",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "audio-qc-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_artifact_id",
+    "measured_loudness_lufs",
+    "measured_peak_db",
+    "loudness_pass",
+    "peak_pass",
+    "fidelity_pass",
+    "narration_text_hash"
+  ],
+  "title": "AudioQCOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "audio-qc-output.v1"
+}

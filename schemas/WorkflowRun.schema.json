@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "RunStatus": {
+      "description": "Lifecycle of one workflow run.",
+      "enum": [
+        "CREATED",
+        "RUNNING",
+        "WAITING_HUMAN",
+        "WAITING_RETRY",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ],
+      "title": "RunStatus",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:WorkflowRun",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One execution of a workflow definition.",
+  "properties": {
+    "content_package_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Content Package Id",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "effective_config_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Effective Config Hash",
+      "type": "string"
+    },
+    "effective_config_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Effective Config Id",
+      "type": "string"
+    },
+    "run_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "run_key": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Run Key",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "workflow-run.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/RunStatus"
+    },
+    "updated_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Updated At"
+    },
+    "workflow_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Workflow Id",
+      "type": "string"
+    },
+    "workflow_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Workflow Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "created_at",
+    "run_id",
+    "run_key",
+    "workflow_id",
+    "workflow_version",
+    "effective_config_id",
+    "effective_config_hash",
+    "status",
+    "content_package_id"
+  ],
+  "title": "WorkflowRun",
+  "type": "object",
+  "x-contract-schema-version": "workflow-run.v1"
+}

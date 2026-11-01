@@ -1,0 +1,30 @@
+{
+  "cardinality": {
+    "count": null,
+    "expected_manifest_id": null,
+    "mode": "one_to_one",
+    "schema_version": "cardinality.v1",
+    "selection_policy": null
+  },
+  "depends_on": [
+    "intake"
+  ],
+  "enabled_when": null,
+  "implementation_version": "script-generation.v1",
+  "input_selector": {
+    "artifact_types": [
+      "topic"
+    ],
+    "dependency_node_ids": [
+      "intake"
+    ],
+    "kind": "DEPENDENCY_OUTPUTS",
+    "schema_version": "input-selector.v1",
+    "selection_policy": "latest_accepted"
+  },
+  "node_id": "script",
+  "quality_gate_id": "script_gate_v1",
+  "recovery_policy_id": "default_recovery_v1",
+  "schema_version": "stage-node.v1",
+  "stage_name": "script_generation"
+}

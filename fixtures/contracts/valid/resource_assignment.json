@@ -1,0 +1,9 @@
+{
+  "assignment_id": "resource_cpu_01",
+  "constraints_hash": "8304dc1b5738066dd9bdec6bd896a33cb3babd26f6555bbabbdbb8450426a435",
+  "created_at": "2026-10-21T11:59:00Z",
+  "implementation_version": "1.0.0",
+  "placement_class": "LOCAL_CPU",
+  "schema_version": "resource-assignment.v1",
+  "worker_pool": "local_default"
+}

@@ -1,0 +1,7 @@
+{
+  "schema_version": "visual-planning-output.v1",
+  "visual_intent_ids": ["vi_01", "vi_01"],
+  "shot_plan_ids": [],
+  "asset_requirement_ids": [],
+  "scene_count": 3
+}

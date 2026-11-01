@@ -1,0 +1,219 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {},
+    "ScriptScene": {
+      "additionalProperties": false,
+      "description": "A single scene in a script with narration, claims, and visual intents.",
+      "properties": {
+        "claim_ids": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Claim Ids",
+          "type": "array"
+        },
+        "estimated_duration_seconds": {
+          "minimum": 1,
+          "title": "Estimated Duration Seconds",
+          "type": "integer"
+        },
+        "metadata": {
+          "$ref": "#/$defs/ExtensionObject"
+        },
+        "narration": {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "title": "Narration",
+          "type": "string"
+        },
+        "order_index": {
+          "minimum": 0,
+          "title": "Order Index",
+          "type": "integer"
+        },
+        "scene_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Scene Id",
+          "type": "string"
+        },
+        "schema_version": {
+          "const": "script-scene.v1",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "script_id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "title": "Script Id",
+          "type": "string"
+        },
+        "visual_intent_ids": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "title": "Visual Intent Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "schema_version",
+        "scene_id",
+        "script_id",
+        "order_index",
+        "narration",
+        "estimated_duration_seconds"
+      ],
+      "title": "ScriptScene",
+      "type": "object"
+    }
+  },
+  "$id": "urn:pipeline:contract:Script",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Complete script with scenes, claims, evidence, and visual intents.",
+  "properties": {
+    "claim_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Claim Ids",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "duration_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Duration Policy Id",
+      "type": "string"
+    },
+    "episode_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Episode Id",
+      "type": "string"
+    },
+    "evidence_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "language": {
+      "default": "en",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "outline": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Outline",
+      "type": "string"
+    },
+    "scenes": {
+      "items": {
+        "$ref": "#/$defs/ScriptScene"
+      },
+      "title": "Scenes",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "script.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "script_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Script Id",
+      "type": "string"
+    },
+    "source_ref_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Source Ref Ids",
+      "type": "array"
+    },
+    "title": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Title",
+      "type": "string"
+    },
+    "total_estimated_duration_seconds": {
+      "minimum": 1,
+      "title": "Total Estimated Duration Seconds",
+      "type": "integer"
+    },
+    "visual_intent_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Visual Intent Ids",
+      "type": "array"
+    },
+    "word_count": {
+      "minimum": 1,
+      "title": "Word Count",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "script_id",
+    "episode_id",
+    "title",
+    "outline",
+    "duration_policy_id",
+    "total_estimated_duration_seconds",
+    "word_count",
+    "created_at"
+  ],
+  "title": "Script",
+  "type": "object",
+  "x-contract-schema-version": "script.v1"
+}

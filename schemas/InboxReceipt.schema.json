@@ -1,0 +1,114 @@
+{
+  "$defs": {
+    "FailureCode": {
+      "description": "Namespaced failure codes registered for recovery decisions.",
+      "enum": [
+        "EXEC.VALIDATION",
+        "EXEC.AUTHENTICATION",
+        "EXEC.AUTHORIZATION",
+        "EXEC.RATE_LIMIT",
+        "EXEC.QUOTA",
+        "EXEC.TRANSIENT_PROVIDER",
+        "EXEC.PERMANENT_PROVIDER",
+        "EXEC.INTERNAL",
+        "EXEC.TIMEOUT_UNKNOWN",
+        "MEDIA.DECODE_ERROR",
+        "MEDIA.OUTPUT_PROFILE",
+        "MEDIA.TIMELINE_INVALID",
+        "MEDIA.TECHNICAL_INTEGRITY",
+        "QUALITY.SCHEMA_INVALID",
+        "QUALITY.GENERIC",
+        "QUALITY.UNSUPPORTED_CLAIM",
+        "QUALITY.NUMERIC_CONTRADICTION",
+        "QUALITY.TTS_OMISSION",
+        "QUALITY.TTS_PRONUNCIATION",
+        "QUALITY.VISUAL_MISMATCH",
+        "QUALITY.MISSING_ASSET",
+        "QUALITY.PROVENANCE_MISSING",
+        "QUALITY.CAPTION_OVERFLOW",
+        "QUALITY.AUDIO_DECODE",
+        "MEDIA.RENDER_CORRUPT",
+        "MEDIA.AUDIO_VIDEO_DRIFT",
+        "QUALITY.REPEATED_FAILURE",
+        "RIGHTS.LICENSE_UNCERTAIN",
+        "HUMAN.REVIEW_REQUIRED",
+        "POLICY.BUDGET_EXCEEDED",
+        "POLICY.PROHIBITED_CONTENT",
+        "CONFIG.UNKNOWN_STAGE"
+      ],
+      "title": "FailureCode",
+      "type": "string"
+    },
+    "InboxStatus": {
+      "enum": [
+        "RECEIVED",
+        "PROCESSED",
+        "IGNORED",
+        "FAILED"
+      ],
+      "title": "InboxStatus",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:InboxReceipt",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One consumer's durable deduplication and processing receipt.",
+  "properties": {
+    "consumer_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Consumer Id",
+      "type": "string"
+    },
+    "error_code": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FailureCode"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "event_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Event Id",
+      "type": "string"
+    },
+    "processed_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Processed At"
+    },
+    "schema_version": {
+      "const": "inbox-receipt.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/InboxStatus"
+    }
+  },
+  "required": [
+    "schema_version",
+    "consumer_id",
+    "event_id",
+    "status"
+  ],
+  "title": "InboxReceipt",
+  "type": "object",
+  "x-contract-schema-version": "inbox-receipt.v1"
+}

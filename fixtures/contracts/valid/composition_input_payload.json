@@ -1,0 +1,11 @@
+{
+  "cut_id": "cut_long_form_16x9",
+  "script_id": "script_01",
+  "speech_manifest_id": "manifest_01",
+  "schema_version": "composition-input.v1",
+  "visual_intent_ids": ["vi_01", "vi_02"],
+  "asset_instance_ids": ["asset_01", "asset_02"],
+  "render_profile_id": "landscape_1080p_30_v1",
+  "duration_policy_id": "duration_policy_01",
+  "metadata": {}
+}

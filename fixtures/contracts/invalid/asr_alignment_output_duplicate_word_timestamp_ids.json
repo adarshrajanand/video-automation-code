@@ -1,0 +1,13 @@
+{
+  "schema_version": "asr-alignment-output.v1",
+  "alignment_artifact_id": "alignment_01",
+  "audio_timing_ids": ["at_01", "at_02", "at_03"],
+  "word_timestamp_ids": ["wt_01", "wt_01", "wt_03", "wt_04", "wt_05"],
+  "asr_transcript": "The Arctic is warming four times faster than the global average.",
+  "narration_text_hash": "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2",
+  "confidence": 0.98,
+  "metadata": {
+    "asr_model": "whisper_large_v3",
+    "alignment_method": "forced_alignment"
+  }
+}

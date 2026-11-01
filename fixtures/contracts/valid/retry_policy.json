@@ -1,0 +1,13 @@
+{
+  "initial_backoff_seconds": 2.0,
+  "jitter_ratio": 0.2,
+  "max_attempts": 2,
+  "max_backoff_seconds": 60.0,
+  "policy_id": "default_retry_v1",
+  "retryable_categories": [
+    "TRANSIENT",
+    "RATE_LIMIT",
+    "QUOTA"
+  ],
+  "schema_version": "retry-policy.v1"
+}

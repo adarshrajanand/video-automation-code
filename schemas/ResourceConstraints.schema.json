@@ -1,0 +1,60 @@
+{
+  "$id": "urn:pipeline:contract:ResourceConstraints",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Placement and spend limits applied to a workload.",
+  "properties": {
+    "allowed_placement_classes": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Allowed Placement Classes",
+      "type": "array"
+    },
+    "max_cost_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Cost Minor"
+    },
+    "max_runtime_seconds": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Runtime Seconds"
+    },
+    "network_required": {
+      "default": false,
+      "title": "Network Required",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "resource-constraints.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "ResourceConstraints",
+  "type": "object",
+  "x-contract-schema-version": "resource-constraints.v1"
+}

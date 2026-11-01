@@ -1,0 +1,13 @@
+{
+  "schema_version": "composition-authoring-spec.v1",
+  "schema_version_id": "render-manifest.v1",
+  "input_artifact_ids": [],
+  "input_artifact_hashes": {},
+  "effective_config_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "renderer_version": "remotion-v4.0.0",
+  "fonts_version": "fonts-v1.0.0",
+  "template_version": "template-v1.0.0",
+  "timebase": "1/30",
+  "frame_rate": 30,
+  "random_seed": 42
+}

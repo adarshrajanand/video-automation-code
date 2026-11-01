@@ -1,0 +1,8 @@
+{
+  "short_cut_artifact_id": "cut_short_01",
+  "selection_manifest_id": "short_selection_01",
+  "target_render_profile_id": "vertical_1080x1920_30_v1",
+  "schema_version": "short-derivative-output.v1",
+  "output_artifact_id": "artifact_short_cut_01",
+  "metadata": {}
+}

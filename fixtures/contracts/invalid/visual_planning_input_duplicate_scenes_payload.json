@@ -1,0 +1,7 @@
+{
+  "schema_version": "visual-planning-input.v1",
+  "script_id": "script_01",
+  "scene_ids": ["scene_01", "scene_01"],
+  "visual_intent_ids": [],
+  "style_guidance": "documentary_cinematic"
+}

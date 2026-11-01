@@ -1,0 +1,103 @@
+{
+  "$id": "urn:pipeline:contract:BudgetPolicy",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Budget caps and paid-fallback authorization.",
+  "properties": {
+    "default_run_cap_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Default Run Cap Minor"
+    },
+    "default_stage_cap_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Default Stage Cap Minor"
+    },
+    "evaluation_cap_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evaluation Cap Minor"
+    },
+    "monthly_cap_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Monthly Cap Minor"
+    },
+    "paid_fallback_enabled": {
+      "default": false,
+      "title": "Paid Fallback Enabled",
+      "type": "boolean"
+    },
+    "policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Policy Id",
+      "type": "string"
+    },
+    "reservation_required": {
+      "default": true,
+      "title": "Reservation Required",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "const": "budget-policy.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "system_cap_minor": {
+      "minimum": 0,
+      "title": "System Cap Minor",
+      "type": "integer"
+    },
+    "version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "policy_id",
+    "version",
+    "system_cap_minor"
+  ],
+  "title": "BudgetPolicy",
+  "type": "object",
+  "x-contract-schema-version": "budget-policy.v1"
+}

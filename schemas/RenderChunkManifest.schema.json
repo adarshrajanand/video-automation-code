@@ -1,0 +1,133 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:RenderChunkManifest",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Manifest for one rendered chunk or complete cut.",
+  "properties": {
+    "chunk_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Chunk Id",
+      "type": "string"
+    },
+    "composition_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Composition Artifact Id",
+      "type": "string"
+    },
+    "duration_frames": {
+      "minimum": 1,
+      "title": "Duration Frames",
+      "type": "integer"
+    },
+    "end_frame": {
+      "minimum": 1,
+      "title": "End Frame",
+      "type": "integer"
+    },
+    "frame_checksums": {
+      "items": {
+        "maxLength": 64,
+        "minLength": 64,
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "title": "Frame Checksums",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "output_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Output Artifact Id",
+      "type": "string"
+    },
+    "output_sha256": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Output Sha256",
+      "type": "string"
+    },
+    "output_size_bytes": {
+      "minimum": 0,
+      "title": "Output Size Bytes",
+      "type": "integer"
+    },
+    "output_uri": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Output Uri",
+      "type": "string"
+    },
+    "render_finished_at": {
+      "format": "date-time",
+      "title": "Render Finished At",
+      "type": "string"
+    },
+    "render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Render Profile Id",
+      "type": "string"
+    },
+    "render_started_at": {
+      "format": "date-time",
+      "title": "Render Started At",
+      "type": "string"
+    },
+    "renderer_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Renderer Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "render-chunk-manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "start_frame": {
+      "minimum": 0,
+      "title": "Start Frame",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "chunk_id",
+    "composition_artifact_id",
+    "render_profile_id",
+    "start_frame",
+    "end_frame",
+    "output_artifact_id",
+    "output_uri",
+    "output_sha256",
+    "output_size_bytes",
+    "duration_frames",
+    "renderer_version",
+    "render_started_at",
+    "render_finished_at"
+  ],
+  "title": "RenderChunkManifest",
+  "type": "object",
+  "x-contract-schema-version": "render-chunk-manifest.v1"
+}

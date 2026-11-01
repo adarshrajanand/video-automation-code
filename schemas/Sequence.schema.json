@@ -1,0 +1,51 @@
+{
+  "$id": "urn:pipeline:contract:Sequence",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "A chapter or major section within the editorial hierarchy.",
+  "properties": {
+    "episode_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Episode Id",
+      "type": "string"
+    },
+    "order_index": {
+      "minimum": 0,
+      "title": "Order Index",
+      "type": "integer"
+    },
+    "scene_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Scene Ids",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "sequence.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "sequence_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Sequence Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "sequence_id",
+    "episode_id",
+    "order_index"
+  ],
+  "title": "Sequence",
+  "type": "object",
+  "x-contract-schema-version": "sequence.v1"
+}

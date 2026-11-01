@@ -1,0 +1,87 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {},
+    "SourceKind": {
+      "enum": [
+        "STOCK",
+        "PUBLIC_DOMAIN",
+        "GENERATED",
+        "PROCEDURAL",
+        "USER_SUPPLIED"
+      ],
+      "title": "SourceKind",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:ResearchInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the research capability.",
+  "properties": {
+    "focus_areas": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "title": "Focus Areas",
+      "type": "array"
+    },
+    "language": {
+      "default": "en",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Language",
+      "type": "string"
+    },
+    "max_sources": {
+      "default": 10,
+      "minimum": 1,
+      "title": "Max Sources",
+      "type": "integer"
+    },
+    "max_tokens_per_source": {
+      "default": 8000,
+      "minimum": 1,
+      "title": "Max Tokens Per Source",
+      "type": "integer"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "research-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_kinds": {
+      "items": {
+        "$ref": "#/$defs/SourceKind"
+      },
+      "title": "Source Kinds",
+      "type": "array"
+    },
+    "topic": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Topic",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "topic"
+  ],
+  "title": "ResearchInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "research-input.v1"
+}

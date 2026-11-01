@@ -1,0 +1,12 @@
+{
+  "schema_version": "script-generation-output.v1",
+  "script_id": "script_01",
+  "scene_ids": ["scene_01", "scene_02", "scene_03"],
+  "visual_intent_ids": ["vi_01", "vi_02", "vi_03"],
+  "total_estimated_duration_seconds": 180,
+  "word_count": 450,
+  "scene_count": 3,
+  "metadata": {
+    "generation_duration_seconds": 12
+  }
+}

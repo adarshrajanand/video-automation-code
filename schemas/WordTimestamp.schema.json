@@ -1,0 +1,74 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:WordTimestamp",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Word-level timestamp from ASR forced alignment.",
+  "properties": {
+    "audio_timing_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Timing Id",
+      "type": "string"
+    },
+    "confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "end_frames": {
+      "minimum": 1,
+      "title": "End Frames",
+      "type": "integer"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "word-timestamp.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "start_frames": {
+      "minimum": 0,
+      "title": "Start Frames",
+      "type": "integer"
+    },
+    "word": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Word",
+      "type": "string"
+    },
+    "word_timestamp_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Word Timestamp Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "word_timestamp_id",
+    "audio_timing_id",
+    "word",
+    "start_frames",
+    "end_frames",
+    "confidence"
+  ],
+  "title": "WordTimestamp",
+  "type": "object",
+  "x-contract-schema-version": "word-timestamp.v1"
+}

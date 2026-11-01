@@ -1,0 +1,12 @@
+{
+  "capability_execution_id": "capexec_speech_scene_01",
+  "finished_at": "2026-10-21T12:01:00Z",
+  "idempotency_key": "idem_speech_generation_scene_01",
+  "invocation_id": "invocation_speech_scene_01",
+  "operation_id": "local-op-001",
+  "provider": "local_speech_fixture",
+  "request_fingerprint": "cda1d55138ab47c3fb1dba9d96b183163184c5d7f579445c44ebe757844e9e89",
+  "schema_version": "provider-invocation.v1",
+  "started_at": "2026-10-21T12:00:00Z",
+  "status": "SUCCEEDED"
+}

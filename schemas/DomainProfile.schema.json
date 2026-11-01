@@ -1,0 +1,146 @@
+{
+  "$defs": {
+    "StageName": {
+      "description": "Canonical stage names from ``registries/stages.yaml``.",
+      "enum": [
+        "manual_topic",
+        "topic_discovery",
+        "idea_development",
+        "research",
+        "script_generation",
+        "visual_planning",
+        "asset_acquisition",
+        "speech_generation",
+        "composition",
+        "rendering",
+        "assembly",
+        "short_derivative",
+        "technical_content_review",
+        "human_approval",
+        "publishing",
+        "analytics_learning"
+      ],
+      "title": "StageName",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:DomainProfile",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Domain-level content, evidence, quality, and review policy.",
+  "properties": {
+    "asset_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Asset Policy Id",
+      "type": "string"
+    },
+    "claim_policy_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Claim Policy Id"
+    },
+    "content_mode": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Content Mode",
+      "type": "string"
+    },
+    "default_locale": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Default Locale",
+      "type": "string"
+    },
+    "human_review_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Human Review Policy Id",
+      "type": "string"
+    },
+    "optional_stages": {
+      "items": {
+        "$ref": "#/$defs/StageName"
+      },
+      "title": "Optional Stages",
+      "type": "array"
+    },
+    "profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "quality_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Quality Profile Id",
+      "type": "string"
+    },
+    "required_stages": {
+      "items": {
+        "$ref": "#/$defs/StageName"
+      },
+      "minItems": 1,
+      "title": "Required Stages",
+      "type": "array"
+    },
+    "schema_version": {
+      "const": "domain-profile.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_policy_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Policy Id"
+    },
+    "version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "version",
+    "content_mode",
+    "default_locale",
+    "required_stages",
+    "quality_profile_id",
+    "human_review_policy_id",
+    "asset_policy_id"
+  ],
+  "title": "DomainProfile",
+  "type": "object",
+  "x-contract-schema-version": "domain-profile.v1"
+}

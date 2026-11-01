@@ -1,0 +1,88 @@
+{
+  "$defs": {
+    "ReviewDecision": {
+      "enum": [
+        "APPROVE",
+        "REGENERATE_SCENE",
+        "REGENERATE_STAGE",
+        "REJECT"
+      ],
+      "title": "ReviewDecision",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:HumanReviewDecision",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Recorded reviewer decision for one human review request.",
+  "properties": {
+    "comments": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Comments"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "decision": {
+      "$ref": "#/$defs/ReviewDecision"
+    },
+    "review_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Review Id",
+      "type": "string"
+    },
+    "reviewer": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Reviewer",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "human-review-decision.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_hashes": {
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Target Hashes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "schema_version",
+    "review_id",
+    "decision",
+    "reviewer",
+    "created_at"
+  ],
+  "title": "HumanReviewDecision",
+  "type": "object",
+  "x-contract-schema-version": "human-review-decision.v1"
+}

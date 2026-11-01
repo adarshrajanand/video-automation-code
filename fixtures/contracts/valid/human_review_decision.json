@@ -1,0 +1,12 @@
+{
+  "comments": "Approved for fixture use only.",
+  "created_at": "2026-10-21T15:00:00Z",
+  "decision": "APPROVE",
+  "review_id": "review_01",
+  "reviewer": "reviewer_local_01",
+  "schema_version": "human-review-decision.v1",
+  "target_hashes": {
+    "artifact_long_form_v1": "d842afa0fc67433de939768df4824705257f2cf9024984dd305f35cbb90d3a01",
+    "artifact_short_v1": "45f4e07290955ed2ae83d5e0e0dd135c4dcd577e6b8f86a7ef865d49d0a118bd"
+  }
+}

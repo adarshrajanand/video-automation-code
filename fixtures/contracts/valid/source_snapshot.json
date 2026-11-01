@@ -1,0 +1,14 @@
+{
+  "schema_version": "source-snapshot.v1",
+  "snapshot_id": "snap_01",
+  "source_ref_id": "src_01",
+  "content": "The Arctic ice sheet has lost approximately 3.8 trillion metric tons of ice since 1992, contributing to a global sea level rise of 10.6 millimeters. This acceleration is consistent with climate model predictions.",
+  "content_hash": "b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3",
+  "token_count": 42,
+  "language": "en",
+  "extracted_at": "2024-01-16T12:05:00Z",
+  "metadata": {
+    "extraction_method": "full_text",
+    "section": "abstract"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "end_frame": 90,
+  "layer_ids": [
+    "layer_01"
+  ],
+  "order_index": 0,
+  "scene_id": "scene_01",
+  "schema_version": "shot.v1",
+  "shot_id": "shot_01_01",
+  "start_frame": 90
+}

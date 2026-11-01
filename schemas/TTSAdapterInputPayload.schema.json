@@ -1,0 +1,72 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:TTSAdapterInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the tts_adapter capability.",
+  "properties": {
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "model": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Model",
+      "type": "string"
+    },
+    "narration_text": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Narration Text",
+      "type": "string"
+    },
+    "provider": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Provider",
+      "type": "string"
+    },
+    "sample_rate": {
+      "default": 24000,
+      "minimum": 1,
+      "title": "Sample Rate",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": "tts-adapter-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "voice_config": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "voice_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Voice Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "narration_text",
+    "voice_id",
+    "provider",
+    "model"
+  ],
+  "title": "TTSAdapterInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "tts-adapter-input.v1"
+}

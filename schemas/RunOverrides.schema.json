@@ -1,0 +1,138 @@
+{
+  "$defs": {
+    "StageName": {
+      "description": "Canonical stage names from ``registries/stages.yaml``.",
+      "enum": [
+        "manual_topic",
+        "topic_discovery",
+        "idea_development",
+        "research",
+        "script_generation",
+        "visual_planning",
+        "asset_acquisition",
+        "speech_generation",
+        "composition",
+        "rendering",
+        "assembly",
+        "short_derivative",
+        "technical_content_review",
+        "human_approval",
+        "publishing",
+        "analytics_learning"
+      ],
+      "title": "StageName",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:RunOverrides",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Caller-supplied changes that still resolve under system policy.",
+  "properties": {
+    "enabled_optional_stages": {
+      "items": {
+        "$ref": "#/$defs/StageName"
+      },
+      "title": "Enabled Optional Stages",
+      "type": "array"
+    },
+    "locale": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Locale"
+    },
+    "max_cost_minor": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Max Cost Minor"
+    },
+    "output_profile_ids": {
+      "anyOf": [
+        {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "pattern": "^\\S+$",
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Profile Ids"
+    },
+    "quality_profile_id": {
+      "anyOf": [
+        {
+          "maxLength": 512,
+          "minLength": 1,
+          "pattern": "^\\S(?:.*\\S)?$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Quality Profile Id"
+    },
+    "schema_version": {
+      "const": "run-overrides.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_duration_seconds": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Target Duration Seconds"
+    },
+    "variant_count": {
+      "anyOf": [
+        {
+          "minimum": 1,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Variant Count"
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "RunOverrides",
+  "type": "object",
+  "x-contract-schema-version": "run-overrides.v1"
+}

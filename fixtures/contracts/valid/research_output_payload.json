@@ -1,0 +1,13 @@
+{
+  "schema_version": "research-output.v1",
+  "source_ref_ids": ["src_01", "src_02"],
+  "source_snapshot_ids": ["snap_01", "snap_02"],
+  "claim_ids": ["claim_01", "claim_02"],
+  "evidence_ids": ["ev_01", "ev_02"],
+  "source_count": 2,
+  "claim_count": 2,
+  "evidence_count": 2,
+  "metadata": {
+    "research_duration_seconds": 45
+  }
+}

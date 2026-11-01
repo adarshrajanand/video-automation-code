@@ -1,0 +1,16 @@
+{
+  "audience": "software engineers",
+  "brand_profile_id": "brand_default_v1",
+  "domain_profile_id": "software_engineering_explainer_v1",
+  "locale": "en-US",
+  "output_profile_ids": [
+    "landscape_1080p_30_v1",
+    "vertical_1080x1920_30_v1"
+  ],
+  "profile_id": "channel_explainer_v1",
+  "publishing_policy_id": "local_export_policy_v1",
+  "schema_version": "channel-profile.v1",
+  "target_duration_seconds": 600,
+  "version": "1.0",
+  "voice_profile_id": "voice_local_en_us_v1"
+}

@@ -1,0 +1,108 @@
+{
+  "$id": "urn:pipeline:contract:ChannelProfile",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Channel-specific audience, duration, brand, and output policy.",
+  "properties": {
+    "audience": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Audience",
+      "type": "string"
+    },
+    "brand_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Brand Profile Id",
+      "type": "string"
+    },
+    "domain_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Domain Profile Id",
+      "type": "string"
+    },
+    "locale": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Locale",
+      "type": "string"
+    },
+    "output_profile_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Output Profile Ids",
+      "type": "array"
+    },
+    "profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Profile Id",
+      "type": "string"
+    },
+    "publishing_policy_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Publishing Policy Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "channel-profile.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_duration_seconds": {
+      "minimum": 1,
+      "title": "Target Duration Seconds",
+      "type": "integer"
+    },
+    "version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Version",
+      "type": "string"
+    },
+    "voice_profile_id": {
+      "anyOf": [
+        {
+          "maxLength": 256,
+          "minLength": 1,
+          "pattern": "^\\S+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Voice Profile Id"
+    }
+  },
+  "required": [
+    "schema_version",
+    "profile_id",
+    "version",
+    "domain_profile_id",
+    "locale",
+    "audience",
+    "target_duration_seconds",
+    "output_profile_ids",
+    "brand_profile_id",
+    "publishing_policy_id"
+  ],
+  "title": "ChannelProfile",
+  "type": "object",
+  "x-contract-schema-version": "channel-profile.v1"
+}

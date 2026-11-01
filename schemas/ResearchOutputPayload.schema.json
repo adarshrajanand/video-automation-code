@@ -1,0 +1,89 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ResearchOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the research capability.",
+  "properties": {
+    "claim_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Claim Count",
+      "type": "integer"
+    },
+    "claim_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Claim Ids",
+      "type": "array"
+    },
+    "evidence_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Evidence Count",
+      "type": "integer"
+    },
+    "evidence_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "research-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Source Count",
+      "type": "integer"
+    },
+    "source_ref_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Source Ref Ids",
+      "type": "array"
+    },
+    "source_snapshot_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Source Snapshot Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version"
+  ],
+  "title": "ResearchOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "research-output.v1"
+}

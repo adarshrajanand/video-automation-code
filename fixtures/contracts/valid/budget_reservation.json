@@ -1,0 +1,13 @@
+{
+  "actual_cost_minor": 2,
+  "created_at": "2026-10-21T11:59:00Z",
+  "estimated_cost_minor": 3,
+  "idempotency_key": "idem_speech_generation_scene_01",
+  "reservation_id": "reservation_run_01_speech",
+  "reserved_cost_minor": 5,
+  "schema_version": "budget-reservation.v1",
+  "scope_id": "run_01",
+  "scope_type": "RUN",
+  "settled_at": "2026-10-21T12:02:00Z",
+  "status": "SETTLED"
+}

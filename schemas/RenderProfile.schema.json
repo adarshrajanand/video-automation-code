@@ -1,0 +1,145 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:RenderProfile",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output profile for rendering: codec, resolution, bitrate, etc.",
+  "properties": {
+    "audio_bitrate_kbps": {
+      "default": 192,
+      "minimum": 1,
+      "title": "Audio Bitrate Kbps",
+      "type": "integer"
+    },
+    "audio_codec": {
+      "default": "aac",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Audio Codec",
+      "type": "string"
+    },
+    "audio_sample_rate": {
+      "default": 48000,
+      "minimum": 1,
+      "title": "Audio Sample Rate",
+      "type": "integer"
+    },
+    "color_space": {
+      "default": "bt709",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Color Space",
+      "type": "string"
+    },
+    "crf": {
+      "default": 18,
+      "minimum": 0,
+      "title": "Crf",
+      "type": "integer"
+    },
+    "frame_rate": {
+      "minimum": 1,
+      "title": "Frame Rate",
+      "type": "integer"
+    },
+    "height": {
+      "minimum": 1,
+      "title": "Height",
+      "type": "integer"
+    },
+    "level": {
+      "default": "4.1",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Level",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "name": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Name",
+      "type": "string"
+    },
+    "pixel_format": {
+      "default": "yuv420p",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Pixel Format",
+      "type": "string"
+    },
+    "preset": {
+      "default": "medium",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Preset",
+      "type": "string"
+    },
+    "profile": {
+      "default": "high",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Profile",
+      "type": "string"
+    },
+    "render_profile_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Render Profile Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "render-profile.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "video_bitrate_kbps": {
+      "default": 8000,
+      "minimum": 1,
+      "title": "Video Bitrate Kbps",
+      "type": "integer"
+    },
+    "video_codec": {
+      "default": "libx264",
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Video Codec",
+      "type": "string"
+    },
+    "width": {
+      "minimum": 1,
+      "title": "Width",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "schema_version",
+    "render_profile_id",
+    "name",
+    "width",
+    "height",
+    "frame_rate"
+  ],
+  "title": "RenderProfile",
+  "type": "object",
+  "x-contract-schema-version": "render-profile.v1"
+}

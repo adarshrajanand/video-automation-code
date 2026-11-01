@@ -1,0 +1,105 @@
+{
+  "$id": "urn:pipeline:contract:CompositionAuthoringSpec",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Authoring metadata and deterministic fingerprint inputs.",
+  "properties": {
+    "effective_config_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Effective Config Hash",
+      "type": "string"
+    },
+    "fonts_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Fonts Version",
+      "type": "string"
+    },
+    "frame_rate": {
+      "minimum": 1,
+      "title": "Frame Rate",
+      "type": "integer"
+    },
+    "input_artifact_hashes": {
+      "patternProperties": {
+        "^\\S+$": {
+          "maxLength": 64,
+          "minLength": 64,
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 256,
+        "minLength": 1
+      },
+      "title": "Input Artifact Hashes",
+      "type": "object"
+    },
+    "input_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Input Artifact Ids",
+      "type": "array"
+    },
+    "random_seed": {
+      "minimum": 0,
+      "title": "Random Seed",
+      "type": "integer"
+    },
+    "renderer_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Renderer Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "composition-authoring-spec.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "schema_version_id": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Schema Version Id",
+      "type": "string"
+    },
+    "template_version": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Template Version",
+      "type": "string"
+    },
+    "timebase": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Timebase",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "schema_version_id",
+    "effective_config_hash",
+    "renderer_version",
+    "fonts_version",
+    "template_version",
+    "timebase",
+    "frame_rate",
+    "random_seed"
+  ],
+  "title": "CompositionAuthoringSpec",
+  "type": "object",
+  "x-contract-schema-version": "composition-authoring-spec.v1"
+}

@@ -1,0 +1,100 @@
+schema_version: stage-registry.v1
+registry_id: canonical-stages
+version: "1.0"
+stages:
+  - stage_name: manual_topic
+    kind: input_adapter
+    description: Accept a caller-supplied topic; not required when discovery is enabled.
+    major_stage: false
+    optional: true
+    aliases: []
+  - stage_name: topic_discovery
+    kind: major_stage
+    description: Ingest configured sources and produce candidate topics.
+    major_stage: true
+    optional: true
+    aliases: [idea_discovery]
+  - stage_name: idea_development
+    kind: major_stage
+    description: Turn topics or manual input into a production-worthy idea and brief.
+    major_stage: true
+    optional: false
+    aliases: [idea_generation, idea_selection]
+  - stage_name: research
+    kind: major_stage
+    description: Preserve source snapshots, claims, evidence, and conflicts.
+    major_stage: true
+    optional: false
+    aliases: []
+  - stage_name: script_generation
+    kind: major_stage
+    description: Produce a versioned script, scene structure, and claim references.
+    major_stage: true
+    optional: false
+    aliases: []
+  - stage_name: visual_planning
+    kind: major_stage
+    description: Specify visual intent, shots, overlays, and asset requirements.
+    major_stage: true
+    optional: false
+    aliases: []
+  - stage_name: asset_acquisition
+    kind: major_stage
+    description: Obtain or generate media with provenance and integrity metadata.
+    major_stage: true
+    optional: false
+    aliases: [asset_generation, visual_acquisition]
+  - stage_name: speech_generation
+    kind: major_stage
+    description: Produce narration audio and timing metadata.
+    major_stage: true
+    optional: false
+    aliases: [tts]
+  - stage_name: composition
+    kind: major_stage
+    description: Build a renderer-neutral authoring composition and resolved manifest.
+    major_stage: true
+    optional: false
+    aliases: [compose]
+  - stage_name: rendering
+    kind: major_stage
+    description: Render immutable encoded chunks or a complete cut from a resolved manifest.
+    major_stage: true
+    optional: false
+    aliases: [render]
+  - stage_name: assembly
+    kind: major_stage
+    description: Fan in render chunks into an ordered cut/master and validate continuity.
+    major_stage: true
+    optional: false
+    aliases: [assemble]
+  - stage_name: short_derivative
+    kind: major_stage
+    description: Select and recompose approved long-form material into a short cut.
+    major_stage: true
+    optional: true
+    aliases: [short_derivatives, short_derivation]
+  - stage_name: technical_content_review
+    kind: major_stage
+    description: Aggregate final technical and content checks for a cut/package.
+    major_stage: true
+    optional: false
+    aliases: [final_review, final_content_review]
+  - stage_name: human_approval
+    kind: major_stage
+    description: Record durable human approval or a repair/rejection decision.
+    major_stage: true
+    optional: false
+    aliases: [human_review, publish_ready]
+  - stage_name: publishing
+    kind: major_stage
+    description: Upload or export only the exact human-approved deliverable.
+    major_stage: true
+    optional: true
+    aliases: [publish]
+  - stage_name: analytics_learning
+    kind: extension
+    description: Ingest post-publication observations for later experiments.
+    major_stage: false
+    optional: true
+    aliases: [analytics]

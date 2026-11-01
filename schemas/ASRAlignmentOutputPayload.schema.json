@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:ASRAlignmentOutputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Output payload for the asr_alignment capability.",
+  "properties": {
+    "alignment_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Alignment Artifact Id",
+      "type": "string"
+    },
+    "asr_transcript": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Asr Transcript",
+      "type": "string"
+    },
+    "audio_timing_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Audio Timing Ids",
+      "type": "array"
+    },
+    "confidence": {
+      "minimum": 0,
+      "title": "Confidence",
+      "type": "number"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "narration_text_hash": {
+      "maxLength": 64,
+      "minLength": 64,
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Narration Text Hash",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "asr-alignment-output.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "word_timestamp_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Word Timestamp Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "alignment_artifact_id",
+    "asr_transcript",
+    "narration_text_hash",
+    "confidence"
+  ],
+  "title": "ASRAlignmentOutputPayload",
+  "type": "object",
+  "x-contract-schema-version": "asr-alignment-output.v1"
+}

@@ -1,0 +1,28 @@
+{
+  "attempt_id": "attempt_speech_01",
+  "capability": "speech_generation",
+  "capability_execution_id": "capexec_speech_scene_01",
+  "finished_at": "2026-10-21T12:01:00Z",
+  "idempotency_key": "idem_speech_generation_scene_01",
+  "implementation_version": "local-speech-fixture.v1",
+  "input_artifact_ids": [
+    "artifact_script_v1"
+  ],
+  "normalized_error": null,
+  "operation_version": "1.0",
+  "output_artifact_ids": [
+    "artifact_audio_scene_01_v1"
+  ],
+  "prompt_version": null,
+  "request_fingerprint": "cda1d55138ab47c3fb1dba9d96b183163184c5d7f579445c44ebe757844e9e89",
+  "resource_assignment_id": "resource_cpu_01",
+  "routing_decision_id": "route_speech_scene_01",
+  "rubric_version": null,
+  "schema_version": "capability-execution.v1",
+  "settings_hash": "6371ad4f7ce3766cf5ea2ea7327386726ada9be66205f59b2306c2f85cc86a60",
+  "started_at": "2026-10-21T12:00:00Z",
+  "status": "SUCCEEDED",
+  "tool_versions": {
+    "ffmpeg": "7.0.2"
+  }
+}

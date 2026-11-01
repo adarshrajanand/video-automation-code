@@ -1,0 +1,52 @@
+schema_version: quality-registry.v1
+registry_id: fast-quality
+version: "1.0"
+check_defaults:
+  schema_version: quality-check.v1
+  evaluator: fast_fixture
+  evaluator_version: fast-fixture-v1
+  required_input_types: []
+  required: true
+  rubric_version: null
+  severity_if_failed: MAJOR
+checks:
+  - {check_id: source_exists_v1, kind: DETERMINISTIC, target_artifact_types: [source, evidence], severity_if_failed: CRITICAL, on_failure: FAIL, repair_scope: NONE}
+  - {check_id: evidence_reference_integrity_v1, kind: DETERMINISTIC, target_artifact_types: [evidence], on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: script_schema_v1, kind: DETERMINISTIC, target_artifact_types: [script], severity_if_failed: CRITICAL, on_failure: REGENERATE, repair_scope: STAGE}
+  - {check_id: claim_reference_integrity_v1, kind: DETERMINISTIC, target_artifact_types: [script], on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: script_claim_evidence_v1, kind: SEMANTIC, target_artifact_types: [script], rubric_version: fast-rubric-v1, on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: script_editorial_clarity_v1, kind: SEMANTIC, target_artifact_types: [script], rubric_version: fast-rubric-v1, on_failure: REGENERATE, repair_scope: STAGE}
+  - {check_id: scene_shot_structure_v1, kind: DETERMINISTIC, target_artifact_types: [visual_plan], on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: visual_intent_completeness_v1, kind: SEMANTIC, target_artifact_types: [visual_plan], rubric_version: fast-rubric-v1, on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: media_decode_v1, kind: DETERMINISTIC, target_artifact_types: [source_asset], severity_if_failed: CRITICAL, on_failure: REGENERATE, repair_scope: SHOT}
+  - {check_id: media_dimensions_v1, kind: DETERMINISTIC, target_artifact_types: [source_asset], on_failure: REGENERATE, repair_scope: ASSET}
+  - {check_id: provenance_v1, kind: DETERMINISTIC, target_artifact_types: [source_asset], on_failure: HUMAN_REVIEW, repair_scope: ASSET}
+  - {check_id: audio_decode_v1, kind: DETERMINISTIC, target_artifact_types: [speech], severity_if_failed: CRITICAL, on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: audio_duration_loudness_v1, kind: SPECIALIZED, target_artifact_types: [speech], on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: transcript_fidelity_v1, kind: SPECIALIZED, target_artifact_types: [speech], on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: timeline_ranges_v1, kind: DETERMINISTIC, target_artifact_types: [composition], on_failure: REGENERATE, repair_scope: SCENE}
+  - {check_id: required_layers_v1, kind: DETERMINISTIC, target_artifact_types: [composition], on_failure: REGENERATE, repair_scope: SHOT}
+  - {check_id: composition_reconstructable_v1, kind: DETERMINISTIC, target_artifact_types: [composition], severity_if_failed: CRITICAL, on_failure: FAIL, repair_scope: STAGE}
+  - {check_id: render_decode_v1, kind: DETERMINISTIC, target_artifact_types: [render_chunk], severity_if_failed: CRITICAL, on_failure: REGENERATE, repair_scope: STAGE}
+  - {check_id: output_profile_v1, kind: DETERMINISTIC, target_artifact_types: [render_chunk, assembled_cut, short_cut], on_failure: REGENERATE, repair_scope: STAGE}
+  - {check_id: black_freeze_audio_presence_v1, kind: SPECIALIZED, target_artifact_types: [render_chunk], on_failure: REGENERATE, repair_scope: STAGE}
+  - {check_id: assembly_order_duration_v1, kind: DETERMINISTIC, target_artifact_types: [assembled_cut], on_failure: REGENERATE, repair_scope: CUT}
+  - {check_id: assembly_sync_loudness_v1, kind: SPECIALIZED, target_artifact_types: [assembled_cut], on_failure: REGENERATE, repair_scope: CUT}
+  - {check_id: vertical_profile_v1, kind: DETERMINISTIC, target_artifact_types: [short_cut], on_failure: REGENERATE, repair_scope: STAGE}
+  - {check_id: context_preservation_v1, kind: SEMANTIC, target_artifact_types: [short_cut], rubric_version: fast-rubric-v1, on_failure: HUMAN_REVIEW, repair_scope: SCENE}
+  - {check_id: caption_safe_area_v1, kind: DETERMINISTIC, target_artifact_types: [short_cut], on_failure: REGENERATE, repair_scope: SHOT}
+  - {check_id: complete_technical_review_v1, kind: DETERMINISTIC, target_artifact_types: [assembled_cut, short_cut], severity_if_failed: CRITICAL, on_failure: FAIL, repair_scope: CUT}
+  - {check_id: final_content_review_v1, kind: SEMANTIC, target_artifact_types: [assembled_cut, short_cut], rubric_version: fast-rubric-v1, on_failure: HUMAN_REVIEW, repair_scope: CUT}
+  - {check_id: human_publication_approval_v1, kind: HUMAN, target_artifact_types: [assembled_cut, short_cut], on_failure: HUMAN_REVIEW, repair_scope: WORKFLOW}
+gates:
+  - {schema_version: quality-gate-policy.v1, gate_id: research_gate_v1, version: "1.0", required_check_ids: [source_exists_v1, evidence_reference_integrity_v1], hard_failure_codes: [EXEC.VALIDATION], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: script_gate_v1, version: "1.0", required_check_ids: [script_schema_v1, claim_reference_integrity_v1, script_claim_evidence_v1, script_editorial_clarity_v1], hard_failure_codes: [QUALITY.SCHEMA_INVALID, QUALITY.UNSUPPORTED_CLAIM], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: visual_plan_gate_v1, version: "1.0", required_check_ids: [scene_shot_structure_v1, visual_intent_completeness_v1], hard_failure_codes: [], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: asset_gate_v1, version: "1.0", required_check_ids: [media_decode_v1, media_dimensions_v1, provenance_v1], hard_failure_codes: [MEDIA.DECODE_ERROR, QUALITY.PROVENANCE_MISSING], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: speech_gate_v1, version: "1.0", required_check_ids: [audio_decode_v1, audio_duration_loudness_v1, transcript_fidelity_v1], hard_failure_codes: [QUALITY.AUDIO_DECODE], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: composition_gate_v1, version: "1.0", required_check_ids: [timeline_ranges_v1, required_layers_v1, composition_reconstructable_v1], hard_failure_codes: [MEDIA.TIMELINE_INVALID], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: render_gate_v1, version: "1.0", required_check_ids: [render_decode_v1, output_profile_v1, black_freeze_audio_presence_v1], hard_failure_codes: [MEDIA.DECODE_ERROR, MEDIA.OUTPUT_PROFILE], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: assembly_gate_v1, version: "1.0", required_check_ids: [assembly_order_duration_v1, assembly_sync_loudness_v1], hard_failure_codes: [MEDIA.TECHNICAL_INTEGRITY], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: short_gate_v1, version: "1.0", required_check_ids: [vertical_profile_v1, context_preservation_v1, caption_safe_area_v1], hard_failure_codes: [MEDIA.OUTPUT_PROFILE], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: final_gate_v1, version: "1.0", required_check_ids: [complete_technical_review_v1, final_content_review_v1], hard_failure_codes: [MEDIA.TECHNICAL_INTEGRITY], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 2, after_max_regenerations: HUMAN_REVIEW}
+  - {schema_version: quality-gate-policy.v1, gate_id: human_publication_gate_v1, version: "1.0", required_check_ids: [human_publication_approval_v1], hard_failure_codes: [], pass_thresholds: {}, human_review_thresholds: {}, max_regenerations: 0, after_max_regenerations: FAIL}

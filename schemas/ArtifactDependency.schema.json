@@ -1,0 +1,43 @@
+{
+  "$id": "urn:pipeline:contract:ArtifactDependency",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Directed lineage edge between two immutable artifact versions.",
+  "properties": {
+    "child_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Child Artifact Id",
+      "type": "string"
+    },
+    "dependency_type": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Dependency Type",
+      "type": "string"
+    },
+    "parent_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Parent Artifact Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "artifact-dependency.v1",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "parent_artifact_id",
+    "child_artifact_id",
+    "dependency_type"
+  ],
+  "title": "ArtifactDependency",
+  "type": "object",
+  "x-contract-schema-version": "artifact-dependency.v1"
+}

@@ -1,0 +1,17 @@
+{
+  "created_at": "2026-10-21T13:00:00Z",
+  "invalidation_scope": "SCENE",
+  "max_attempts": 2,
+  "reason_codes": [
+    "QUALITY.TTS_OMISSION"
+  ],
+  "repair_plan_id": "repair_01",
+  "schema_version": "repair-plan.v1",
+  "source_gate_result_id": "qgr_speech_01",
+  "target_artifact_ids": [
+    "artifact_audio_scene_01_v1"
+  ],
+  "target_stage_instance_ids": [
+    "stage_speech_scene_01"
+  ]
+}

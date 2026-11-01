@@ -1,0 +1,18 @@
+{
+  "acceptance_status": "PASSED",
+  "accepted_output_artifact_ids": [
+    "artifact_script_v1"
+  ],
+  "active_attempt_id": "attempt_script_01",
+  "created_at": "2026-10-21T09:00:00Z",
+  "execution_status": "SUCCEEDED",
+  "expected_input_manifest_id": "manifest_script_inputs",
+  "logical_item_key": "episode",
+  "node_id": "script",
+  "quality_gate_id": "script_gate_v1",
+  "quality_gate_result_id": "qgr_script_01",
+  "run_id": "run_01",
+  "schema_version": "stage-instance.v1",
+  "stage_instance_id": "stage_script_episode",
+  "updated_at": "2026-10-21T11:00:00Z"
+}

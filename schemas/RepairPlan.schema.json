@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "RepairInvalidationScope": {
+      "enum": [
+        "ARTIFACT",
+        "SCENE",
+        "SUBGRAPH",
+        "WORKFLOW"
+      ],
+      "title": "RepairInvalidationScope",
+      "type": "string"
+    }
+  },
+  "$id": "urn:pipeline:contract:RepairPlan",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Policy-approved, targeted replacement of failed artifacts or stages.",
+  "properties": {
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "invalidation_scope": {
+      "$ref": "#/$defs/RepairInvalidationScope"
+    },
+    "max_attempts": {
+      "minimum": 1,
+      "title": "Max Attempts",
+      "type": "integer"
+    },
+    "reason_codes": {
+      "items": {
+        "maxLength": 512,
+        "minLength": 1,
+        "pattern": "^\\S(?:.*\\S)?$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Reason Codes",
+      "type": "array"
+    },
+    "repair_plan_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Repair Plan Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "repair-plan.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_gate_result_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Source Gate Result Id",
+      "type": "string"
+    },
+    "target_artifact_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Target Artifact Ids",
+      "type": "array"
+    },
+    "target_stage_instance_ids": {
+      "items": {
+        "maxLength": 256,
+        "minLength": 1,
+        "pattern": "^\\S+$",
+        "type": "string"
+      },
+      "title": "Target Stage Instance Ids",
+      "type": "array"
+    }
+  },
+  "required": [
+    "schema_version",
+    "repair_plan_id",
+    "source_gate_result_id",
+    "reason_codes",
+    "invalidation_scope",
+    "max_attempts",
+    "created_at"
+  ],
+  "title": "RepairPlan",
+  "type": "object",
+  "x-contract-schema-version": "repair-plan.v1"
+}

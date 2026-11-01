@@ -1,0 +1,13 @@
+{
+  "capability": "speech_generation",
+  "cost_limit_minor": 100,
+  "data_classification": "INTERNAL",
+  "latency_requirement": "interactive",
+  "locale": "en-US",
+  "quality_requirement": "experimental",
+  "required_features": [
+    "scene_timing",
+    "word_timestamps"
+  ],
+  "schema_version": "capability-requirements.v1"
+}

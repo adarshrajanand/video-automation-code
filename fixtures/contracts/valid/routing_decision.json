@@ -1,0 +1,33 @@
+{
+  "attempt": 1,
+  "budget_context": {
+    "remaining_minor": 400
+  },
+  "candidate_exclusions": [
+    {
+      "provider": "paid_example",
+      "reason": "PAID_DISABLED"
+    }
+  ],
+  "capability": "speech_generation",
+  "created_at": "2026-10-21T11:59:00Z",
+  "data_classification": "INTERNAL",
+  "fallback_chain": [
+    "local_speech_fixture"
+  ],
+  "implementation": "adapters.speech.local_fixture",
+  "implementation_version": "1.0.0",
+  "model": "fixture-tts-v1",
+  "paid_fallback_authorized": false,
+  "policy_version": "routing-policy.v1",
+  "provider": "local_speech_fixture",
+  "provider_config_hash": "568e6a2bbb774ef2aa2e839f69be92e238f7f26000fc252ab1fcf74fa3021aa7",
+  "reason_codes": [
+    "ONLY_ELIGIBLE"
+  ],
+  "routing_decision_id": "route_speech_scene_01",
+  "schema_version": "routing-decision.v1",
+  "usage_context": {
+    "month_to_date_minor": 100
+  }
+}

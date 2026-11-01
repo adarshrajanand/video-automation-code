@@ -1,0 +1,57 @@
+{
+  "$defs": {
+    "ExtensionObject": {
+      "additionalProperties": {
+        "$ref": "#/$defs/JsonValue"
+      },
+      "type": "object"
+    },
+    "JsonValue": {}
+  },
+  "$id": "urn:pipeline:contract:AudioQCInputPayload",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Input payload for the audio_qc capability.",
+  "properties": {
+    "audio_artifact_id": {
+      "maxLength": 256,
+      "minLength": 1,
+      "pattern": "^\\S+$",
+      "title": "Audio Artifact Id",
+      "type": "string"
+    },
+    "expected_narration_text": {
+      "maxLength": 512,
+      "minLength": 1,
+      "pattern": "^\\S(?:.*\\S)?$",
+      "title": "Expected Narration Text",
+      "type": "string"
+    },
+    "metadata": {
+      "$ref": "#/$defs/ExtensionObject"
+    },
+    "schema_version": {
+      "const": "audio-qc-input.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "target_loudness_lufs": {
+      "default": -24.0,
+      "title": "Target Loudness Lufs",
+      "type": "number"
+    },
+    "target_peak_db": {
+      "default": -1.0,
+      "title": "Target Peak Db",
+      "type": "number"
+    }
+  },
+  "required": [
+    "schema_version",
+    "audio_artifact_id",
+    "expected_narration_text"
+  ],
+  "title": "AudioQCInputPayload",
+  "type": "object",
+  "x-contract-schema-version": "audio-qc-input.v1"
+}

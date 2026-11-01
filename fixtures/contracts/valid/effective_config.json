@@ -1,0 +1,36 @@
+{
+  "channel_profile_id": "channel_explainer_v1",
+  "channel_profile_version": "1.0",
+  "config_hash": "3b732827d3067c4965bf37e239d39635a86a110e0632b8898634c29ff0270e42",
+  "domain_profile_id": "software_engineering_explainer_v1",
+  "domain_profile_version": "1.0",
+  "effective_config_id": "cfg_01",
+  "resolved_values": {
+    "locale": "en-US",
+    "target_duration_seconds": 600
+  },
+  "run_overrides": {
+    "enabled_optional_stages": [
+      "short_derivative",
+      "publishing"
+    ],
+    "locale": "en-US",
+    "max_cost_minor": 500,
+    "output_profile_ids": [
+      "landscape_1080p_30_v1"
+    ],
+    "quality_profile_id": "software_explainer_high_bar_v1",
+    "schema_version": "run-overrides.v1",
+    "target_duration_seconds": 600,
+    "variant_count": 2
+  },
+  "schema_version": "effective-config.v1",
+  "snapshot_artifact_id": "artifact_config_snapshot_v1",
+  "source_map": {
+    "locale": "channel_profile:channel_explainer_v1",
+    "target_duration_seconds": "run_overrides:run-overrides.v1"
+  },
+  "system_policy_version": "1.0",
+  "workflow_id": "explainer_validation_v1",
+  "workflow_version": "1.0"
+}

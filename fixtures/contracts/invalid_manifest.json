@@ -1,0 +1,320 @@
+{
+  "invalid": [
+    {
+      "error_contains": "Extra inputs are not permitted",
+      "fixture": "invalid/unknown_core_field.json",
+      "model": "RunOverrides"
+    },
+    {
+      "error_contains": "Field required",
+      "fixture": "invalid/missing_schema_version.json",
+      "model": "RunOverrides"
+    },
+    {
+      "error_contains": "run-overrides.v1",
+      "fixture": "invalid/wrong_schema_version.json",
+      "model": "RunOverrides"
+    },
+    {
+      "error_contains": "Field required",
+      "fixture": "invalid/missing_required_field.json",
+      "model": "WorkflowRun"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/invalid_enum.json",
+      "model": "StageInstance"
+    },
+    {
+      "error_contains": "timezone-aware",
+      "fixture": "invalid/naive_datetime.json",
+      "model": "WorkflowRun"
+    },
+    {
+      "error_contains": "String should match pattern",
+      "fixture": "invalid/bad_sha256.json",
+      "model": "Artifact"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/duplicate_ids.json",
+      "model": "ContentPackage"
+    },
+    {
+      "error_contains": "distinct artifact IDs",
+      "fixture": "invalid/artifact_self_dependency.json",
+      "model": "ArtifactDependency"
+    },
+    {
+      "error_contains": "target_hashes keys must exactly match",
+      "fixture": "invalid/quality_target_hash_missing.json",
+      "model": "QualityInputManifest"
+    },
+    {
+      "error_contains": "target_hashes keys must exactly match",
+      "fixture": "invalid/quality_target_hash_unknown.json",
+      "model": "QualityInputManifest"
+    },
+    {
+      "error_contains": "abstained must be true",
+      "fixture": "invalid/quality_abstained_mismatch.json",
+      "model": "QualityEvaluation"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/quality_gate_duplicate_evaluations.json",
+      "model": "QualityGateResult"
+    },
+    {
+      "error_contains": "semantic check requires a rubric_version",
+      "fixture": "invalid/quality_semantic_missing_rubric.json",
+      "model": "QualityCheck"
+    },
+    {
+      "error_contains": "missing required reference",
+      "fixture": "invalid/event_missing_payload_reference.json",
+      "model": "EventEnvelope"
+    },
+    {
+      "error_contains": "requires payload schema",
+      "fixture": "invalid/event_payload_schema_mismatch.json",
+      "model": "EventEnvelope"
+    },
+    {
+      "error_contains": "must match payload run_id",
+      "fixture": "invalid/event_run_id_mismatch.json",
+      "model": "EventEnvelope"
+    },
+    {
+      "error_contains": "must match the nested event",
+      "fixture": "invalid/outbox_event_id_mismatch.json",
+      "model": "OutboxMessage"
+    },
+    {
+      "error_contains": "expires_at must be later",
+      "fixture": "invalid/lease_time_order.json",
+      "model": "Lease"
+    },
+    {
+      "error_contains": "duplicate workflow node IDs",
+      "fixture": "invalid/workflow_duplicate_nodes.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "depends on missing node",
+      "fixture": "invalid/workflow_missing_dependency.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "dependency cycle",
+      "fixture": "invalid/workflow_cycle.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/workflow_unknown_stage.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "unknown quality gate id",
+      "fixture": "invalid/workflow_unknown_gate.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "unknown recovery policy id",
+      "fixture": "invalid/workflow_unknown_recovery.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "requires an explicit selection_policy",
+      "fixture": "invalid/workflow_invalid_cardinality.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "declared depends_on nodes",
+      "fixture": "invalid/workflow_selector_unknown_dependency.json",
+      "model": "WorkflowDefinition"
+    },
+    {
+      "error_contains": "greater than or equal to 1",
+      "fixture": "invalid/stage_attempt_zero_number.json",
+      "model": "StageAttempt"
+    },
+    {
+      "error_contains": "exactly expected_count",
+      "fixture": "invalid/input_manifest_count_mismatch.json",
+      "model": "InputManifest"
+    },
+    {
+      "error_contains": "greater than or equal to 0",
+      "fixture": "invalid/job_negative_delivery_count.json",
+      "model": "Job"
+    },
+    {
+      "error_contains": "must be disjoint",
+      "fixture": "invalid/invalidation_overlap.json",
+      "model": "InvalidationResult"
+    },
+    {
+      "error_contains": "target_hashes keys must exactly match",
+      "fixture": "invalid/review_target_hash_mismatch.json",
+      "model": "HumanReview"
+    },
+    {
+      "error_contains": "active_episode_id must reference",
+      "fixture": "invalid/content_package_active_missing.json",
+      "model": "ContentPackage"
+    },
+    {
+      "error_contains": "end_frame must be later",
+      "fixture": "invalid/shot_invalid_range.json",
+      "model": "Shot"
+    },
+    {
+      "error_contains": "greater than or equal to 1",
+      "fixture": "invalid/routing_context_zero_attempt.json",
+      "model": "RoutingContext"
+    },
+    {
+      "error_contains": "must match the request capability",
+      "fixture": "invalid/capability_requirements_mismatch.json",
+      "model": "CapabilityRequest"
+    },
+    {
+      "error_contains": "completed_at must not be earlier",
+      "fixture": "invalid/idempotency_time_order.json",
+      "model": "IdempotencyRecord"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/source_ref_bad_kind.json",
+      "model": "SourceRef"
+    },
+    {
+      "error_contains": "greater than or equal to 1",
+      "fixture": "invalid/source_snapshot_bad_range.json",
+      "model": "SourceSnapshot"
+    },
+    {
+      "error_contains": "end_offset must be greater",
+      "fixture": "invalid/evidence_bad_range.json",
+      "model": "Evidence"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/claim_bad_type.json",
+      "model": "Claim"
+    },
+    {
+      "error_contains": "Input should be",
+      "fixture": "invalid/visual_intent_bad_purpose.json",
+      "model": "VisualIntent"
+    },
+    {
+      "error_contains": "max_scene_seconds must be >=",
+      "fixture": "invalid/duration_policy_bad_range.json",
+      "model": "DurationPolicy"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/script_scene_duplicate_claims.json",
+      "model": "ScriptScene"
+    },
+    {
+      "error_contains": "must be unique",
+      "fixture": "invalid/script_duplicate_scenes.json",
+      "model": "Script"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/audio_timing_bad_order.json",
+      "model": "AudioTiming"
+    },
+    {
+      "error_contains": "greater than or equal to 1",
+      "fixture": "invalid/research_input_bad_range.json",
+      "model": "ResearchInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/research_output_duplicate_sources_payload.json",
+      "model": "ResearchOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/script_generation_output_bad_scene_count_payload.json",
+      "model": "ScriptGenerationOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/visual_planning_input_duplicate_scenes_payload.json",
+      "model": "VisualPlanningInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/visual_planning_output_duplicate_intents_payload.json",
+      "model": "VisualPlanningOutputPayload"
+    },
+    {
+      "error_contains": "String should have at least 1 character",
+      "fixture": "invalid/script_generation_input_bad_duration.json",
+      "model": "ScriptGenerationInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/speech_manifest_duplicate_audio_ids.json",
+      "model": "SpeechManifest"
+    },
+    {
+      "error_contains": "narration_text_hashes must have one entry per scene_audio_artifact_id",
+      "fixture": "invalid/speech_manifest_hash_count_mismatch.json",
+      "model": "SpeechManifest"
+    },
+    {
+      "error_contains": "narration_text_hashes references unknown scene_id",
+      "fixture": "invalid/speech_manifest_unknown_scene_in_hashes.json",
+      "model": "SpeechManifest"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/speech_generation_input_duplicate_scenes.json",
+      "model": "SpeechGenerationInputPayload"
+    },
+    {
+      "error_contains": "narration_texts must have one entry per scene_id",
+      "fixture": "invalid/speech_generation_input_narration_count_mismatch.json",
+      "model": "SpeechGenerationInputPayload"
+    },
+    {
+      "error_contains": "narration_texts references unknown scene_id",
+      "fixture": "invalid/speech_generation_input_unknown_scene_in_narration.json",
+      "model": "SpeechGenerationInputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/speech_generation_output_duplicate_audio_ids.json",
+      "model": "SpeechGenerationOutputPayload"
+    },
+    {
+      "error_contains": "narration_text_hashes must have one entry per scene_audio_artifact_id",
+      "fixture": "invalid/speech_generation_output_hash_count_mismatch.json",
+      "model": "SpeechGenerationOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/asr_alignment_output_duplicate_audio_timing_ids.json",
+      "model": "ASRAlignmentOutputPayload"
+    },
+    {
+      "error_contains": "must not contain duplicates",
+      "fixture": "invalid/asr_alignment_output_duplicate_word_timestamp_ids.json",
+      "model": "ASRAlignmentOutputPayload"
+    },
+    {
+      "error_contains": "end_frames must be greater than start_frames",
+      "fixture": "invalid/word_timestamp_bad_order.json",
+      "model": "WordTimestamp"
+    }
+  ],
+  "schema_version": "contract-fixtures.v1"
+}

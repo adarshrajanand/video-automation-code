@@ -1,0 +1,20 @@
+{
+  "check_id": "script_claim_evidence_v1",
+  "evaluator": "claim_evidence_evaluator",
+  "evaluator_version": "fast-fixture-v1",
+  "kind": "SEMANTIC",
+  "on_failure": "REGENERATE",
+  "repair_scope": "SCENE",
+  "required": true,
+  "required_input_types": [
+    "script",
+    "claim_ledger",
+    "evidence_snapshots"
+  ],
+  "rubric_version": "fast-rubric-v1",
+  "schema_version": "quality-check.v1",
+  "severity_if_failed": "MAJOR",
+  "target_artifact_types": [
+    "script"
+  ]
+}

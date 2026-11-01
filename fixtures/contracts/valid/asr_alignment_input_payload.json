@@ -1,0 +1,9 @@
+{
+  "schema_version": "asr-alignment-input.v1",
+  "audio_artifact_id": "audio_scene_01",
+  "narration_text": "The Arctic is warming four times faster than the global average.",
+  "language": "en",
+  "metadata": {
+    "asr_model": "whisper_large_v3"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "assembly_artifact_id": "artifact_assembly_01",
+  "cut_id": "cut_long_form_16x9",
+  "composition_artifact_id": "artifact_composition_01",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "assembly-manifest.v1",
+  "chunk_ids": ["chunk_01", "chunk_02", "chunk_03"],
+  "chunk_manifest_ids": ["manifest_chunk_01", "manifest_chunk_02", "manifest_chunk_03"],
+  "total_duration_frames": 9000,
+  "continuity_checks_passed": true,
+  "output_artifact_id": "artifact_final_cut_01",
+  "output_uri": "file:///renders/final_cut.mp4",
+  "output_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+  "output_size_bytes": 15728640,
+  "assembler_version": "ffmpeg-7.0",
+  "assembled_at": "2026-01-01T00:10:00Z",
+  "continuity_failures": [],
+  "metadata": {}
+}

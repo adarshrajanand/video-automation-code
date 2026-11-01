@@ -1,0 +1,17 @@
+{
+  "action": "REGENERATE",
+  "created_at": "2026-10-21T13:00:00Z",
+  "failed_attempt_id": "attempt_speech_01",
+  "reason_codes": [
+    "QUALITY.TTS_OMISSION"
+  ],
+  "recovery_decision_id": "recovery_01",
+  "run_id": "run_01",
+  "schema_version": "recovery-decision.v1",
+  "target_artifact_ids": [
+    "artifact_audio_scene_01_v1"
+  ],
+  "target_stage_instance_ids": [
+    "stage_speech_scene_01"
+  ]
+}

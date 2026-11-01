@@ -1,0 +1,13 @@
+{
+  "schema_version": "word-timestamp.v1",
+  "word_timestamp_id": "wt_01",
+  "audio_timing_id": "at_01",
+  "word": "The",
+  "start_frames": 0,
+  "end_frames": 2400,
+  "confidence": 0.99,
+  "metadata": {
+    "asr_model": "whisper_large_v3",
+    "language": "en"
+  }
+}

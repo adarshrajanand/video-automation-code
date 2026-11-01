@@ -1,0 +1,14 @@
+{
+  "schema_version": "script-scene.v1",
+  "scene_id": "scene_01",
+  "script_id": "script_01",
+  "order_index": 0,
+  "narration": "The Arctic is warming four times faster than the global average, and the evidence is undeniable.",
+  "claim_ids": ["claim_01"],
+  "visual_intent_ids": ["vi_01"],
+  "estimated_duration_seconds": 12,
+  "metadata": {
+    "scene_type": "opening_hook",
+    "tone": "urgent"
+  }
+}

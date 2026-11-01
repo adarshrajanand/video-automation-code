@@ -1,0 +1,10 @@
+{
+  "artifact_id": "artifact_01",
+  "artifact_type": "video",
+  "schema_version": "resolved-artifact-ref.v1",
+  "uri": "file:///artifacts/video_01.mp4",
+  "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "size_bytes": 1048576,
+  "media_type": null,
+  "media_metadata": {}
+}

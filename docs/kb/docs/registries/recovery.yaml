@@ -1,0 +1,18 @@
+schema_version: recovery-fixture.v1
+registry_id: fast-recovery
+version: "1.0"
+retry_policy:
+  schema_version: retry-policy.v1
+  policy_id: default_retry_v1
+  max_attempts: 2
+  initial_backoff_seconds: 2
+  max_backoff_seconds: 60
+  jitter_ratio: 0.2
+  retryable_categories: [TRANSIENT, RATE_LIMIT, QUOTA]
+recovery_policy:
+  schema_version: recovery-policy.v1
+  policy_id: default_recovery_v1
+  retry_policy_id: default_retry_v1
+  on_unknown_outcome: RECONCILE
+  on_quality_failure: REGENERATE
+  on_repeated_failure: HUMAN_REVIEW

@@ -1,0 +1,11 @@
+{
+  "artifact_types": [
+    "topic"
+  ],
+  "dependency_node_ids": [
+    "intake"
+  ],
+  "kind": "DEPENDENCY_OUTPUTS",
+  "schema_version": "input-selector.v1",
+  "selection_policy": "latest_accepted"
+}

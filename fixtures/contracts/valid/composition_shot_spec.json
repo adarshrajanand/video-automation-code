@@ -1,0 +1,8 @@
+{
+  "shot_id": "shot_01",
+  "schema_version": "composition-shot-spec.v1",
+  "start_frame": 0,
+  "end_frame": 300,
+  "order_index": 0,
+  "layer_ids": []
+}

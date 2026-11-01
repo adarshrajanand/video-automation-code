@@ -1,0 +1,25 @@
+{
+  "artifact_ids": [
+    "artifact_audio_scene_01_v1"
+  ],
+  "capability_execution_id": "capexec_speech_scene_01",
+  "metadata": {
+    "scene_id": "scene_01"
+  },
+  "normalized_error": null,
+  "schema_version": "capability-result.v1",
+  "status": "SUCCEEDED",
+  "usage": {
+    "actual_cost_minor": 2,
+    "estimated_cost_minor": 3,
+    "input_units": 40,
+    "metadata": {
+      "cache_hit": false
+    },
+    "model": "fixture-tts-v1",
+    "output_units": 600,
+    "provider": "local_speech_fixture",
+    "runtime_seconds": 1.5,
+    "schema_version": "usage.v1"
+  }
+}

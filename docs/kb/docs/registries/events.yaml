@@ -1,0 +1,112 @@
+schema_version: event-registry.v1
+registry_id: canonical-events
+version: "1.0"
+naming_convention: lowercase.dot
+delivery: at_least_once
+events:
+  - event_type: workflow.created
+    kind: fact
+    producer: workflow_engine
+    payload_schema_version: workflow-created.v1
+  - event_type: workflow.started
+    kind: fact
+    producer: workflow_engine
+    payload_schema_version: workflow-started.v1
+  - event_type: stage.ready
+    kind: notification
+    producer: workflow_engine
+    payload_schema_version: stage-ready.v1
+  - event_type: stage.claimed
+    kind: fact
+    producer: execution_runtime
+    payload_schema_version: stage-claimed.v1
+  - event_type: stage.started
+    kind: fact
+    producer: execution_runtime
+    payload_schema_version: stage-started.v1
+  - event_type: stage.succeeded
+    kind: fact
+    producer: execution_runtime
+    payload_schema_version: stage-succeeded.v1
+  - event_type: stage.failed
+    kind: fact
+    producer: execution_runtime
+    payload_schema_version: stage-failed.v1
+  - event_type: stage.unknown
+    kind: fact
+    producer: execution_runtime
+    payload_schema_version: stage-unknown.v1
+  - event_type: artifact.created
+    kind: fact
+    producer: artifact_repository
+    payload_schema_version: artifact-created.v1
+  - event_type: artifact.invalidated
+    kind: fact
+    producer: artifact_repository
+    payload_schema_version: artifact-invalidated.v1
+  - event_type: quality.requested
+    kind: command
+    producer: workflow_engine
+    payload_schema_version: quality-requested.v1
+  - event_type: quality.evaluated
+    kind: fact
+    producer: quality_engine
+    payload_schema_version: quality-evaluated.v1
+  - event_type: repair.requested
+    kind: command
+    producer: quality_engine
+    payload_schema_version: repair-requested.v1
+  - event_type: human_review.requested
+    kind: command
+    producer: quality_engine
+    payload_schema_version: human-review-requested.v1
+  - event_type: human_review.completed
+    kind: fact
+    producer: review_queue
+    payload_schema_version: human-review-completed.v1
+  - event_type: workflow.paused
+    kind: fact
+    producer: workflow_engine
+    payload_schema_version: workflow-paused.v1
+  - event_type: workflow.resumed
+    kind: fact
+    producer: workflow_engine
+    payload_schema_version: workflow-resumed.v1
+  - event_type: workflow.completed
+    kind: fact
+    producer: workflow_engine
+    payload_schema_version: workflow-completed.v1
+  - event_type: workflow.failed
+    kind: fact
+    producer: workflow_engine
+    payload_schema_version: workflow-failed.v1
+  - event_type: publish.requested
+    kind: command
+    producer: workflow_engine
+    payload_schema_version: publish-requested.v1
+  - event_type: publish.completed
+    kind: fact
+    producer: publishing_adapter
+    payload_schema_version: publish-completed.v1
+payload_schemas:
+  workflow-created.v1: {required: [run_id, workflow_id, workflow_version]}
+  workflow-started.v1: {required: [run_id]}
+  stage-ready.v1: {required: [run_id, stage_instance_id, job_id]}
+  stage-claimed.v1: {required: [run_id, stage_instance_id, attempt_id, job_id]}
+  stage-started.v1: {required: [run_id, stage_instance_id, attempt_id]}
+  stage-succeeded.v1: {required: [run_id, stage_instance_id, attempt_id, artifact_ids]}
+  stage-failed.v1: {required: [run_id, stage_instance_id, attempt_id, failure_code]}
+  stage-unknown.v1: {required: [run_id, stage_instance_id, attempt_id, recovery_decision_id]}
+  artifact-created.v1: {required: [run_id, artifact_id, sha256]}
+  artifact-invalidated.v1: {required: [run_id, artifact_id, invalidation_request_id]}
+  quality-requested.v1: {required: [run_id, stage_instance_id, quality_input_manifest_id]}
+  quality-evaluated.v1: {required: [run_id, stage_instance_id, quality_gate_result_id]}
+  repair-requested.v1: {required: [run_id, repair_plan_id]}
+  human-review-requested.v1: {required: [run_id, review_id, target_artifact_ids]}
+  human-review-completed.v1: {required: [run_id, review_id, decision]}
+  workflow-paused.v1: {required: [run_id, reason_codes]}
+  workflow-resumed.v1: {required: [run_id]}
+  workflow-completed.v1: {required: [run_id]}
+  workflow-failed.v1: {required: [run_id, reason_codes]}
+  publish-requested.v1: {required: [run_id, cut_ids, approval_ids]}
+  publish-completed.v1: {required: [run_id, publication_id, published_artifact_ids]}

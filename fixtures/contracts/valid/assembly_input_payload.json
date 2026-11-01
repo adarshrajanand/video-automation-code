@@ -1,0 +1,7 @@
+{
+  "composition_artifact_id": "artifact_composition_01",
+  "render_profile_id": "landscape_1080p_30_v1",
+  "schema_version": "assembly-input.v1",
+  "chunk_manifest_ids": ["manifest_chunk_01", "manifest_chunk_02", "manifest_chunk_03"],
+  "metadata": {}
+}

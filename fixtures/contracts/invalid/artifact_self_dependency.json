@@ -1,0 +1,6 @@
+{
+  "child_artifact_id": "artifact_audio_scene_01_v1",
+  "dependency_type": "script_to_speech",
+  "parent_artifact_id": "artifact_audio_scene_01_v1",
+  "schema_version": "artifact-dependency.v1"
+}

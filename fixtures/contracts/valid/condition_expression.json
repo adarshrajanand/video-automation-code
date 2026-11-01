@@ -1,0 +1,8 @@
+{
+  "operands": [
+    "locale",
+    "en-US"
+  ],
+  "operator": "EQUALS",
+  "schema_version": "condition-expression.v1"
+}
