@@ -7,6 +7,13 @@
   - Document in README: `export PIPELINE_HOME=/tmp/pipeline-$(basename $PWD)`
   - File: `README.md`, `.envrc.example`
 
+- [ ] **Fix broken `human-review list` and `show` commands**
+  - CLI imports `cli_human_review_list` and `cli_human_review_show` from
+    `pipeline.quality.human_review`, but neither function exists
+  - Both commands exit 1 with `ImportError`; `decide` works
+  - Either implement the helpers or call `HumanReviewManager` directly
+  - Files: `src/pipeline/cli.py`, `src/pipeline/quality/human_review.py`
+
 - [ ] **Add CLI smoke tests to verification checklist**
   - Add to CI/verification script:
     ```bash
@@ -23,6 +30,19 @@
 ---
 
 ## P1 — High Priority (Post-Merge)
+
+- [ ] **Make `quality evaluate` re-runnable**
+  - Deterministic evaluation IDs are primary keys; a second identical run fails
+    with `ConflictError` on `quality_evaluations.evaluation_id`
+  - Use an upsert or delete prior evaluations/gate results for the same
+    manifest/stage before inserting
+  - File: `src/pipeline/quality/pipeline.py`, `src/pipeline/storage/repositories/base.py`
+
+- [ ] **Return a distinct exit code for `REGENERATE`**
+  - `quality evaluate` currently exits 0 for `REGENERATE`; only `FAIL` and
+    `HUMAN_REVIEW` return 1
+  - Decide whether `REGENERATE` should be non-zero or documented as "needs work"
+  - File: `src/pipeline/cli.py`
 
 - [ ] **Change `ArtifactPointerType` to Enum**
   - Current: `NonEmptyStr` (extensible, typos allowed)
