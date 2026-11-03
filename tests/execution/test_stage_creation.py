@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from pipeline.contracts.vocabularies import AcceptanceStatus, StageExecutionStatus
 from pipeline.execution.stages import StageFactory, derive_stage_instance_id
 from pipeline.storage.repositories.execution import StageInstanceRepository
@@ -76,25 +78,29 @@ def test_gateless_node_starts_without_acceptance(records, clock) -> None:
     assert result.stage_instance.acceptance_status is AcceptanceStatus.NOT_REQUIRED
 
 
-def test_creation_can_join_caller_transaction(records, clock) -> None:
+def test_padded_key_normalizes_to_canonical_identity(records, clock) -> None:
     factory = StageFactory(records.database, clock=clock)
 
-    with records.database.transaction() as connection:
-        result = factory.create_stage(
-            records.run,
-            RESEARCH_NODE,
-            "claim:01",
-            connection=connection,
-        )
-        visible = StageInstanceRepository(connection).get(
-            result.stage_instance.stage_instance_id
-        )
-        assert visible == result.stage_instance
+    padded = factory.create_stage(records.run, RESEARCH_NODE, " claim:01 ")
+    canonical = factory.create_stage(records.run, RESEARCH_NODE, "claim:01")
 
-    with records.database.connection() as connection:
-        assert (
-            StageInstanceRepository(connection).get(
-                result.stage_instance.stage_instance_id
-            )
-            == result.stage_instance
-        )
+    assert padded.created is True
+    assert canonical.created is False
+    assert canonical.stage_instance == padded.stage_instance
+    assert padded.stage_instance.logical_item_key == "claim:01"
+    assert padded.stage_instance.stage_instance_id == derive_stage_instance_id(
+        records.run.run_id, RESEARCH_NODE.node_id, "claim:01"
+    )
+
+
+def test_derive_stage_instance_id_normalizes_item_key(records) -> None:
+    assert derive_stage_instance_id(
+        records.run.run_id, RESEARCH_NODE.node_id, " claim:01 "
+    ) == derive_stage_instance_id(records.run.run_id, RESEARCH_NODE.node_id, "claim:01")
+
+
+def test_blank_item_key_is_rejected(records, clock) -> None:
+    factory = StageFactory(records.database, clock=clock)
+
+    with pytest.raises(ValueError):
+        factory.create_stage(records.run, RESEARCH_NODE, "   ")

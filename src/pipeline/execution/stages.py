@@ -14,6 +14,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from pydantic import TypeAdapter
+
+from pipeline.contracts.base import NonEmptyStr
 from pipeline.contracts.execution import StageInstance, WorkflowRun
 from pipeline.contracts.vocabularies import AcceptanceStatus, StageExecutionStatus
 from pipeline.contracts.workflow import StageNode
@@ -21,6 +24,14 @@ from pipeline.ids import deterministic_id
 from pipeline.storage.database import Database
 from pipeline.storage.errors import ConflictError
 from pipeline.storage.repositories.execution import StageInstanceRepository
+
+_LOGICAL_ITEM_KEY = TypeAdapter(NonEmptyStr)
+
+
+def _normalize_logical_item_key(value: str) -> str:
+    """Apply the same normalization as ``StageInstance.logical_item_key``."""
+
+    return _LOGICAL_ITEM_KEY.validate_python(value)
 
 
 class StageCreationError(RuntimeError):
@@ -45,9 +56,14 @@ def derive_stage_instance_id(
     The item key is part of the digest because one node may expand to many
     logical items. Omitting it would make every item in a counted or
     manifest-driven node share one ID.
+
+    The key is normalized with the contract's rules first, so padded input and
+    its canonical form produce the same ID.
     """
 
-    return deterministic_id("stage", run_id, node_id, logical_item_key)
+    return deterministic_id(
+        "stage", run_id, node_id, _normalize_logical_item_key(logical_item_key)
+    )
 
 
 class StageFactory:
@@ -57,6 +73,12 @@ class StageFactory:
     authority. A concurrent creator that loses the insert race re-reads the
     winning row instead of raising, so callers can treat creation as an
     upsert-like no-op.
+
+    Creation always owns an immediate transaction. Caller-owned transaction
+    composition is not exposed: a deferred caller transaction can upgrade to a
+    write lock after another writer commits, producing ``SQLITE_BUSY_SNAPSHOT``
+    instead of the documented re-read. The end-to-end creation flow will define
+    a safe shared transaction boundary when it needs one.
     """
 
     def __init__(
@@ -76,31 +98,13 @@ class StageFactory:
         *,
         execution_status: StageExecutionStatus = StageExecutionStatus.READY,
         expected_input_manifest_id: str | None = None,
-        connection: sqlite3.Connection | None = None,
     ) -> StageCreationResult:
         """Create or return the one stage instance for this logical item."""
 
-        if not logical_item_key:
-            raise ValueError("logical_item_key must be non-empty")
-
+        logical_item_key = _normalize_logical_item_key(logical_item_key)
         stage_instance_id = derive_stage_instance_id(
             run.run_id, node.node_id, logical_item_key
         )
-        if connection is not None:
-            if not connection.in_transaction:
-                raise ValueError(
-                    "StageFactory.create_stage requires an explicit caller "
-                    "transaction when a connection is supplied"
-                )
-            return self._create(
-                connection,
-                run,
-                node,
-                logical_item_key,
-                stage_instance_id,
-                execution_status=execution_status,
-                expected_input_manifest_id=expected_input_manifest_id,
-            )
         with self.database.transaction(immediate=True) as transaction:
             return self._create(
                 transaction,
