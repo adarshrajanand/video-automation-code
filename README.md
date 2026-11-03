@@ -12,6 +12,9 @@ and lease-expiry recovery), a capability registry with deterministic fake
 provider, budget-aware capability executor, quality gates with repair and
 human review, and validation report generation with secret redaction.
 
+For selecting issues, handling dependencies, and preparing reviewed changes,
+see [CONTRIBUTING.md](CONTRIBUTING.md). Agents start with [AGENTS.md](AGENTS.md).
+
 It does **not** implement external message brokers, provider SDKs, API keys,
 paid calls, or network access from setup checks. Real media probing (ffprobe)
 and Remotion renderer remain deferred. Capability routing uses an explicit
