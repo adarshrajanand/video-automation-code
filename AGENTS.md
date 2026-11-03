@@ -48,40 +48,27 @@ whenever adding or editing review material.
 - Keep the Contents list and the decision summary current when adding a review
   or changing a decision.
 
-### Issue severity and priority
+### Issue priority
 
-Every issue has exactly one severity and one priority. They answer different
-questions and must not be inferred from each other.
+Every issue has exactly one priority label. Priority is the single measure of
+importance: how much the work matters now. Do not add a separate severity axis.
 
-**Severity** — impact if the issue is left unfixed:
-
-- `S1` Critical: data loss or corruption, duplicate spend, unauthorized
-  publication, security or privacy exposure, or a pipeline that cannot execute.
-- `S2` High: a core path is broken or produces incorrect durable state,
-  artifacts, IDs, timestamps, gates, or replay behavior.
-- `S3` Medium: degraded behavior, or a contract, documentation, test, or
-  maintainability gap that risks a wrong implementation.
-- `S4` Low: cosmetic, naming, or explanatory documentation with no behavioral
-  impact.
-
-**Priority** — when to fix it:
-
-- `P0` Now: blocks the active slice or an in-progress release gate.
-- `P1` Next: required for current milestone acceptance, after `P0`.
-- `P2` Planned: current or next milestone hardening; not gate-blocking.
-- `P3` Deferred: optional, opportunistic, or later-milestone work.
+- `P0` Critical / now: blocks the active slice or release gate, or is a critical
+  correctness, safety, or data-integrity defect in an enabled path. Fix before
+  anything else.
+- `P1` High / next: required for current milestone acceptance. Schedule
+  immediately after `P0`.
+- `P2` Medium / planned: meaningful hardening, contract, documentation, or test
+  work for the current or next milestone. Not gate-blocking.
+- `P3` Low / deferred: optional, cosmetic, or later-milestone work.
 
 Rules:
 
-- Title: `PR5-NN [S2][P1][code] Short title`.
-- Put `**Severity:** S2` and `**Priority:** P1` at the top of the issue body,
-  before `Context`.
-- Use exactly one severity label and one priority label.
-- Priority is sequencing, not impact. An `S3` may be `P0` when it blocks
-  verification; an `S1` may be `P3` only while the risky capability is disabled
-  and the issue records that mitigation.
-- Reassess both when the issue is picked up, deferred, or the active milestone
-  changes.
+- Title: `PR5-NN [P0][code] Short title`.
+- Put `**Priority:** P0` at the top of the issue body, before `Context`.
+- Use exactly one priority label.
+- Reassess priority when the issue is picked up, deferred, or the active
+  milestone changes.
 - `starter-slice` is a scope label, not a priority.
 
 ### Review issues
@@ -90,13 +77,20 @@ Rules:
   two issues for the same work.
 - IDs: `PR5-NN` for PR #5 review items, `GEN-NN` for carried-over FV-11 items.
   IDs are stable; never renumber or reuse.
-- Title: `PR5-NN [S2][P1][code] Short title`.
-- Severity and priority: one of each, as defined in “Issue severity and
-  priority”.
+- Title: `PR5-NN [P0][code] Short title`.
+- Priority: exactly one label, as defined in “Issue priority”.
 - Type tag: one primary tag, `[code]`, `[docs]`, `[test]`, `[ops]`, `[build]`,
   or `[design]`. Secondary work stays in `Work`.
 - Every issue body has `Context`, `Work`, `Acceptance`, and `Files/References`,
-  preceded by the severity, priority, and type header.
+  preceded by the priority header.
 - Reference other items by ID, never by position or line number.
 - When work lands: close the issue with the PR/commit. When an item is dropped,
   close it as not planned with the reason.
+
+## Pull requests
+
+Every pull request description must follow `.github/pull_request_template.md`.
+Fill all five sections — Summary, Why, Changes, Verification, and Risk — with a
+short, direct explanation. The goal is that a reviewer understands the purpose,
+scope, and evidence without reading the diff first. Do not paste commit logs or
+restate the diff line by line.
