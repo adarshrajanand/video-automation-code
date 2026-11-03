@@ -1,12 +1,43 @@
-# FV-11 FAQ — Complete Human Review Questions & Answers
+# FV-11 FAQ — Human Review Questions & Answers
 
-This document contains all 173 questions from the human review of PR #1, with detailed answers matching the GitHub replies posted on the PR.
+This document is the durable Q&A record for human reviews of this
+repository. Questions are grouped by review and then by topic, not by comment
+order or line number. Each answer names its source so it can be traced back to
+the original review.
+
+- **PR #1 review:** consolidated questions and answers from the initial review.
+- **PR #5 review:** 81 line comments plus 15 follow-up questions. The 81 replies
+  were posted on the PR. No code or reviewed-document fixes were made in
+  response; follow-ups are tracked in `TODO_POST_REVIEW.md` under `PR5-*`.
+
+Formatting rules for this file are in `AGENTS.md`.
+
+## Contents
+
+- [PR #1 Review — Initial Human Review](#pr-1-review--initial-human-review)
+- [PR #5 Review — Request-Flow Atlas](#pr-5-review--request-flow-atlas)
+  - [Follow-up index](#follow-up-index)
+  - [Documentation, Atlas, and Fixtures](#documentation-atlas-and-fixtures)
+  - [Workflow Definitions and Readiness](#workflow-definitions-and-readiness)
+  - [Execution Model: Stages, Attempts, Jobs, and Leases](#execution-model-stages-attempts-jobs-and-leases)
+  - [Identifiers and Idempotency](#identifiers-and-idempotency)
+  - [Database, Migrations, and Persistence](#database-migrations-and-persistence)
+  - [Capabilities, Providers, and Outbox](#capabilities-providers-and-outbox)
+  - [Quality Gates and Checks](#quality-gates-and-checks)
+  - [Artifacts, Slots, and Repair](#artifacts-slots-and-repair)
+  - [Failure Handling and Recovery](#failure-handling-and-recovery)
+  - [PR #5 Decision Summary](#pr-5-decision-summary)
 
 ---
 
-## Migration & Database
+## PR #1 Review — Initial Human Review
 
-### **Q: How did the migration mismatch happen with worktrees?**
+**Source:** PR #1 review.
+
+### Migration & Database
+
+#### **Q: How did the migration mismatch happen with worktrees?**
+
 **A:** Two worktrees (`fv-11-report`, `fv-11-test`) were created from the same commit. Both worktrees share the same `PIPELINE_HOME` environment variable (default: `~/.local/share/video-automation-pipeline/state/pipeline.sqlite3`), so they share the **same SQLite database file**. 
 
 The first worktree (`fv-11-report`) ran `pipeline db migrate`, which applied migration `0001_initial.sql` and recorded its SHA-256 checksum in the `schema_migrations` table. When the second worktree (`fv-11-test`) was created and ran `pipeline db migrate`, the migration runner detected that migration `0001_initial.sql` was already applied (record exists in `schema_migrations` table with checksum X). It then computed the current file's checksum (Y) and found X ≠ Y. The error: `migration 0001_initial.sql changed after it was applied; add a new migration instead`.
@@ -22,7 +53,8 @@ Or delete the DB and re-migrate when switching worktrees.
 
 ---
 
-### **Q: How does migration checksum detection work?**
+#### **Q: How does migration checksum detection work?**
+
 **A:** The migration runner (`src/pipeline/storage/migrations.py`) computes SHA-256 of each migration file's content:
 ```python
 def _compute_checksum(self, path: Path) -> str:
@@ -41,7 +73,8 @@ On subsequent runs, it recomputes the checksum and compares to the stored value.
 
 ---
 
-### **Q: What is the migration file `0001_initial.sql`?**
+#### **Q: What is the migration file `0001_initial.sql`?**
+
 **A:** Located at `src/pipeline/storage/migrations/0001_initial.sql`. It defines the **entire database schema** — 20+ tables:
 - `workflow_runs`, `stage_instances`, `stage_attempts`, `jobs`, `leases`
 - `idempotency_records`, `outbox_messages`, `inbox_receipts`
@@ -53,7 +86,8 @@ Every table stores the canonical Pydantic contract as JSON payload plus extracte
 
 ---
 
-### **Q: How to avoid migration conflicts with worktrees?**
+#### **Q: How to avoid migration conflicts with worktrees?**
+
 **A:** Each worktree should have its own `PIPELINE_HOME`:
 ```bash
 # In each worktree's .envrc or direnv:
@@ -63,7 +97,8 @@ This gives each worktree its own SQLite database file, eliminating migration con
 
 ---
 
-### **Q: Monthly quota — how to configure?**
+#### **Q: Monthly quota — how to configure?**
+
 **A:** The budget system is **not time-based** (month/week). It's per-scope: `WORKFLOW_RUN`, `PROJECT`, `ORGANIZATION`. Monthly quota is enforced externally by a billing system.
 
 Add to `BudgetPolicy` for external reference tracking:
@@ -82,9 +117,10 @@ Pipeline tracks and alerts; external billing system enforces hard stop.
 
 ---
 
-## Architecture & Design
+### Architecture & Design
 
-### **Q: Why is AUDIO_QC a separate stage?**
+#### **Q: Why is AUDIO_QC a separate stage?**
+
 **A:** AUDIO_QC is separate because it requires **heavy provider calls**:
 - Runs **after** speech generation (post-generation validation)
 - Calls **ffprobe** for media analysis + potentially ML models for signal quality
@@ -99,7 +135,8 @@ Other QC is integrated:
 
 ---
 
-### **Q: Why not make all QC separate stages?**
+#### **Q: Why not make all QC separate stages?**
+
 **A:** Light QC (schema validation, reference integrity) is inline in generation stages. Only heavy QC requiring provider calls (ffprobe, ML models) warrants separate stages. Current design:
 - `SCRIPT_GENERATION` → includes schema + reference QC
 - `SPEECH_GENERATION` → includes WER/CER, forced alignment QC
@@ -111,7 +148,8 @@ Other QC is integrated:
 
 ---
 
-### **Q: What is `major_stage` in workflow YAML?**
+#### **Q: What is `major_stage` in workflow YAML?**
+
 **A:** `major_stage: true` marks a node as a **logical grouping** for:
 - **Progress tracking**: Dashboard shows "CONTENT 100% → PRODUCTION 60% → POST 0%"
 - **Budget allocation**: Per-major-stage budget caps
@@ -137,7 +175,8 @@ Example in YAML:
 
 ---
 
-### **Q: What is `operation_version` in capability registry?**
+#### **Q: What is `operation_version` in capability registry?**
+
 **A:** Capability interface version (e.g., `v1`, `v2`). Same capability can have multiple versions with different input/output schemas. Registry keys by `(capability, operation_version)` → evaluator.
 
 Example:
@@ -160,7 +199,8 @@ Registry keys: `("speech_generation", "v1")` and `("speech_generation", "v2")` �
 
 ---
 
-### **Q: Why "Lease" not "Reservation Token"?**
+#### **Q: Why "Lease" not "Reservation Token"?**
+
 **A:** "Lease" is the **industry standard term** (Chubby, Consul, etcd, ZooKeeper). Alternatives:
 | Term | Used By | Why Not |
 |------|---------|---------|
@@ -183,14 +223,16 @@ class Lease(Contract):
 
 ---
 
-### **Q: Why YAML for workflows, not JSON/JSONC?**
+#### **Q: Why YAML for workflows, not JSON/JSONC?**
+
 **A:** YAML is preferred for **human authors** — comments, anchors, readability. JSON/JSONC for machine-generated configs. No strong need to unify.
 
 ---
 
-## Contracts & Models
+### Contracts & Models
 
-### **Q: What is `schema_version` and why everywhere?**
+#### **Q: What is `schema_version` and why everywhere?**
+
 **A:** Every contract has `schema_version` (e.g., `script.v1`, `quality-gate-result.v1`). Enables:
 - Versioned contract evolution
 - Migration/translation between versions
@@ -202,7 +244,7 @@ Few places lack it = oversight/legacy.
 
 ---
 
-### **Q: Contract vs Model — difference?**
+#### **Q: Contract vs Model — difference?**
 | Aspect | Contract | Model |
 |--------|----------|-------|
 | **Public API** | Yes | No |
@@ -216,7 +258,8 @@ Few places lack it = oversight/legacy.
 
 ---
 
-### **Q: Why `frozen=True` on contracts but `model_copy()` for changes?**
+#### **Q: Why `frozen=True` on contracts but `model_copy()` for changes?**
+
 **A:** 
 - **Frozen** = immutable after creation (thread safety, cache keys, audit trail)
 - To "modify": `new = old.model_copy(update={"field": value})` → creates new instance
@@ -230,7 +273,8 @@ Few places lack it = oversight/legacy.
 
 ---
 
-### **Q: What is `ExtensionObject`?**
+#### **Q: What is `ExtensionObject`?**
+
 **A:** `Dict[str, Any]` for **extensible metadata without schema**. "Arbitrary" = any JSON-serializable value. Used for provider-specific params, feature flags, future-proofing. Contract doesn't validate contents; provider SDK handles it.
 
 ```python
@@ -247,7 +291,8 @@ class SpeechGenerationInputV1(Contract):
 
 ---
 
-### **Q: Why `NonEmptyStr` not Enum for `pointer_type`?**
+#### **Q: Why `NonEmptyStr` not Enum for `pointer_type`?**
+
 **A:** 
 | Approach | Pros | Cons |
 |----------|------|------|
@@ -258,7 +303,7 @@ class SpeechGenerationInputV1(Contract):
 
 ---
 
-### **Q: Fixture vs Sample — what's the difference?**
+#### **Q: Fixture vs Sample — what's the difference?**
 | Term | Meaning |
 |------|---------|
 | **Fixture** | pytest term for "known good test data" (stored in `tests/fixtures/contracts/valid/`) |
@@ -268,7 +313,7 @@ class SpeechGenerationInputV1(Contract):
 
 ---
 
-### **Q: What is `InvalidationScope`?**
+#### **Q: What is `InvalidationScope`?**
 ```python
 class InvalidationScope(StrEnum):
     NONE = "NONE"
@@ -289,9 +334,10 @@ Independence: You can invalidate without repairing, or repair without invalidati
 
 ---
 
-## Execution & Concurrency
+### Execution & Concurrency
 
-### **Q: What is a fenced lease?**
+#### **Q: What is a fenced lease?**
+
 **A:** Fenced Lease = `(lease_id, token, owner_id, expires_at)` where:
 - **Token** = monotonically increasing integer per grant
 - **Owner** = worker ID claiming the lease
@@ -326,7 +372,8 @@ def verify_live_claim(
 
 ---
 
-### **Q: How does inbox/outbox work?**
+#### **Q: How does inbox/outbox work?**
+
 **A:** **Transactional Outbox Pattern** for reliable event delivery without external brokers.
 
 **Outbox (Producer Side):**
@@ -347,7 +394,8 @@ def verify_live_claim(
 
 ---
 
-### **Q: What happens after dead-letter?**
+#### **Q: What happens after dead-letter?**
+
 **A:** Dead-letter → human reviews via `HumanReview` workflow:
 1. Human reviews via `HumanReview` workflow
 2. Verifies actual provider state (API call, dashboard, logs)
@@ -357,7 +405,8 @@ Automated reconciliation = **FV-12+**.
 
 ---
 
-### **Q: Multi-repo atomic transactions = multi tables?**
+#### **Q: Multi-repo atomic transactions = multi tables?**
+
 **A:** Yes. "Repo" = `SqliteRepository` class per table. "Multi-repo" = multiple repositories in one transaction.
 
 ```python
@@ -379,7 +428,8 @@ with self.db.transaction() as conn:  # Single connection, single transaction
 
 ---
 
-### **Q: Where is SQLite saved? How to persist in VM?**
+#### **Q: Where is SQLite saved? How to persist in VM?**
+
 **A:** Default: `$PIPELINE_HOME/state/pipeline.sqlite3` 
 - Default: `$HOME/.local/share/video-automation-pipeline/state/pipeline.sqlite3`
 - Override: `export PIPELINE_HOME=/mnt/data/video-pipeline`
@@ -406,7 +456,8 @@ PIPELINE_HOME/
 
 ---
 
-### **Q: SQLite redundancy / corruption protection?**
+#### **Q: SQLite redundancy / corruption protection?**
+
 **A:** 
 | Protection | Mechanism |
 |------------|-----------|
@@ -445,9 +496,10 @@ rclone config  # → gdrive
 
 ---
 
-## Budget & Cost
+### Budget & Cost
 
-### **Q: Budget system — per month/week?**
+#### **Q: Budget system — per month/week?**
+
 **A:** NOT time-based. Per scope: `WORKFLOW_RUN`, `PROJECT`, `ORGANIZATION`. Monthly quota = external enforcement (billing system). Pipeline tracks/alerts; external system enforces hard stop.
 
 Add config for external quota reference:
@@ -462,7 +514,8 @@ class BudgetPolicy(Contract):
 
 ---
 
-### **Q: Budget = per-request + cumulative?**
+#### **Q: Budget = per-request + cumulative?**
+
 **A:** Two-layer budget:
 
 ```python
@@ -499,9 +552,10 @@ Request (cost_limit_minor=5000):
 
 ---
 
-## Capabilities & Fake Provider
+### Capabilities & Fake Provider
 
-### **Q: IdempotencyRecord — only for capability execution?**
+#### **Q: IdempotencyRecord — only for capability execution?**
+
 **A:** Currently yes. But the pattern is reusable. Could add `domain` field (`capability`, `workflow`, `quality`) for any idempotent operation.
 
 ```python
@@ -518,7 +572,7 @@ class IdempotencyRecord(Contract):
 
 ---
 
-### **Q: Idempotency key vs fingerprint?**
+#### **Q: Idempotency key vs fingerprint?**
 | Aspect | Idempotency Key | Fingerprint |
 |--------|-----------------|-------------|
 | Purpose | Exactly-once **execution** deduplication | Content-addressed **storage** deduplication |
@@ -528,12 +582,14 @@ class IdempotencyRecord(Contract):
 
 ---
 
-### **Q: Why fake provider only? When real providers?**
+#### **Q: Why fake provider only? When real providers?**
+
 **A:** FV-11 = local/fake-provider milestone. Real providers (AWS Bedrock, OpenAI, Google Vertex) = **FV-12+**. Executor interface allows swap; fake used for local dev/CI.
 
 ---
 
-### **Q: Why 8 missing outcome factories in `__init__.py`?**
+#### **Q: Why 8 missing outcome factories in `__init__.py`?**
+
 **A:** The CLI `capabilities invoke` command imports them directly for the `--fake-outcome` argument. Unit tests mock the registry → never exercise the CLI import path.
 
 **Fixed:** Added 8 missing exports to `src/pipeline/capabilities/__init__.py`:
@@ -552,14 +608,15 @@ create_audio_qc_failure_outcome
 
 ---
 
-## Testing & CLI
+### Testing & CLI
 
-### **Q: Why no quality tests in `tests/quality/`?**
+#### **Q: Why no quality tests in `tests/quality/`?**
+
 **A:** Quality tests are integrated in `tests/capabilities/test_audio_capabilities.py` and execution tests. Quality gate logic tested via capability + execution tests.
 
 ---
 
-### **Q: Correct CLI usage?**
+#### **Q: Correct CLI usage?**
 ```bash
 # Workflow validation (positional arg, not --workflow)
 uv run python -m pipeline workflow validate workflows/explainer_validation_v1.yaml
@@ -583,9 +640,10 @@ uv run python -m pipeline db migrate
 
 ---
 
-## Design Log
+### Design Log
 
-### **Q: Two design log files — both need updates?**
+#### **Q: Two design log files — both need updates?**
+
 **A:** Yes, both:
 - `docs/kb/docs/AI_Video_Pipeline_Design_Discussion_Log.md` = chronological discussions
 - `docs/kb/docs/AI_Video_Pipeline_Decisions.md` = decision register (ADR index)
@@ -594,9 +652,9 @@ Both need ADR-001 through ADR-007 added.
 
 ---
 
-## Backup & Recovery
+### Backup & Recovery
 
-### **Q: Free remote backup without AWS S3?**
+#### **Q: Free remote backup without AWS S3?**
 **Best: Rclone + Google Drive (15 GB free)**
 ```bash
 # Install
@@ -620,9 +678,10 @@ rclone copy "$BACKUP_DIR/pipeline_${TIMESTAMP}.sqlite3.gz" "gdrive:video-pipelin
 
 ---
 
-## Quality Gate
+### Quality Gate
 
-### **Q: Review zone logic fixed?**
+#### **Q: Review zone logic fixed?**
+
 **A:** Yes:
 - `review_threshold <= score < pass_threshold` → HUMAN_REVIEW
 - Pass-only (no review threshold): scores < pass_threshold → FAIL
@@ -630,7 +689,8 @@ rclone copy "$BACKUP_DIR/pipeline_${TIMESTAMP}.sqlite3.gz" "gdrive:video-pipelin
 
 ---
 
-### **Q: Duplicate failure codes — how fixed?**
+#### **Q: Duplicate failure codes — how fixed?**
+
 **A:** Check before appending:
 ```python
 if code not in failure_codes:
@@ -640,7 +700,7 @@ Applies to: hash mismatches, missing artifacts, threshold failures.
 
 ---
 
-## Summary Table
+### Summary Table
 
 | Topic | Key Point |
 |-------|-----------|
@@ -650,35 +710,76 @@ Applies to: hash mismatches, missing artifacts, threshold failures.
 | AUDIO_QC stage | Heavy QC (ffprobe/ML) needs separate budget/retry |
 | Major stage | Logical grouping for progress/budget/retry/human gates |
 | Fenced lease | Monotonic token prevents stale commits |
-| SQLite backup | Litestream to S3 (best) or Rclone + Google Drive (free) |
 | Monthly quota | External enforcement; pipeline tracks/alerts |
-| Missing exports | CLI imports not covered by unit tests |
 | Design log | Update both `Discussion_Log.md` and `Decisions.md` |
 | SQLite backup | Litestream to S3 (best) or Rclone + Google Drive (free) |
 
 ---
 
-# PR #5 Review — Request-Flow Atlas (81 comments)
+## PR #5 Review — Request-Flow Atlas
 
-Answers to the review on PR #5 (`docs/request-flow-atlas`, head `7e2004e`).
-These answers are local; nothing was posted to GitHub. No fixes were made to
-the code or to the reviewed documents. Code and documentation follow-ups are
-tracked in `TODO_POST_REVIEW.md` under `PR5-*`.
+**Source:** 81 line comments on PR #5 (`docs/request-flow-atlas`, head `7e2004e`) and 15 follow-up questions.
+**Status:** the 81 replies were posted on the PR. No code or reviewed-document
+fixes were made in response; follow-ups are tracked in `TODO_POST_REVIEW.md`.
 
-## CONTRACT_FIELD_ATLAS.md
+Questions are grouped by topic, not by comment order. The original line and
+comment ID are in each `**Source:**` line. Follow-up questions keep their
+`F1`–`F15` labels there; inline references such as `L3249` or “see F6” point to
+the matching Source line and Q&A in this section.
 
-### L50 (4443585960) — Why is `<` coming?
+### Follow-up index
 
-The `<` is a generator bug, not part of the contract type. `type_text()` does
+The 15 follow-up questions are integrated into the topic they belong to. Their `F` labels are stable; use this table to find the matching topic.
+
+| ID | Question | Topic |
+|----|----------|-------|
+| `F1` | Why is the table called `idempotency_records` if it is for capabilities? | Identifiers and Idempotency |
+| `F2` | Why is `jobs.idempotency_key` not just `job_id`? | Identifiers and Idempotency |
+| `F3` | What does “include the entity type or a formula version in the digest” mean? | Identifiers and Idempotency |
+| `F4` | How do I decide what belongs in `ExecutionContext` and what belongs in `CapabilityRequest`? | Execution Model: Stages, Attempts, Jobs, and Leases |
+| `F5` | What is a `schema_migrations` example? | Database, Migrations, and Persistence |
+| `F6` | What is `policy_ids` actually used for? | Workflow Definitions and Readiness |
+| `F7` | Were the `PR5-21` and `PR5-22` references stale? | Documentation, Atlas, and Fixtures |
+| `F8` | Should `logical_slot` be renamed to `artifact_key`? | Artifacts, Slots, and Repair |
+| `F9` | What is a Protocol, and why only three? | Capabilities, Providers, and Outbox |
+| `F10` | How can duplicate provider side effects still happen? Give an example. | Capabilities, Providers, and Outbox |
+| `F11` | What is the outbox multi-consumer limitation? Give an example. | Capabilities, Providers, and Outbox |
+| `F12` | How does a migration actually run, step by step? | Database, Migrations, and Persistence |
+| `F13` | What is updated in place, what is appended, and what decides that? | Execution Model: Stages, Attempts, Jobs, and Leases |
+| `F14` | What is a “mutating transition”, in plain terms? | Execution Model: Stages, Attempts, Jobs, and Leases |
+| `F15` | How do UUIDs make replay and dedupe harder? Give concrete examples. | Identifiers and Idempotency |
+
+---
+
+### Documentation, Atlas, and Fixtures
+
+#### **Q: “Three ways” lists more than three — what should the heading say?**
+
+**A:** Correct: the table lists seven destinations (golden path, component atlas,
+interface catalog, database atlas, state machines, cheat sheets, field atlas).
+Change the heading to “Where to look” or “Seven ways to read this document”.
+See `PR5-17`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L54, comment `4443723135`.
+
+---
+
+#### **Q: Why is `<` coming?**
+
+**A:** The `<` is a generator bug, not part of the contract type. `type_text()` does
 `str(annotation)` and then strips `<class '` and `'>`. An Enum class stringifies
 as `<enum 'FailureCode'>`; stripping `'>` leaves `<enum 'FailureCode`.
 
 Fix: detect `Enum` subclasses and render the class name (for example
 `FailureCode` or `FailureCode (enum)`), never `str(enum_class)`. See `PR5-01`.
 
-### L72 (4443610614) — Type formatting and “switched” Required/Default
+**Source:** PR #5 review, `CONTRACT_FIELD_ATLAS.md` L50, comment `4443585960`.
 
-There are two separate generator bugs here:
+---
+
+#### **Q: Why are Required and Default “switched” for some rows?**
+
+**A:** There are two separate generator bugs here:
 
 1. The union pipe in `list[...] | None` is not escaped. Markdown treats it as a
    cell separator, so `output_profile_ids` gets five cells and the remaining
@@ -691,233 +792,124 @@ There are two separate generator bugs here:
 
 See `PR5-01`.
 
-### L143 (4443634907) — `enabled_when`
+**Source:** PR #5 review, `CONTRACT_FIELD_ATLAS.md` L72, comment `4443610614`.
 
-Same unescaped union pipe. `workflow.ConditionExpression | None` splits the row
+---
+
+#### **Q: Why does `enabled_when` shift the Required/Default columns?**
+
+**A:** Same unescaped union pipe. `workflow.ConditionExpression | None` splits the row
 and shifts Required/Default. Not a contract problem.
 
-### L233 (4443643800) — `failure_code`
+**Source:** PR #5 review, `CONTRACT_FIELD_ATLAS.md` L143, comment `4443634907`.
 
-Same unescaped union pipe (`vocabularies.FailureCode | None`). Same column
+---
+
+#### **Q: Why does `failure_code` shift the Required/Default columns?**
+
+**A:** Same unescaped union pipe (`vocabularies.FailureCode | None`). Same column
 shift.
 
-### L854 (4443678005) — `normalized_error`
+**Source:** PR #5 review, `CONTRACT_FIELD_ATLAS.md` L233, comment `4443643800`.
 
-Same unescaped union pipe (`base.NormalizedError | None`). Same column shift.
+---
 
-## REQUEST_FLOW.md
+#### **Q: Why does `normalized_error` shift the Required/Default columns?**
 
-### L54 (4443723135) — “Three ways” lists more than three
+**A:** Same unescaped union pipe (`base.NormalizedError | None`). Same column shift.
 
-Correct: the table lists seven destinations (golden path, component atlas,
-interface catalog, database atlas, state machines, cheat sheets, field atlas).
-Change the heading to “Where to look” or “Seven ways to read this document”.
-See `PR5-17`.
+**Source:** PR #5 review, `CONTRACT_FIELD_ATLAS.md` L854, comment `4443678005`.
 
-### L80 (4443769413) — How do I map a job to the research stage?
+---
 
-Do not parse the job ID. Join the durable rows:
+#### **Q: Where is the recorded CLI fixture?**
 
-```text
-jobs.attempt_id
-  -> stage_attempts.attempt_id
-  -> stage_attempts.stage_instance_id
-  -> stage_instances.node_id          -- "research"
-  -> workflow definition / node_id
-```
+**A:** It is the SQLite database at
+`/tmp/opencode/pipeline-demo/state/pipeline.sqlite3`, created by the
+`capabilities invoke` command shown in §2.8. The table in §2.8 lists its real
+IDs (`config_d27a…`, `run_e39d…`, `stage_d27a…`, `attempt_a49b…`). It is a
+local demo artifact, not checked into the repository. Add a checked-in
+reproduction script/sample so readers can regenerate it. See `PR5-20`.
 
-`jobs` has no `node_id` or `stage_instance_id` column. The job is transport; the
-attempt and stage instance carry the work identity. §8.3 has the join recipe.
+**Source:** PR #5 review, `REQUEST_FLOW.md` L837, comment `4444242936`.
 
-### L81 (4443778200) — Why `idem_job_` instead of just `idem_`?
+---
 
-They dedupe different things:
+#### **Q: Should extension recipes be added to `AGENTS.md`?**
 
-- `idem_job_...` is the value in `jobs.idempotency_key`. It is produced by
-  `idempotency_key("job", run_id, node_id, item_key, attempt_number)` and makes
-  repeated job creation for the same logical attempt a no-op.
-- `idem_...` is the primary key of `idempotency_records`. It dedupes one
-  capability operation and stores the request fingerprint, status, and result
-  linkage.
+**A:** Agreed. The extension recipes are useful agent guidance. Add them to
+`docs/AGENTS.md` (the separate docs repository) or the README later. See
+`PR5-19`.
 
-Both are opaque. The extra prefix keeps the two dedupe boundaries visible in
-logs and avoids confusing a job key with an operation key.
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1964, comment `4444649412`.
 
-### L91 (4443790742) — Where is the attempt ID?
+---
 
-It is directly above the sentence, at line 79 (`attempt_0ed59dd3...`). The
-sentence says `capexec_` is derived from the attempt ID:
-`deterministic_id("capexec", attempt_id)`. The formula is repeated in §8.4.
-`attempt_id` is not a field of `CapabilityRequest`; it is carried by
-`ExecutionContext.attempt_id`.
+#### **Q: Were the `PR5-21` and `PR5-22` references stale?**
 
-### L92 (4443797295) — Is deriving IDs like this fine?
+**A:** Correct. The earlier references to `PR5-21` and `PR5-22` were stale
+placeholders; no such TODO items existed. The dangling references are fixed:
 
-The derivation is stable as long as its input parts are stable. That is the
-intent: the digest identifies a logical unit, and the prefix identifies the
-record type. The real risks are:
+- queue names -> `PR5-18` (docs expansion), not `PR5-21`;
+- `latency_budget_ms` -> `PR5-17` (factual doc fix), not `PR5-22`;
+- payload-size tradeoff -> `PR5-18`, not `PR5-22`.
 
-- changing a parent formula (all children change);
-- reusing a key for a different semantic unit;
-- two record types sharing a digest (intentional here, but easy to confuse).
+`PR5-21` is now allocated to the capability idempotency table rename and
+`PR5-22` to `policy_ids`. No GitHub comment uses these IDs; they are local
+tracking IDs.
 
-The code never parses an ID to recover meaning. Reuse is caught by unique
-constraints and by the idempotency fingerprint/operation-version checks. If we
-want stronger isolation, add an ID-formula version or include the entity type
-in the digest; that does not remove the parent dependency. This is a design
-contract worth writing down rather than changing ad hoc. See `PR5-11`.
+**Source:** Follow-up `F7`.
 
-### L101 (4443810890) — Do prefixes drive if/else logic?
+---
 
-No. There is no `if id.startswith("job_")` dispatch. Repositories are typed
-(`JobRepository`, `StageInstanceRepository`, and so on) and query their own
-tables by key columns. The prefix table is a human/debugging lookup index; IDs
-are opaque to callers.
+### Workflow Definitions and Readiness
 
-### L125 (4443846488) — Deterministic IDs depend on other IDs; isn't that flaky?
+#### **Q: Is “PURE WORKFLOW” a plane?**
 
-The dependency is deliberate and explicit. `attempt_` and `job_` share a
-digest because they identify the same `(stage_id, attempt_number)` logical unit;
-only the prefix differs. `capexec_` depends on `attempt_id`; `idem_`, `route_`,
-and `inv_` depend on `capexec_id`. This is testable and reproducible. It is not
-a random or hidden dependency.
-
-What would make it flaky is changing a parent formula or treating the digest as
-a stable public API without versioning. Use `new_id()`/UUID where there is no
-natural key. See `PR5-11`.
-
-### L146 (4443836400) — Is “PURE WORKFLOW” a plane?
-
-It is a layer of pure functions (loader, conditions, cardinality, readiness),
+**A:** It is a layer of pure functions (loader, conditions, cardinality, readiness),
 not a runtime plane or a separate process. Planes 3 and 4 own durable control
 and acceptance state. The diagram label would be clearer as “PURE WORKFLOW
 LAYER”. See `PR5-17`.
 
-### L230 (4443887933) — What is one-to-many? Which stage?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L146, comment `4443836400`.
 
-`speech` is `one_to_many`: one speech node expands into one `StageInstance` per
-manifest child (for example, per scene/segment), not one speech artifact for
-the whole run. `visual_plan` is `one_to_one`.
+---
 
-The YAML says:
+#### **Q: Should a human define the workflow?**
 
-```yaml
-cardinality: {schema_version: cardinality.v1, mode: one_to_many,
-              count: null, selection_policy: manifest_children}
-```
-
-`manifest_children` means the expected item keys come from the input manifest.
-
-### L234 (4443893660) — What is one-to-many for assets? Is there no many-to-one?
-
-`assets` is also `one_to_many`: one required-asset slot/manifest child becomes
-one stage instance. `many_to_one` does exist: `composition`,
-`long_form_assembly`, and `final_review` are fan-in nodes. One stage instance
-consumes multiple dependency outputs. See the YAML lines for those nodes.
-
-### L269 (4443908416) — If one-to-many has count 1, isn't it one-to-one?
-
-The final cardinality is one, yes. The mode still describes how the planner
-derives keys: `one_to_many` fans out from a manifest, while `count: 1` caps it
-at one item. If the count will always be one, `one_to_one` is simpler and this
-is a modeling smell. The current YAML keeps `one_to_many` to preserve the
-fan-out semantics and allow a later increase without changing the node class.
-See `PR5-17`.
-
-### L283 (4443928026) — Why does `capabilities list` migrate the DB?
-
-It should not. `capabilities list` has no database need, but the
-implementation calls `_migrated_database()`, which opens the DB and runs
-`MigrationRunner.migrate()`. That is an accidental side effect of sharing the
-helper. Make the command read-only. See `PR5-08`.
-
-### L314 (4443941994) — Should a human define the workflow?
-
-Yes. The workflow definition is an authored, reviewed, versioned artifact
+**A:** Yes. The workflow definition is an authored, reviewed, versioned artifact
 (`explainer_validation_v1.yaml`), not a runtime system choice. It is loaded
 immutably; changing the graph requires a new definition/version. The runtime
 resolves policy and readiness, but does not invent the stage graph.
 
-### L317 (4443950981) — How does a stage instance relate to a job?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L314, comment `4443941994`.
 
-The chain is:
+---
 
-```text
-StageInstance 1 -> N StageAttempt 1 -> N Job
-```
+#### **Q: What does “No custom tags, no execution” mean?**
 
-- `StageInstance` is one logical node/item (`stage_instance_id`).
-- `StageAttempt` is one try at that instance (`attempt_id`,
-  `stage_instance_id`, `attempt_number`).
-- `Job` is the claimable transport row for one attempt (`job_id`,
-  `attempt_id`, `queue_name`).
-
-`JobFactory` normally creates one attempt and one job per READY stage item.
-Retries/regenerations create a new attempt and a new job. `StageInstance` has
-`active_attempt_id`; `jobs` has no direct `stage_instance_id`.
-
-### L324 (4443964040) — How is `ExecutionContext` different from the others?
-
-- `EffectiveConfig`: immutable run-level policy/profile snapshot and hash.
-- `ReadinessContext`: all durable state passed to the pure readiness function
-  (run, workflow, stage instances, manifests, gates, reviews, conditions).
-- `ReadinessResult`: readiness output (ready/blocked items, next run status).
-- `CapabilityRequest`: provider-neutral description of one capability
-  invocation (operation, inputs, payload, requirements, idempotency key).
-- `ExecutionContext`: runtime envelope for that invocation (run/stage/attempt/
-  config IDs, correlation ID, timeout, allowed data classification).
-- `RoutingDecision`: which implementation/provider/model was selected.
-
-They differ by lifecycle and purpose. `ExecutionContext` is not a duplicate of
-the request; it carries runtime scope that should not affect the request’s
-content fingerprint.
-
-### L347 (4443980491) — Do these steps run every time?
-
-Every connection opened by `Database` runs the PRAGMAs (`busy_timeout`,
-`foreign_keys`, WAL, `synchronous=NORMAL`). `MigrationRunner.migrate()` runs
-only when a command calls it: `_migrated_database()` users, `db migrate`, and
-the human-review commands. `quality evaluate` opens `Database` directly and
-currently skips migration (that is a bug, see L3249).
-
-`migrate()` is idempotent when up to date: it creates/reads
-`schema_migrations` and applies only pending files.
-
-### L346 (4443985940) — What is `synchronous=NORMAL`?
-
-It is SQLite’s fsync policy. In WAL mode, `NORMAL` avoids an fsync on every
-commit and syncs at checkpoints. Commits are fast; a power loss can lose recent
-transactions, but the database remains consistent. `FULL` is safer and slower.
-The local baseline chooses `NORMAL`.
-
-### L365 (4443992451) — What is the `schema_migrations` row for?
-
-`schema_migrations` is the migration ledger: one row per applied file with
-`version`, `name`, `checksum`, and `applied_at`. It lets the runner:
-
-- know which files are already applied;
-- detect an edited applied migration by checksum;
-- enforce a contiguous, prefix-valid history;
-- apply only pending files.
-
-Without it, `migrate()` could not be idempotent or fail closed on drift.
-
-### L385 (4444002634) — “No custom tags, no execution”
-
-`yaml.safe_load()` constructs only standard YAML scalars, lists, and maps. It
+**A:** `yaml.safe_load()` constructs only standard YAML scalars, lists, and maps. It
 does not instantiate arbitrary Python objects from tags such as
 `!!python/object`, and it does not execute workflow content. The workflow is
 data only.
 
-### L395 (4444010778) — Resulting object of what?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L385, comment `4444002634`.
 
-`load_workflow_data()` validates the mapping into a `WorkflowDefinition`
+---
+
+#### **Q: Resulting object of what?**
+
+**A:** `load_workflow_data()` validates the mapping into a `WorkflowDefinition`
 Pydantic model instance. It contains the node graph, selectors, cardinality,
 and policy references. It is not a raw dict.
 
-### L402 (4444013163) — What is `policy_ids`?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L395, comment `4444010778`.
 
-It is the workflow-level list of policy IDs the definition adopts (currently
+---
+
+#### **Q: What is `policy_ids`?**
+
+**A:** It is the workflow-level list of policy IDs the definition adopts (currently
 `default_recovery_v1`). Each node also declares its own
 `recovery_policy_id`. `policy_ids` is a reference list, not an inlined policy
 body; the policy definitions live in the policy registry/config.
@@ -927,9 +919,13 @@ registry. The docs validator checks it, but the runtime loader does not.
 `policy_ids` currently has almost no runtime effect; see F6 for the intended
 use, the precedence question, and `PR5-22`.
 
-### L403 (4444023133) — What do multiple nodes look like?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L402, comment `4444013163`.
 
-`nodes` is an array of `StageNode` objects. Multiple nodes are simply more
+---
+
+#### **Q: What do multiple nodes look like?**
+
+**A:** `nodes` is an array of `StageNode` objects. Multiple nodes are simply more
 objects in the same array:
 
 ```json
@@ -954,20 +950,13 @@ Each node also carries `schema_version`, `implementation_version`,
 `depends_on` references earlier node IDs; the loader validates uniqueness,
 known references, and the acyclic/topological order.
 
-### L447 (4444041417) — Who sets `RunOverrides`? Does it change every run?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L403, comment `4444023133`.
 
-`RunOverrides` are caller-supplied (human/API/CLI), optional, and per run.
-Domain/channel profiles provide defaults; system policy bounds what may be
-overridden (`non_overridable_fields`). They can change on every run, but the
-resolved `EffectiveConfig` is persisted as an immutable snapshot.
+---
 
-There is no production resolver yet: the CLI constructs an empty
-`RunOverrides(schema_version="run-overrides.v1")`. Implementing resolution
-(with bounds, `resolved_values`, and `source_map`) is `PR5-13`.
+#### **Q: What does each policy look like?**
 
-### L441 (4444046058) — What does each policy look like?
-
-The contracts in `src/pipeline/contracts/profiles.py` and `config.py` are:
+**A:** The contracts in `src/pipeline/contracts/profiles.py` and `config.py` are:
 
 - `SystemPolicy`: `policy_id`, `version`, `max_parallelism`,
   `max_retry_attempts`, `budget_policy_id`, `allowed_providers`,
@@ -990,9 +979,225 @@ The contracts in `src/pipeline/contracts/profiles.py` and `config.py` are:
 
 See `PR5-17` for adding representative JSON examples to §2.2.
 
-### L524 (4444102663) — What does the unique constraint buy us?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L441, comment `4444046058`.
 
-Scenario: two callers/event handlers try to create work for the same
+---
+
+#### **Q: Who sets `RunOverrides`? Does it change every run?**
+
+**A:** `RunOverrides` are caller-supplied (human/API/CLI), optional, and per run.
+Domain/channel profiles provide defaults; system policy bounds what may be
+overridden (`non_overridable_fields`). They can change on every run, but the
+resolved `EffectiveConfig` is persisted as an immutable snapshot.
+
+There is no production resolver yet: the CLI constructs an empty
+`RunOverrides(schema_version="run-overrides.v1")`. Implementing resolution
+(with bounds, `resolved_values`, and `source_map`) is `PR5-13`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L447, comment `4444041417`.
+
+---
+
+#### **Q: What is one-to-many? Which stage?**
+
+**A:** `speech` is `one_to_many`: one speech node expands into one `StageInstance` per
+manifest child (for example, per scene/segment), not one speech artifact for
+the whole run. `visual_plan` is `one_to_one`.
+
+The YAML says:
+
+```yaml
+cardinality: {schema_version: cardinality.v1, mode: one_to_many,
+              count: null, selection_policy: manifest_children}
+```
+
+`manifest_children` means the expected item keys come from the input manifest.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L230, comment `4443887933`.
+
+---
+
+#### **Q: What is one-to-many for assets? Is there no many-to-one?**
+
+**A:** `assets` is also `one_to_many`: one required-asset slot/manifest child becomes
+one stage instance. `many_to_one` does exist: `composition`,
+`long_form_assembly`, and `final_review` are fan-in nodes. One stage instance
+consumes multiple dependency outputs. See the YAML lines for those nodes.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L234, comment `4443893660`.
+
+---
+
+#### **Q: If one-to-many has count 1, isn't it one-to-one?**
+
+**A:** The final cardinality is one, yes. The mode still describes how the planner
+derives keys: `one_to_many` fans out from a manifest, while `count: 1` caps it
+at one item. If the count will always be one, `one_to_one` is simpler and this
+is a modeling smell. The current YAML keeps `one_to_many` to preserve the
+fan-out semantics and allow a later increase without changing the node class.
+See `PR5-17`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L269, comment `4443908416`.
+
+---
+
+#### **Q: How does cardinality work for stage instances and attempts?**
+
+**A:** - `one_to_one`: one stage instance, typically one item key.
+- `one_to_many`: the planner expands expected item keys from manifest children
+  or render chunks; N stage instances are created, each with its own attempts
+  and jobs. `count` caps or forces the number.
+- `many_to_one`: one stage instance consumes multiple dependency
+  instances/outputs (fan-in).
+
+`StageInstance` = node + logical item. `StageAttempt` = one try at that
+instance; retries and regenerations increment the attempt number and create a
+new attempt. `Job` = claimable transport for one attempt.
+
+So N items produce N instances and up to N attempt/job chains; one item with
+retries produces one instance and multiple attempts/jobs. `short_derivative`
+with `one_to_many` and `count: 1` produces exactly one instance despite the
+fan-out mode.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3353, comment `4445505869`.
+
+---
+
+#### **Q: What is `policy_ids` actually used for?**
+
+**A:** Honest answer: today, almost nothing. `WorkflowDefinition.policy_ids` is only
+checked for duplicates:
+
+```python
+policy_ids: list[NonEmptyStr] = Field(default_factory=list)
+
+if len(set(self.policy_ids)) != len(self.policy_ids):
+    raise ValueError("policy_ids must not contain duplicates")
+```
+
+The runtime loader does not resolve the IDs against a registry, and readiness
+and execution do not read them. `StageNode.recovery_policy_id` is separately
+validated against `RECOVERY_POLICY_IDS`, but execution still uses the default
+recovery policy rather than a node-specific lookup. The docs validator checks
+`policy_ids` against the recovery-policy registry, so docs and runtime disagree
+about how strict the field is.
+
+Intended use: a workflow-level declaration of the policy set/versions the
+definition expects. For example:
+
+```yaml
+policy_ids: [default_recovery_v1]
+nodes:
+  - node_id: research
+    recovery_policy_id: default_recovery_v1
+```
+
+A correct loader would resolve each ID to a typed policy, fail if it is unknown
+or the wrong version, and record the resolved policy IDs/versions in
+`EffectiveConfig`. That lets a run fail before spending money:
+
+```text
+workflow says policy_ids: [default_recovery_v2]
+registry only has default_recovery_v1
+-> loader rejects the workflow
+```
+
+Today that workflow loads, and execution silently uses
+`default_recovery_policy()` v1. That is the bug.
+
+There is also a precedence question: workflow-level `policy_ids` versus
+node-level `recovery_policy_id`. Pick one rule:
+
+- workflow-level defaults, node-level override; or
+- remove workflow-level `policy_ids` and require every node to name its policy.
+
+Recommended: keep the workflow-level list as a manifest, validate it against
+the registry, and define node-level `recovery_policy_id` as the override. If
+that is not wanted, remove `policy_ids` rather than leaving a dead field.
+Tracked as `PR5-22`.
+
+**Source:** Follow-up `F6`.
+
+---
+
+### Execution Model: Stages, Attempts, Jobs, and Leases
+
+#### **Q: How do I map a job to the research stage?**
+
+**A:** Do not parse the job ID. Join the durable rows:
+
+```text
+jobs.attempt_id
+  -> stage_attempts.attempt_id
+  -> stage_attempts.stage_instance_id
+  -> stage_instances.node_id          -- "research"
+  -> workflow definition / node_id
+```
+
+`jobs` has no `node_id` or `stage_instance_id` column. The job is transport; the
+attempt and stage instance carry the work identity. §8.3 has the join recipe.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L80, comment `4443769413`.
+
+---
+
+#### **Q: Where is the attempt ID?**
+
+**A:** It is directly above the sentence, at line 79 (`attempt_0ed59dd3...`). The
+sentence says `capexec_` is derived from the attempt ID:
+`deterministic_id("capexec", attempt_id)`. The formula is repeated in §8.4.
+`attempt_id` is not a field of `CapabilityRequest`; it is carried by
+`ExecutionContext.attempt_id`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L91, comment `4443790742`.
+
+---
+
+#### **Q: How does a stage instance relate to a job?**
+
+**A:** The chain is:
+
+```text
+StageInstance 1 -> N StageAttempt 1 -> N Job
+```
+
+- `StageInstance` is one logical node/item (`stage_instance_id`).
+- `StageAttempt` is one try at that instance (`attempt_id`,
+  `stage_instance_id`, `attempt_number`).
+- `Job` is the claimable transport row for one attempt (`job_id`,
+  `attempt_id`, `queue_name`).
+
+`JobFactory` normally creates one attempt and one job per READY stage item.
+Retries/regenerations create a new attempt and a new job. `StageInstance` has
+`active_attempt_id`; `jobs` has no direct `stage_instance_id`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L317, comment `4443950981`.
+
+---
+
+#### **Q: How is `ExecutionContext` different from the others?**
+
+**A:** - `EffectiveConfig`: immutable run-level policy/profile snapshot and hash.
+- `ReadinessContext`: all durable state passed to the pure readiness function
+  (run, workflow, stage instances, manifests, gates, reviews, conditions).
+- `ReadinessResult`: readiness output (ready/blocked items, next run status).
+- `CapabilityRequest`: provider-neutral description of one capability
+  invocation (operation, inputs, payload, requirements, idempotency key).
+- `ExecutionContext`: runtime envelope for that invocation (run/stage/attempt/
+  config IDs, correlation ID, timeout, allowed data classification).
+- `RoutingDecision`: which implementation/provider/model was selected.
+
+They differ by lifecycle and purpose. `ExecutionContext` is not a duplicate of
+the request; it carries runtime scope that should not affect the request’s
+content fingerprint.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L324, comment `4443964040`.
+
+---
+
+#### **Q: What does the unique constraint buy us?**
+
+**A:** Scenario: two callers/event handlers try to create work for the same
 `(run_id, node_id, logical_item_key)`. The unique constraint permits exactly
 one `stage_instances` row. The second insert raises an integrity error
 (translated to `ConflictError`), so the caller can re-read the existing row
@@ -1003,306 +1208,73 @@ yet. Also, the stage ID formula currently uses only `(run_id, node_id)`, so two
 logical items in one node would collide *before* the constraint helps. Fix the
 formula and add a creator/upsert path. See `PR5-03`.
 
-### L685 (4444163633) — What other queue names are possible?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L524, comment `4444102663`.
 
-Only `"default"` is used today (`JobFactory.create_job` default and the CLI
+---
+
+#### **Q: What other queue names are possible?**
+
+**A:** Only `"default"` is used today (`JobFactory.create_job` default and the CLI
 `--queue` default). `queue_name` is a free-form `NonEmptyStr` with no enum or
 `CHECK`. Any label works if producers and workers agree, for example `"gpu"`,
 `"tts"`, `"render"`, or `"human"`, but none are defined. A worker filters the
 exact queue name when `--queue` is passed; there is no additional routing
 semantics. See `PR5-18`.
 
-### L766 (4444215757) — What does “builds a request in code” mean?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L685, comment `4444163633`.
 
-The CLI constructs `CapabilityRequest`, `RoutingDecision`, and
+---
+
+#### **Q: What does “builds a request in code” mean?**
+
+**A:** The CLI constructs `CapabilityRequest`, `RoutingDecision`, and
 `ExecutionContext` inline from command-line flags plus a synthetic fixture graph
 (`test_workflow`, `test_node`, `test_item`). It does not load the workflow YAML,
 run readiness, or resolve effective config from profiles. That is why this is a
 real end-to-end slice but not a full orchestration path.
 
-### L811 (4444221315) — Why does a capability need `input_artifact_ids`?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L766, comment `4444215757`.
 
-They bind the request to exact input artifact versions for provenance,
-idempotency validation, and replay. They may be empty for an operation with no
-artifact inputs; the CLI fixture uses `[]`. On key reuse the executor compares
-the list, and the idempotency record stores it.
+---
 
-### L812 (4444226847) — Which payload’s fingerprint is this?
+#### **Q: Why is `ExecutionContext` not part of the request?**
 
-It is the fingerprint of `request.payload`, the capability’s input payload. The
-CLI computes `sha256_text(json.dumps(payload, sort_keys=True))`; the executor
-only compares the fingerprint for equality and does not inspect the payload.
-It does not cover requirements or runtime context.
-
-### L813 (4444230048) — What do `requirements` mean? Where is effective config?
-
-`requirements` are per-request hard eligibility constraints: `capability`,
-`required_features`, `locale`, `quality_requirement`, `latency_requirement`,
-`data_classification`, and `cost_limit_minor`.
-
-The effective config is **not** part of `CapabilityRequest`. It is the
-run-level policy snapshot; its ID is `ExecutionContext.effective_config_id`.
-The CLI inserts a fixture `EffectiveConfig` before invoking the executor.
-
-Doc bug: the golden example in §2.8.1 shows `latency_budget_ms`, but the
-contract has no such field (and extra fields are forbidden). It should be
-`latency_requirement` (a string) or be removed. See `PR5-17`.
-
-### L837 (4444242936) — Where is the recorded CLI fixture?
-
-It is the SQLite database at
-`/tmp/opencode/pipeline-demo/state/pipeline.sqlite3`, created by the
-`capabilities invoke` command shown in §2.8. The table in §2.8 lists its real
-IDs (`config_d27a…`, `run_e39d…`, `stage_d27a…`, `attempt_a49b…`). It is a
-local demo artifact, not checked into the repository. Add a checked-in
-reproduction script/sample so readers can regenerate it. See `PR5-20`.
-
-### L853 (4444252974) — Why is `ExecutionContext` not part of the request?
-
-Because it is the runtime envelope, not work content. It carries run, stage,
+**A:** Because it is the runtime envelope, not work content. It carries run, stage,
 attempt, and effective-config IDs, correlation ID, timeout, and allowed data
 classification. Those change per attempt and are used for budget, telemetry,
 and authorization. Putting them in the request would make the content
 fingerprint depend on runtime identity. The separation also lets the same
 request be replayed under a new attempt context.
 
-### L949 (4444290889) — Is the projection drift bad? Must it be corrected?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L853, comment `4444252974`.
 
-Yes. It is a real bug, not just an aesthetic issue. The DDL columns exist, but
-`IdempotencyRecordRepository.columns` omits five of them, so the extracted
-columns keep their defaults while the payload has the correct values. Any SQL
-filtering, joining, or sorting on those columns is wrong.
+---
 
-Fix by adding `operation_version`, `input_artifact_ids`, `required_features`,
-`locale`, and `result_artifact_ids` to `columns`, teaching `_column_value()` to
-JSON-encode list values (it currently handles only bool/Enum/datetime), and
-backfilling or validating existing rows from the payload. There is no production
-data, so this is low risk. See `PR5-02`.
+#### **Q: What is `usage_id` for?**
 
-### L958 (4444298992) — Is the budget-reservation update conditional?
-
-Yes. The executor only creates/reserves a budget row when
-`requirements.cost_limit_minor` is set **and** a `BudgetReservationRepository`
-is supplied. The recorded CLI fixture does neither, so it has no
-`budget_reservations` row. Separately, if a prior reservation is `RELEASED`, a
-new reservation with the same `(idempotency_key, scope_type, scope_id)` updates
-that row in place instead of inserting (the unique constraint would otherwise
-reject it). That update is not the normal first path.
-
-### L1023 (4444310887) — What is `usage_id` for?
-
-`UsageRecord` has no ID field. `UsageRecordRepository` generates `usage_id`
+**A:** `UsageRecord` has no ID field. `UsageRecordRepository` generates `usage_id`
 deterministically from `(capability_execution_id, provider)` to key the usage
 table, dedupe repeated writes, and join usage to the execution. It is a storage
 key, not domain data.
 
-### L1041 (4444318332) — Where does idempotency first appear?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1023, comment `4444310887`.
 
-Two levels:
+---
 
-1. At job creation, `jobs.idempotency_key` (`idem_job_...`) makes repeated
-   attempt/job creation idempotent.
-2. At executor entry, inside the first transaction, the executor does
-   `IdempotencyRecordRepository.get(key)` or creates a `RESERVED` record
-   **before** budget reservation, routing/execution persistence, or provider
-   invocation. That record is the replay boundary for provider side effects.
+#### **Q: Is there no `CREATED` for stage execution?**
 
-So the answer depends on whether you mean transport-level or operation-level
-idempotency.
-
-### L1124 (4444351379) — Why is quota not reconcilable? Does dead letter solve it?
-
-“Reconcile” here means resolving an **ambiguous external outcome** by checking
-provider state: did the call happen, and what result did it produce? It is not
-“retry later”.
-
-`QUOTA` is a definite policy refusal with no unknown side effect, so it is
-`retryable=False` and there is nothing to reconcile. A dependency being down
-should classify as `TRANSIENT` (retryable) and use backoff; after the retry
-budget is exhausted, policy chooses `WAIT_HUMAN` or `FAIL`. Dead letter is
-terminal and does not retry, so it does not solve a later quota reset. A
-quota-reset retry is a new scheduling decision and is not implemented.
-
-### L1182 (4444388352) — Why migrate on open?
-
-That row describes the **target**, not current behavior: current
-`quality evaluate` opens `Database` directly and does not migrate; the proposed
-fix is “migrate on open” so the command is self-sufficient on a fresh database.
-Today a fresh DB fails with `no such table: quality_evaluations`. See `PR5-05`.
-
-### L1208 (4444395679) — Why `qgr_` twice?
-
-A real bug. `deterministic_id("qgr", ...)` already returns `qgr_<digest>`, and
-`_create_gate_result()` prepends `qgr_` again. The same pattern affects `eval_`
-and `repair_`. The IDs are stable and unique but wrong-shaped. See `PR5-04`.
-
-### L1223 (4444398438) — Why `eval_` twice?
-
-Same bug in `DeterministicCheckEvaluator`: `deterministic_id("eval", ...)`
-returns `eval_<digest>`, then the constructor prepends `eval_`. Note that some
-semantic/media/speech evaluators use `f"eval_{uuid4().hex[:12]}"`, which is
-single-prefixed but random; the documentation should not claim every evaluator
-path is double-prefixed. See `PR5-04` and `PR5-17`.
-
-### L1253 (4444412863) — If it is a quirk, should it be fixed?
-
-Yes. The “do not fix casually” warning was about persisted production identity.
-There is no production data here, so fix the three deterministic call sites
-(`eval`, `qgr`, `repair`) to use the helper result directly, update tests,
-fixtures, and example IDs, and add regression assertions. No migration is
-needed. See `PR5-04`.
-
-### L1266 (4444420827) — What is `ABSTAIN`?
-
-`ABSTAIN` is a `CheckOutcome`: the evaluator could not make a PASS/FAIL
-decision (for example, insufficient evidence or a deliberately
-non-determinable check). It is not PASS and not `NOT_APPLICABLE`. The gate
-escalates any ABSTAIN to `HUMAN_REVIEW` rather than silently passing.
-
-### L1268 (4444422667) — Is `after_max_regenerations` a code?
-
-It is a policy field, not a failure code. `QualityGatePolicy` has
-`after_max_regenerations: RepeatedFailureAction`, whose values are
-`HUMAN_REVIEW` and `FAIL`. The CLI sets `HUMAN_REVIEW`. The gate applies it
-when the regeneration budget is exhausted.
-
-### L1271 (4444430560) — How were the thresholds decided?
-
-They were not calibrated. The CLI hardcodes `0.8` pass and `0.65` review for
-`claim_support`, `clarity`, `structure`, and `tone`. `ThresholdRegistry` exists
-with per-dimension records and recalibration fields, but the CLI gate path does
-not use it. This is a placeholder policy. See `PR5-10` to load policies from
-the database, use threshold records, and record calibration/rationale in an
-ADR.
-
-### L1356 (4444456524) — What is a `RepairPlan`?
-
-It is a durable **instruction**, not an executed action. It records the source
-gate result, reason codes, target artifact/stage-instance IDs, invalidation
-scope, max attempts, and creation time. Creating it does not invalidate
-artifacts or enqueue replacement work; no executor consumes it yet. It is a
-plan for a future repair/recovery path.
-
-### L1478 (4444498798) — What is `logical_slot`, and why that name?
-
-`logical_slot` is the stable editorial position/name for an artifact within a
-run (`script`, `speech_scene_001`, `render_chunk_02`), independent of version.
-Successive artifact versions fill the same slot; `(run_id, logical_slot,
-version)` is unique, and pointers select the active version per slot/type.
-
-The name comes from the content/timeline idea of a “slot” that gets filled.
-It is being renamed to `artifact_key`: it says what the value is, and it stays
-accurate for manifests and render chunks that are not “content”. The rename
-needs a new migration (not an edit to `0001_initial.sql`), plus contract,
-repository, index, test, and docs updates. See F8 and `PR5-12`.
-
-### L1809 (4444580430) — Why only the first 32 hex characters?
-
-32 hex characters = 128 bits of SHA-256. That is ample for run-scale uniqueness
-(the birthday bound is around 2^64) while keeping IDs readable and compact. The
-full SHA-256 remains available where content addressing needs it. Truncation is
-a display/storage tradeoff, not a security claim.
-
-### L1853 (4444599405) — Why only three Protocols?
-
-They are the only real plugin/handler boundaries:
-
-- `Evaluator` — quality check implementations.
-- `JobHandler` — worker job execution.
-- `OutboxDeliveryHandler` — outbox consumer effect.
-
-Everything else is a concrete class or function, either because there is one
-implementation or there is no injection point. Protocols are not used just for
-documentation; they are structural interfaces at real substitution seams. See
-F9 for the `JobHandler` example and when not to add a Protocol.
-
-### L1964 (4444649412) — Add extension recipes to AGENTS.md
-
-Agreed. The extension recipes are useful agent guidance. Add them to
-`docs/AGENTS.md` (the separate docs repository) or the README later. See
-`PR5-19`.
-
-### L1985 (4444663829) — `QualityGatePolicy` vs `QualityCheck`
-
-`QualityCheck` is one registered check definition: target artifact types,
-evaluator, severity, repair scope, required flag, and rubric version.
-`QualityGatePolicy` is the gate composition: required check IDs, hard failure
-codes, pass/review thresholds, regeneration limit, and after-max action.
-
-In short: a check is “what to evaluate”; a policy is “which checks, with what
-thresholds and decision rules”.
-
-### L2015 (4444691914) — What does `CHECK` mean here?
-
-It is a SQLite table-level `CHECK` constraint, for example
-`CHECK (complete IN (0,1))` or `CHECK (end_frame > start_frame)`. It rejects
-invalid rows at write time. It is unrelated to quality checks.
-
-### L2143 (4444727788) — Is there a better name than “slot”?
-
-See L1478. Decided: rename to `artifact_key`. It is the key for the artifact’s
-editorial position, not a content-only slot. Do it with a new migration plus
-the contract/repository/test/docs change. See F8 and `PR5-12`.
-
-### L2159 (4444730847) — If every table is idempotent, why `idempotency_records`?
-
-Database constraints make **writes** idempotent: they prevent duplicate rows.
-They do not prevent duplicate provider side effects. `idempotency_records`
-stores the operation key, request fingerprint, status, and result linkage so a
-replay returns the prior result or rejects a conflicting request. That is
-semantic idempotency, which a unique constraint cannot provide.
-
-The table is capability-specific, so it should be named
-`capability_idempotency_records`. See F1 and `PR5-21`.
-
-### L2184 (4444736333) — Won’t storing the full payload increase table size?
-
-Yes. The payload duplicates the extracted columns. The tradeoff is deliberate:
-the payload is the canonical, versioned contract (safe evolution, full audit),
-while extracted columns are small indexed projections for filtering and
-ordering. At local SQLite scale this is acceptable. If it grows, normalize the
-hot fields or compress payloads. This is a documented tradeoff, not an
-immediate change. See `PR5-18`.
-
-### L2207 (4444748481) — Who is the consumer, and what does a new consumer pick up?
-
-`consumer_id` is a logical subscriber using `InboxConsumer` (for example, a
-stage engine, metrics collector, or notification handler). Each
-`(consumer_id, event_id)` gets one receipt, which makes that consumer’s effect
-exactly-once.
-
-The outbox row has a single global `DELIVERED` status/ack. A consumer added
-after an event was delivered will not see that event; it only sees future
-events unless a backfill/replay is added. This is a real limitation. Decide
-between per-consumer delivery rows/cursors and documented future-only
-semantics. See `PR5-09`.
-
-### L2259 (4445139731) — Explain migrations in more detail
-
-- **Why:** schema changes must be ordered, repeatable, and tamper-evident.
-- **What:** `NNNN_name.sql` files shipped with the package; ledger
-  `schema_migrations(version, name, checksum, applied_at)`.
-- **How:** discover contiguous versions; read applied rows; verify the applied
-  history is a prefix and each checksum matches; for each pending file,
-  `BEGIN IMMEDIATE`, execute statements, insert the ledger row, commit.
-
-Editing an applied file raises `MigrationChecksumError`; a missing file or gap
-raises `MigrationError`. It does not use `executescript()` (which would commit
-implicitly). Up to date, it is a cheap read-only check.
-
-For a concrete ledger row, a `0002` example, and the failure cases, see F5 and
-F12.
-
-### L2309 (4445157932) — Is there no `CREATED` for stage execution?
-
-Correct. `StageExecutionStatus` starts at `PENDING` (planned, not ready) and
+**A:** Correct. `StageExecutionStatus` starts at `PENDING` (planned, not ready) and
 moves to `READY`. `CREATED` belongs to `AttemptStatus`: the attempt row is
 created before it is claimed. The stage instance is the logical plan; the
 attempt is the first execution object.
 
-### L2402 (4445187302) — What is not updated in place?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2309, comment `4445157932`.
 
-Updated in place: `jobs`, `stage_instances`, `stage_attempts`,
+---
+
+#### **Q: What is not updated in place?**
+
+**A:** Updated in place: `jobs`, `stage_instances`, `stage_attempts`,
 `idempotency_records` (status/result fields only; the key/fingerprint/inputs
 are immutable), `budget_reservations` (status/actual cost only; amounts are
 immutable), and `outbox_messages` (status/timestamps; the row is retained).
@@ -1320,352 +1292,48 @@ decisions (autoincrement sequence), `recovery_decisions`, `routing_decisions`,
 See F13 for the decision rule (“current truth” versus “historical fact” versus
 “immutable identity”) and more examples.
 
-### L2445 (4445207566) — What about artifact types? A script is an artifact; how is it repaired?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2402, comment `4445187302`.
 
-A script is an artifact, but repair is scoped to editorial/execution units, not
-arbitrary artifact types. A script problem is repaired by regenerating the
-script stage (or a narrower scene/shot scope for downstream content), producing
-new artifact versions and invalidating descendants. `RepairPlan` targets
-artifact IDs and stage-instance IDs with an `invalidation_scope`.
+---
 
-There is no separate “repair this artifact type” API. Add a mapping table
-(artifact type → checks → repair scope) to the docs. See `PR5-15`.
+#### **Q: What does “old RETRY, new READY” mean?**
 
-### L2472 (4445225805) — What does the recovery-actions table mean?
-
-It maps a recovery decision (`FailureAction`, defined in
-`src/pipeline/execution/retry.py`) to the resulting status of each execution
-record: attempt, job, and stage. It answers “if this action is chosen, what
-happens to each record?” It is not a table of failure codes or gate decisions.
-
-Doc improvement: label the columns “Attempt status / Job status / Stage status”
-and note that `FailureAction` lives in `execution/retry.py`, while
-`RecoveryAction`, `QualityFailureAction`, and `RepeatedFailureAction` live in
-`contracts/vocabularies.py`. See `PR5-14`.
-
-### L2476 (4445230070) — What does “old RETRY, new READY” mean?
-
-The failed job row is marked `RETRY` and kept for history. `RecoveryManager`
+**A:** The failed job row is marked `RETRY` and kept for history. `RecoveryManager`
 then creates a **new** job row at `attempt_number + 1` in `READY`, available
 after the backoff. The stage is `WAITING_RETRY` until the new job is claimable.
 “Old” and “new” refer to two job rows, not one row changing status.
 
-### L2474 (4445236064) — Failure action for what component?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2476, comment `4445230070`.
 
-For the stage execution records: attempt, job, and stage. The action is chosen
-at the stage-recovery boundary after a capability attempt fails. It is not an
-outbox or quality-gate action.
+---
 
-### L2484 (4445238712) — Failure code for what component?
+#### **Q: What is a mutating transition?**
 
-`FailureCode` classifies why a capability/provider invocation failed
-(`EXEC.VALIDATION`, `EXEC.QUOTA`, and so on). It is stored on the attempt
-(`failure_code`) and in `NormalizedError`; its category drives retry/recovery.
-It is not a quality-check code or an HTTP status.
-
-### L2486 (4445242361) — Default action for what component?
-
-“Default action” means the stage-level `RecoveryAction` selected by
-`classify_failure()` under the default retry/recovery policy when that failure
-code occurs. It maps to the attempt/job/stage transitions in §6.12.
-
-Doc bug: the catalogue uses `PAUSE`, `DEFER`, and `HUMAN_REVIEW` as default
-actions, but `FailureAction` only has `RETRY`, `RECONCILE`, `WAIT_HUMAN`, and
-`FAIL`; `RecoveryAction` has `RESUME`, `RETRY`, `RECONCILE`, `REGENERATE`,
-`WAIT_HUMAN`, and `FAIL`. `PAUSE` and `DEFER` do not exist in code. The
-catalogue must be corrected or mapped explicitly. See `PR5-14`.
-
-### L2633 (4445277313) — What happens once it is `FAIL`?
-
-Attempt `FAILED`, job `DEAD_LETTER`, stage `FAILED`. If the node is required,
-readiness derives run `FAILED`. There is no automatic retry; an operator or
-human must repair or re-run. `RECONCILE` and `WAIT_HUMAN` are the other
-terminal branches.
-
-### L2680 (4445287891) — What is a mutating transition?
-
-Any operation that changes durable execution state: claim, renew, complete,
+**A:** Any operation that changes durable execution state: claim, renew, complete,
 fail, recover, or cancel. It is the opposite of a pure read/readiness
 evaluation. These transitions re-read the job, latest lease, attempt, and
 stage inside `BEGIN IMMEDIATE` and require the live owner, fencing token, and
 unexpired lease before writing.
 
-### L2702 (4445298668) — What does “append” mean here?
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2680, comment `4445287891`.
 
-`EventOutbox.append()` inserts the `workflow_events` row and its
+---
+
+#### **Q: What does “append” mean here?**
+
+**A:** `EventOutbox.append()` inserts the `workflow_events` row and its
 `outbox_messages` row in one transaction. “Caller retries append” means that if
 the process crashes before the transaction commits, nothing durable was
 written, so the caller can call append again. It is not appending to a file or
 a log.
 
-### L2780 (4445351702) — Why are timestamps written two different ways?
-
-Different paths use different serializers: `canonical_datetime()`/some code
-emits `...Z`, while `datetime.isoformat()` or Pydantic’s default JSON emits
-`+00:00`. Both are valid ISO-8601, but lexicographic string ordering differs,
-so `ORDER BY created_at` can misorder rows. Canonicalize every persisted
-timestamp to one representation (`Z`) and test both paths. See `PR5-07`.
-
-### L2920 (4445386441) — Why not write those columns?
-
-Because `IdempotencyRecordRepository.columns` omits them. `_extracted()` only
-emits the listed columns, so the INSERT does not include them and SQLite applies
-the DDL defaults. The payload has the true values. This is the same projection
-drift as L949; fix `PR5-02`.
-
-### L3117 (4445425746) — Why `idempotency_key` in `idem_job_` but not `idem_`?
-
-`idem_job_...` is not a primary key; it is the value stored in
-`jobs.idempotency_key` to dedupe job creation. `idem_...` is the primary key of
-`idempotency_records`, so the column *is* the key; there is no separate
-`idempotency_key` column beyond the PK. Both are keys, for different tables and
-different units.
-
-`jobs.idempotency_key` is not a second `job_id`. `job_id` names the row;
-`idempotency_key` names the enqueue request that creates it. They are 1:1
-today, but they are different identities. See F2.
-
-### L3133 (4445444868) — Why share a digest?
-
-The digest identifies the logical unit; the prefix identifies the record type.
-`config_`, `package_`, and `corr_` all derive from `run_id`; `attempt_` and
-`job_` from `(stage_id, attempt_number)`; `idem_`, `route_`, and `inv_` from
-`capexec_id`. Sharing avoids duplicate hashing and makes relationships visible
-in logs. `op_` has its own digest because it derives from the payload
-fingerprint.
-
-This is only safe because IDs are opaque and prefixes are never parsed. If a
-formula changes, include an entity/formula version in the digest so old and new
-IDs are different namespaces. That does not remove parent dependency. See F3
-and `PR5-11`.
-
-### L3099 (4445456891) — Why deterministic IDs instead of UUIDs?
-
-Deterministic IDs give reproducibility, idempotent creation, stable
-fixtures/tests, cross-run dedupe, and visible relationships. UUIDs give
-independent uniqueness but are not reproducible and make replay/dedupe harder.
-We still use random IDs (`new_id`, some reports) where there is no natural key
-or independence is required. The tradeoff is that deterministic identity
-couples to its formula, so formula changes need versioning/migration.
-
-Concretely: a retried `create_job()` with a deterministic ID hits the primary
-key and can re-read the existing job; with a UUID it creates a second job and a
-second provider call. A repeated event append with a deterministic `event_id`
-is a conflict; with a UUID it is a new event and the inbox cannot dedupe it.
-See F15 for the crash/replay examples.
-
-### L3147 (4445468603) — “This should be fixed” (stage formula)
-
-Agreed. `stage_` must include `logical_item_key`; otherwise two items in one
-node get the same ID while the table’s unique constraint allows both rows. Fix
-the formula/helper, use it in the stage creator, and add a multi-item
-regression test. See `PR5-03`.
-
-### L3150 (4445472538) — “Nothing is in prod, let us fix it”
-
-Agreed. Since there is no production data, change `eval_`, `qgr_`, and `repair_`
-call sites to use the helper result directly, update golden examples/tests/docs,
-and add assertions that IDs contain exactly one prefix. No migration/backfill.
-See `PR5-04`.
-
-### L3249 (4445489477) — Why does `quality evaluate` need migrations?
-
-It opens `Database(arguments.database)` directly and then queries
-`quality_evaluations`/`quality_gate_results`; it never calls
-`MigrationRunner`. A fresh database therefore has no tables and fails with
-`no such table: quality_evaluations`. It should use the migrated-database path
-(or require explicit `db migrate`) and be re-runnable.
-
-Related bugs: a second identical evaluation fails with `ConflictError` on the
-deterministic evaluation IDs, and the command returns exit code `0` for a
-`REGENERATE` decision (it only returns nonzero for `FAIL`/`HUMAN_REVIEW`).
-Fix all three under `PR5-05`.
-
-### L3353 (4445505869) — How does cardinality work for stage instances and attempts?
-
-- `one_to_one`: one stage instance, typically one item key.
-- `one_to_many`: the planner expands expected item keys from manifest children
-  or render chunks; N stage instances are created, each with its own attempts
-  and jobs. `count` caps or forces the number.
-- `many_to_one`: one stage instance consumes multiple dependency
-  instances/outputs (fan-in).
-
-`StageInstance` = node + logical item. `StageAttempt` = one try at that
-instance; retries and regenerations increment the attempt number and create a
-new attempt. `Job` = claimable transport for one attempt.
-
-So N items produce N instances and up to N attempt/job chains; one item with
-retries produces one instance and multiple attempts/jobs. `short_derivative`
-with `one_to_many` and `count: 1` produces exactly one instance despite the
-fan-out mode.
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2702, comment `4445298668`.
 
 ---
 
-# PR #5 Follow-up Questions
+#### **Q: How do I decide what belongs in `ExecutionContext` and what belongs in `CapabilityRequest`?**
 
-These are the follow-ups asked after the first 81 answers. They are local
-answers and decisions, not code changes. The `PR5-*` items they refer to live
-in `TODO_POST_REVIEW.md`.
-
-## F1. Why is the table called `idempotency_records` if it is for capabilities?
-
-Short answer: you are right; it is a capability-specific table and should be
-named like the other capability tables. The current name is too broad.
-
-The table stores exactly one kind of record:
-
-- `capability` and `operation_version`;
-- `request_fingerprint`;
-- `capability_execution_id`;
-- `provider_invocation_id` and `provider_operation_id`;
-- `result_artifact_ids`.
-
-It is written only by `CapabilityExecutor`. Jobs, outbox delivery, repairs, and
-publication have their own dedupe mechanisms. Calling this table
-`idempotency_records` suggests a generic, cross-domain ledger, which it is not.
-A future job/outbox idempotency table would then either reuse these
-capability-shaped columns or create a confusing second “idempotency_records”.
-
-The concrete rename is:
-
-```sql
--- 000N_rename_capability_idempotency_records.sql
--- Use the next free version; for example 0003 if the artifact_key rename
--- lands first.
-ALTER TABLE idempotency_records
-    RENAME TO capability_idempotency_records;
-```
-
-SQLite keeps indexes and foreign-key references attached to the renamed table,
-but index names are not renamed automatically. Drop and recreate the two index
-names if they should also be capability-scoped:
-
-```sql
-DROP INDEX idx_idempotency_status;
-DROP INDEX idx_idempotency_capability_execution;
-
-CREATE INDEX idx_capability_idempotency_status
-    ON capability_idempotency_records (status);
-CREATE INDEX idx_capability_idempotency_execution
-    ON capability_idempotency_records (capability_execution_id);
-```
-
-Then update `IdempotencyRecordRepository.table`, the migration tests, the
-atlas/docs, and any raw SQL. Keep the primary-key column `idempotency_key`:
-within this table it really is the capability idempotency key. Renaming the
-column too would ripple through `CapabilityRequest` and the contract for no
-semantic gain.
-
-`capability_operations` is a possible alternative, but it sounds like an
-operation history/log. The table stores dedupe state for one capability
-operation, not a history of operations. `capability_idempotency_records` says
-what it is. Tracked as `PR5-21`.
-
-## F2. Why is `jobs.idempotency_key` not just `job_id`?
-
-Because they answer different questions:
-
-- `job_id` identifies the job row: “which job is this?”
-- `idempotency_key` identifies the enqueue request: “have I already created
-  this unit of work?”
-
-Today both are deterministic and one-to-one, so the extra column looks
-redundant. They are still different identities:
-
-```text
-job_id         = job_<H(stage_instance_id, attempt_number)>
-idempotency_key = idem_job_<H("job", run_id, node_id, item_key, attempt_number)>
-```
-
-The key is the caller’s dedupe claim. The job ID is the row identity created by
-the factory. If a producer crashes after `create_job()` commits but before it
-reads the response, it retries with the same key:
-
-```text
-create_job(stage, attempt_number=1)
-  -> job_id=job_abc..., idempotency_key=idem_job_def..., created=True
-crash
-create_job(stage, attempt_number=1)
-  -> lookup idem_job_def... -> job_abc..., created=False
-```
-
-That retry does not need to know `job_abc...` in advance. It only needs the
-logical key, which is derived from the work it is trying to enqueue.
-
-If the column were named `job_id`, it would collide with the existing primary
-key and imply that the dedupe token is the row identity. If the column were
-removed and dedupe relied only on the `job_id` primary key, changing the job-ID
-formula would silently stop detecting duplicates, because the same logical
-enqueue would produce a different primary key.
-
-Rule of thumb: a primary key names the row; an idempotency key names the
-request that creates the row. They can coincide, but they are not the same
-concept. Keeping both also leaves room for a caller-supplied key later.
-
-## F3. What does “include the entity type or a formula version in the digest” mean?
-
-`deterministic_id(prefix, *parts)` hashes only `parts`; the prefix is not in the
-digest. So these two IDs have the same 32-hex suffix:
-
-```text
-deterministic_id("config", run_id)  -> config_<H(run_id)>
-deterministic_id("package", run_id) -> package_<H(run_id)>
-```
-
-That is intentional for related records: `config_`, `package_`, and `corr_` can
-share a digest so the relationship is visible in logs.
-
-**Entity type in the digest** means adding a literal type marker to the hashed
-input:
-
-```text
-deterministic_id("config", "config", run_id)
-  -> config_<H("config", run_id)>
-```
-
-Now the suffix differs by entity even if the other inputs are the same. This is
-defense in depth if a prefix is stripped, a digest is stored alone, or two
-formulas accidentally use the same inputs. It breaks deliberate shared-digest
-relationships, so it should be applied per ID family, not blindly everywhere.
-
-**Formula version in the digest** means adding a version marker when the ID
-formula changes:
-
-```text
-v1: stage_<H(run_id, node_id)>
-v2: stage_<H("stage.v2", run_id, node_id, item_key)>
-```
-
-Without the marker, `stage_...` means two different formulas depending on when
-the row was created. You cannot tell which formula produced an ID, and a
-migration cannot reliably map old IDs to new ones. With the marker, old and new
-IDs are distinct namespaces, and the migration is explicit.
-
-This does **not** remove parent dependency. If an attempt ID is derived from a
-stage-instance ID:
-
-```text
-attempt = H(stage_instance_id, attempt_number)
-```
-
-then changing the stage-ID formula changes every attempt ID too. To decouple
-them, derive the child directly from stable inputs:
-
-```text
-attempt = H(run_id, node_id, item_key, attempt_number)
-```
-
-That repeats the parent’s inputs and gives up the automatic “child changes when
-parent changes” property. It is a design tradeoff, not something a version
-marker fixes.
-
-Since there is no production data, the immediate plan is to fix the known
-formula bugs now (`PR5-03`) and document the formulas (`PR5-11`). Add version
-markers only when a formula actually changes after data exists.
-
-## F4. How do I decide what belongs in `ExecutionContext` and what belongs in `CapabilityRequest`?
-
-Use one question: **would the provider produce a different artifact or result
+**A:** Use one question: **would the provider produce a different artifact or result
 if this value changed?**
 
 - Yes -> it belongs in the request, and normally in the request fingerprint.
@@ -1725,9 +1393,752 @@ including `runtime_context` unless you first decide that field is semantic.
 `CapabilityRequest.runtime_context` is currently unused; either move anything
 that affects output into `payload` or remove it. Tracked as `PR5-23`.
 
-## F5. What is a `schema_migrations` example?
+**Source:** Follow-up `F4`.
 
-The recorded demo database has this actual row:
+---
+
+#### **Q: What is updated in place, what is appended, and what decides that?**
+
+**A:** The rule is about **identity and history**, not table size:
+
+- If there is one current truth per identity and readers only want the latest,
+  update in place.
+- If the old value must remain explainable, auditable, or replayable, append a
+  new row.
+- If the row is an immutable identity or content snapshot, never update it;
+  create a new version.
+
+Examples:
+
+**Update in place (current-state projection):**
+
+- `workflow_runs.status`, `updated_at`.
+- `stage_instances.execution_status`, `acceptance_status`, `active_attempt_id`.
+- `stage_attempts.status`, `worker_id`, `lease_expires_at`, `finished_at`.
+- `jobs.status`, `claimed_by`, `lease_expires_at`, `delivery_count`.
+- `idempotency_records.status`, result linkage, `completed_at`. The key,
+  fingerprint, input artifacts, and capability are immutable.
+- `budget_reservations.status`, `actual_cost_minor`, `settled_at`. The reserved
+  amount is immutable; a new operation gets a new reservation.
+- `outbox_messages.status`, attempts, delivery timestamps. The row is retained,
+  not deleted.
+- `human_reviews.status`, `resolved_at`.
+
+**Append (historical fact):**
+
+- `workflow_events`: every event is a fact; never rewrite an old event.
+- `artifacts`: a regeneration creates version 2; version 1 remains for lineage
+  and rollback.
+- `artifact_pointers`: activating a new pointer deactivates the old row and
+  inserts a new one; the old pointer row is retained. The `active` flag is
+  updated, but the pointer identity/content is not rewritten.
+- `quality_evaluations` and `quality_gate_results`: a re-evaluation is a new
+  evaluation/result; do not overwrite a prior FAIL with a PASS.
+- `repair_plans`: each plan is a decision record.
+- `human_review_decisions`: each decision is a new sequence row.
+- `recovery_decisions`: each recovery choice is a new audit row.
+- `inbox_receipts`: one row per `(consumer_id, event_id)`.
+- `routing_decisions`, `provider_invocations`, `usage_records`: each invocation
+  is a fact.
+
+**Immutable identity/snapshot:**
+
+- `workflow_definitions`: a new version is a new definition.
+- `effective_configs`: the resolved snapshot is immutable.
+- artifact content (`uri`, `sha256`, `size_bytes`): a new artifact version, not
+  an edit.
+
+Borderline cases:
+
+- `leases`: a new claim inserts a new `(job_id, fencing_token)` row, so the
+  ownership history is append-only. A renewal updates the current term’s
+  `expires_at`/`heartbeat_at`; that is an update to the live term, not a
+  rewrite of history. The latest term wins.
+- `idempotency_records`: status is current state, but the request identity is
+  immutable. A retry does not rewrite the fingerprint.
+- `artifact_pointers`: the row is a historical pointer record; only the
+  `active` flag changes when it is superseded.
+
+The test to apply: “If I delete the old value, can I still explain what
+happened and reproduce the decision?” If no, append. “Do all readers want only
+the latest, and is the old value uninteresting?” Then update in place.
+
+**Source:** Follow-up `F13`.
+
+---
+
+#### **Q: What is a “mutating transition”, in plain terms?**
+
+**A:** It is a write that changes durable execution state and must be authorized by
+the current owner. A read/readiness check is not a mutating transition.
+
+Concrete fencing example:
+
+```text
+Worker W1 claims job J -> lease token 7, expires at 10:01.
+W1 stalls.
+Worker W2 recovers the expired lease and claims J -> token 8.
+W1 wakes up and calls complete_success(J, token=7).
+```
+
+Without a fence, W1’s `UPDATE jobs SET status='ACKED'` would overwrite W2’s
+work and record W1’s stale output. With `verify_live_claim()` inside
+`BEGIN IMMEDIATE`:
+
+```text
+re-read job J
+re-read latest lease -> token 8
+compare owner/token/expiry
+token 7 != 8 -> REJECTED: FENCING_TOKEN_MISMATCH
+```
+
+W1’s result is discarded; W2 remains the owner. That is the point of the
+fencing token.
+
+The claim path does this in one transaction:
+
+1. `BEGIN IMMEDIATE` takes the write lock before reading state, so no other
+   writer can change the job between the decision and the write.
+2. Recover expired leases (return them to READY and record a recovery
+   decision).
+3. Select the next READY job.
+4. Read the job, attempt, stage, and latest lease.
+5. Compute the next fencing token (`latest + 1`).
+6. Insert the new lease row; update the attempt, stage, and job with the owner,
+   token, and expiry.
+7. Commit. A crash rolls the whole claim back; there is no half-claimed job.
+
+`renew()` only extends the caller’s own live term. `complete_success()` accepts
+an idempotent repeat only when the job is already ACKED with the same token;
+otherwise it requires a live claim. `recover_expired()` treats an expired term
+as lost ownership and does not let the old owner commit.
+
+Mutating transitions include claim, renew, start, complete, fail, recover,
+cancel, outbox ack, and idempotency status changes. Pure reads include
+readiness evaluation, status/report queries, and list commands. Not every write
+needs a fencing token: a quality evaluation write needs idempotency, but it is
+not owned by a worker lease.
+
+**Source:** Follow-up `F14`.
+
+---
+
+### Identifiers and Idempotency
+
+#### **Q: Why `idem_job_` instead of just `idem_`?**
+
+**A:** They dedupe different things:
+
+- `idem_job_...` is the value in `jobs.idempotency_key`. It is produced by
+  `idempotency_key("job", run_id, node_id, item_key, attempt_number)` and makes
+  repeated job creation for the same logical attempt a no-op.
+- `idem_...` is the primary key of `idempotency_records`. It dedupes one
+  capability operation and stores the request fingerprint, status, and result
+  linkage.
+
+Both are opaque. The extra prefix keeps the two dedupe boundaries visible in
+logs and avoids confusing a job key with an operation key.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L81, comment `4443778200`.
+
+---
+
+#### **Q: Is deriving IDs like this fine?**
+
+**A:** The derivation is stable as long as its input parts are stable. That is the
+intent: the digest identifies a logical unit, and the prefix identifies the
+record type. The real risks are:
+
+- changing a parent formula (all children change);
+- reusing a key for a different semantic unit;
+- two record types sharing a digest (intentional here, but easy to confuse).
+
+The code never parses an ID to recover meaning. Reuse is caught by unique
+constraints and by the idempotency fingerprint/operation-version checks. If we
+want stronger isolation, add an ID-formula version or include the entity type
+in the digest; that does not remove the parent dependency. This is a design
+contract worth writing down rather than changing ad hoc. See `PR5-11`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L92, comment `4443797295`.
+
+---
+
+#### **Q: Do prefixes drive if/else logic?**
+
+**A:** No. There is no `if id.startswith("job_")` dispatch. Repositories are typed
+(`JobRepository`, `StageInstanceRepository`, and so on) and query their own
+tables by key columns. The prefix table is a human/debugging lookup index; IDs
+are opaque to callers.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L101, comment `4443810890`.
+
+---
+
+#### **Q: Deterministic IDs depend on other IDs; isn't that flaky?**
+
+**A:** The dependency is deliberate and explicit. `attempt_` and `job_` share a
+digest because they identify the same `(stage_id, attempt_number)` logical unit;
+only the prefix differs. `capexec_` depends on `attempt_id`; `idem_`, `route_`,
+and `inv_` depend on `capexec_id`. This is testable and reproducible. It is not
+a random or hidden dependency.
+
+What would make it flaky is changing a parent formula or treating the digest as
+a stable public API without versioning. Use `new_id()`/UUID where there is no
+natural key. See `PR5-11`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L125, comment `4443846488`.
+
+---
+
+#### **Q: Why `qgr_` twice?**
+
+**A:** A real bug. `deterministic_id("qgr", ...)` already returns `qgr_<digest>`, and
+`_create_gate_result()` prepends `qgr_` again. The same pattern affects `eval_`
+and `repair_`. The IDs are stable and unique but wrong-shaped. See `PR5-04`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1208, comment `4444395679`.
+
+---
+
+#### **Q: Why `eval_` twice?**
+
+**A:** Same bug in `DeterministicCheckEvaluator`: `deterministic_id("eval", ...)`
+returns `eval_<digest>`, then the constructor prepends `eval_`. Note that some
+semantic/media/speech evaluators use `f"eval_{uuid4().hex[:12]}"`, which is
+single-prefixed but random; the documentation should not claim every evaluator
+path is double-prefixed. See `PR5-04` and `PR5-17`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1223, comment `4444398438`.
+
+---
+
+#### **Q: If it is a quirk, should it be fixed?**
+
+**A:** Yes. The “do not fix casually” warning was about persisted production identity.
+There is no production data here, so fix the three deterministic call sites
+(`eval`, `qgr`, `repair`) to use the helper result directly, update tests,
+fixtures, and example IDs, and add regression assertions. No migration is
+needed. See `PR5-04`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1253, comment `4444412863`.
+
+---
+
+#### **Q: Is the projection drift bad? Must it be corrected?**
+
+**A:** Yes. It is a real bug, not just an aesthetic issue. The DDL columns exist, but
+`IdempotencyRecordRepository.columns` omits five of them, so the extracted
+columns keep their defaults while the payload has the correct values. Any SQL
+filtering, joining, or sorting on those columns is wrong.
+
+Fix by adding `operation_version`, `input_artifact_ids`, `required_features`,
+`locale`, and `result_artifact_ids` to `columns`, teaching `_column_value()` to
+JSON-encode list values (it currently handles only bool/Enum/datetime), and
+backfilling or validating existing rows from the payload. There is no production
+data, so this is low risk. See `PR5-02`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L949, comment `4444290889`.
+
+---
+
+#### **Q: Is the budget-reservation update conditional?**
+
+**A:** Yes. The executor only creates/reserves a budget row when
+`requirements.cost_limit_minor` is set **and** a `BudgetReservationRepository`
+is supplied. The recorded CLI fixture does neither, so it has no
+`budget_reservations` row. Separately, if a prior reservation is `RELEASED`, a
+new reservation with the same `(idempotency_key, scope_type, scope_id)` updates
+that row in place instead of inserting (the unique constraint would otherwise
+reject it). That update is not the normal first path.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L958, comment `4444298992`.
+
+---
+
+#### **Q: Where does idempotency first appear?**
+
+**A:** Two levels:
+
+1. At job creation, `jobs.idempotency_key` (`idem_job_...`) makes repeated
+   attempt/job creation idempotent.
+2. At executor entry, inside the first transaction, the executor does
+   `IdempotencyRecordRepository.get(key)` or creates a `RESERVED` record
+   **before** budget reservation, routing/execution persistence, or provider
+   invocation. That record is the replay boundary for provider side effects.
+
+So the answer depends on whether you mean transport-level or operation-level
+idempotency.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1041, comment `4444318332`.
+
+---
+
+#### **Q: Why only the first 32 hex characters?**
+
+**A:** 32 hex characters = 128 bits of SHA-256. That is ample for run-scale uniqueness
+(the birthday bound is around 2^64) while keeping IDs readable and compact. The
+full SHA-256 remains available where content addressing needs it. Truncation is
+a display/storage tradeoff, not a security claim.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1809, comment `4444580430`.
+
+---
+
+#### **Q: If every table is idempotent, why `idempotency_records`?**
+
+**A:** Database constraints make **writes** idempotent: they prevent duplicate rows.
+They do not prevent duplicate provider side effects. `idempotency_records`
+stores the operation key, request fingerprint, status, and result linkage so a
+replay returns the prior result or rejects a conflicting request. That is
+semantic idempotency, which a unique constraint cannot provide.
+
+The table is capability-specific, so it should be named
+`capability_idempotency_records`. See F1 and `PR5-21`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2159, comment `4444730847`.
+
+---
+
+#### **Q: Won’t storing the full payload increase table size?**
+
+**A:** Yes. The payload duplicates the extracted columns. The tradeoff is deliberate:
+the payload is the canonical, versioned contract (safe evolution, full audit),
+while extracted columns are small indexed projections for filtering and
+ordering. At local SQLite scale this is acceptable. If it grows, normalize the
+hot fields or compress payloads. This is a documented tradeoff, not an
+immediate change. See `PR5-18`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2184, comment `4444736333`.
+
+---
+
+#### **Q: Why not write those columns?**
+
+**A:** Because `IdempotencyRecordRepository.columns` omits them. `_extracted()` only
+emits the listed columns, so the INSERT does not include them and SQLite applies
+the DDL defaults. The payload has the true values. This is the same projection
+drift as L949; fix `PR5-02`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2920, comment `4445386441`.
+
+---
+
+#### **Q: Why deterministic IDs instead of UUIDs?**
+
+**A:** Deterministic IDs give reproducibility, idempotent creation, stable
+fixtures/tests, cross-run dedupe, and visible relationships. UUIDs give
+independent uniqueness but are not reproducible and make replay/dedupe harder.
+We still use random IDs (`new_id`, some reports) where there is no natural key
+or independence is required. The tradeoff is that deterministic identity
+couples to its formula, so formula changes need versioning/migration.
+
+Concretely: a retried `create_job()` with a deterministic ID hits the primary
+key and can re-read the existing job; with a UUID it creates a second job and a
+second provider call. A repeated event append with a deterministic `event_id`
+is a conflict; with a UUID it is a new event and the inbox cannot dedupe it.
+See F15 for the crash/replay examples.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3099, comment `4445456891`.
+
+---
+
+#### **Q: Why `idempotency_key` in `idem_job_` but not `idem_`?**
+
+**A:** `idem_job_...` is not a primary key; it is the value stored in
+`jobs.idempotency_key` to dedupe job creation. `idem_...` is the primary key of
+`idempotency_records`, so the column *is* the key; there is no separate
+`idempotency_key` column beyond the PK. Both are keys, for different tables and
+different units.
+
+`jobs.idempotency_key` is not a second `job_id`. `job_id` names the row;
+`idempotency_key` names the enqueue request that creates it. They are 1:1
+today, but they are different identities. See F2.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3117, comment `4445425746`.
+
+---
+
+#### **Q: Why share a digest?**
+
+**A:** The digest identifies the logical unit; the prefix identifies the record type.
+`config_`, `package_`, and `corr_` all derive from `run_id`; `attempt_` and
+`job_` from `(stage_id, attempt_number)`; `idem_`, `route_`, and `inv_` from
+`capexec_id`. Sharing avoids duplicate hashing and makes relationships visible
+in logs. `op_` has its own digest because it derives from the payload
+fingerprint.
+
+This is only safe because IDs are opaque and prefixes are never parsed. If a
+formula changes, include an entity/formula version in the digest so old and new
+IDs are different namespaces. That does not remove parent dependency. See F3
+and `PR5-11`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3133, comment `4445444868`.
+
+---
+
+#### **Q: “This should be fixed” — what is wrong with the stage ID formula?**
+
+**A:** Agreed. `stage_` must include `logical_item_key`; otherwise two items in one
+node get the same ID while the table’s unique constraint allows both rows. Fix
+the formula/helper, use it in the stage creator, and add a multi-item
+regression test. See `PR5-03`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3147, comment `4445468603`.
+
+---
+
+#### **Q: “Nothing is in prod, let us fix it” — does that apply to the double prefixes?**
+
+**A:** Agreed. Since there is no production data, change `eval_`, `qgr_`, and `repair_`
+call sites to use the helper result directly, update golden examples/tests/docs,
+and add assertions that IDs contain exactly one prefix. No migration/backfill.
+See `PR5-04`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3150, comment `4445472538`.
+
+---
+
+#### **Q: Why is the table called `idempotency_records` if it is for capabilities?**
+
+**A:** Short answer: you are right; it is a capability-specific table and should be
+named like the other capability tables. The current name is too broad.
+
+The table stores exactly one kind of record:
+
+- `capability` and `operation_version`;
+- `request_fingerprint`;
+- `capability_execution_id`;
+- `provider_invocation_id` and `provider_operation_id`;
+- `result_artifact_ids`.
+
+It is written only by `CapabilityExecutor`. Jobs, outbox delivery, repairs, and
+publication have their own dedupe mechanisms. Calling this table
+`idempotency_records` suggests a generic, cross-domain ledger, which it is not.
+A future job/outbox idempotency table would then either reuse these
+capability-shaped columns or create a confusing second “idempotency_records”.
+
+The concrete rename is:
+
+```sql
+-- 000N_rename_capability_idempotency_records.sql
+-- Use the next free version; for example 0003 if the artifact_key rename
+-- lands first.
+ALTER TABLE idempotency_records
+    RENAME TO capability_idempotency_records;
+```
+
+SQLite keeps indexes and foreign-key references attached to the renamed table,
+but index names are not renamed automatically. Drop and recreate the two index
+names if they should also be capability-scoped:
+
+```sql
+DROP INDEX idx_idempotency_status;
+DROP INDEX idx_idempotency_capability_execution;
+
+CREATE INDEX idx_capability_idempotency_status
+    ON capability_idempotency_records (status);
+CREATE INDEX idx_capability_idempotency_execution
+    ON capability_idempotency_records (capability_execution_id);
+```
+
+Then update `IdempotencyRecordRepository.table`, the migration tests, the
+atlas/docs, and any raw SQL. Keep the primary-key column `idempotency_key`:
+within this table it really is the capability idempotency key. Renaming the
+column too would ripple through `CapabilityRequest` and the contract for no
+semantic gain.
+
+`capability_operations` is a possible alternative, but it sounds like an
+operation history/log. The table stores dedupe state for one capability
+operation, not a history of operations. `capability_idempotency_records` says
+what it is. Tracked as `PR5-21`.
+
+**Source:** Follow-up `F1`.
+
+---
+
+#### **Q: Why is `jobs.idempotency_key` not just `job_id`?**
+
+**A:** Because they answer different questions:
+
+- `job_id` identifies the job row: “which job is this?”
+- `idempotency_key` identifies the enqueue request: “have I already created
+  this unit of work?”
+
+Today both are deterministic and one-to-one, so the extra column looks
+redundant. They are still different identities:
+
+```text
+job_id         = job_<H(stage_instance_id, attempt_number)>
+idempotency_key = idem_job_<H("job", run_id, node_id, item_key, attempt_number)>
+```
+
+The key is the caller’s dedupe claim. The job ID is the row identity created by
+the factory. If a producer crashes after `create_job()` commits but before it
+reads the response, it retries with the same key:
+
+```text
+create_job(stage, attempt_number=1)
+  -> job_id=job_abc..., idempotency_key=idem_job_def..., created=True
+crash
+create_job(stage, attempt_number=1)
+  -> lookup idem_job_def... -> job_abc..., created=False
+```
+
+That retry does not need to know `job_abc...` in advance. It only needs the
+logical key, which is derived from the work it is trying to enqueue.
+
+If the column were named `job_id`, it would collide with the existing primary
+key and imply that the dedupe token is the row identity. If the column were
+removed and dedupe relied only on the `job_id` primary key, changing the job-ID
+formula would silently stop detecting duplicates, because the same logical
+enqueue would produce a different primary key.
+
+Rule of thumb: a primary key names the row; an idempotency key names the
+request that creates the row. They can coincide, but they are not the same
+concept. Keeping both also leaves room for a caller-supplied key later.
+
+**Source:** Follow-up `F2`.
+
+---
+
+#### **Q: What does “include the entity type or a formula version in the digest” mean?**
+
+**A:** `deterministic_id(prefix, *parts)` hashes only `parts`; the prefix is not in the
+digest. So these two IDs have the same 32-hex suffix:
+
+```text
+deterministic_id("config", run_id)  -> config_<H(run_id)>
+deterministic_id("package", run_id) -> package_<H(run_id)>
+```
+
+That is intentional for related records: `config_`, `package_`, and `corr_` can
+share a digest so the relationship is visible in logs.
+
+**Entity type in the digest** means adding a literal type marker to the hashed
+input:
+
+```text
+deterministic_id("config", "config", run_id)
+  -> config_<H("config", run_id)>
+```
+
+Now the suffix differs by entity even if the other inputs are the same. This is
+defense in depth if a prefix is stripped, a digest is stored alone, or two
+formulas accidentally use the same inputs. It breaks deliberate shared-digest
+relationships, so it should be applied per ID family, not blindly everywhere.
+
+**Formula version in the digest** means adding a version marker when the ID
+formula changes:
+
+```text
+v1: stage_<H(run_id, node_id)>
+v2: stage_<H("stage.v2", run_id, node_id, item_key)>
+```
+
+Without the marker, `stage_...` means two different formulas depending on when
+the row was created. You cannot tell which formula produced an ID, and a
+migration cannot reliably map old IDs to new ones. With the marker, old and new
+IDs are distinct namespaces, and the migration is explicit.
+
+This does **not** remove parent dependency. If an attempt ID is derived from a
+stage-instance ID:
+
+```text
+attempt = H(stage_instance_id, attempt_number)
+```
+
+then changing the stage-ID formula changes every attempt ID too. To decouple
+them, derive the child directly from stable inputs:
+
+```text
+attempt = H(run_id, node_id, item_key, attempt_number)
+```
+
+That repeats the parent’s inputs and gives up the automatic “child changes when
+parent changes” property. It is a design tradeoff, not something a version
+marker fixes.
+
+Since there is no production data, the immediate plan is to fix the known
+formula bugs now (`PR5-03`) and document the formulas (`PR5-11`). Add version
+markers only when a formula actually changes after data exists.
+
+**Source:** Follow-up `F3`.
+
+---
+
+#### **Q: How do UUIDs make replay and dedupe harder? Give concrete examples.**
+
+**A:** Deterministic ID/key:
+
+```text
+create_job(stage, attempt=1) -> job_abc..., key=idem_job_def...
+retry the same call        -> key lookup finds job_abc...
+                              created=False
+```
+
+Even if the lookup were skipped, the deterministic `job_id` primary key turns
+the second insert into a `ConflictError` instead of a duplicate row.
+
+UUIDv4:
+
+```text
+create_job(stage, attempt=1) -> job_9f3a...
+retry the same call        -> job_7c21...
+INSERT succeeds             -> two jobs for one logical unit
+```
+
+Now the database has two claimable jobs. Two workers can claim them and call
+the provider twice. The UUID did not encode “this is the same logical work,” so
+you need a separate unique natural key `(stage_instance_id, attempt_number)` to
+catch it. At that point the UUID is just a random row label; the dedupe work is
+elsewhere.
+
+Other examples:
+
+- **Artifact regeneration:** a deterministic stage/artifact ID lets a rerun
+  find the existing version and either return it or create version 2. A UUID
+  creates a new stage instance/artifact with no link to the first, so
+  downstream fan-in sees duplicates.
+- **Event append:** if callers derive `event_id` from
+  `(run, type, stage, attempt)`, a repeated append is a primary-key conflict.
+  The current `EventOutbox.append()` takes the envelope as supplied, so this
+  depends on the producer. A random UUID creates a second event and outbox row;
+  the inbox only dedupes by `event_id`, so a different UUID is a different
+  event and the consumer runs twice.
+- **Golden tests:** deterministic IDs let fixtures assert exact values and make
+  parent/child relationships visible. UUIDs force tests to normalize or ignore
+  IDs, which can hide a broken relationship (for example, an attempt pointing
+  at the wrong stage).
+- **Crash recovery:** after a crash, the caller may not know whether the first
+  call committed. A deterministic key lets it recompute the same ID and probe;
+  a UUID requires a stored request->UUID mapping, and if that mapping write was
+  not atomic with the effect, the retry still duplicates.
+
+UUIDv5 (name-based) is deterministic and avoids the random-retry problem, but
+it is still a hash namespace: you must choose the name inputs, and formula
+changes have the same versioning problem. The project’s `deterministic_id` is
+essentially a truncated SHA-256 with a prefix, so it has the same tradeoff.
+
+Random IDs are still right where there is no natural key and independence is
+desired: request IDs, correlation IDs, some report IDs. The rule is: use a
+deterministic ID when the identity is derived from durable inputs; use a random
+ID when the identity is genuinely new.
+
+**Source:** Follow-up `F15`.
+
+---
+
+### Database, Migrations, and Persistence
+
+#### **Q: Why does `capabilities list` migrate the DB?**
+
+**A:** It should not. `capabilities list` has no database need, but the
+implementation calls `_migrated_database()`, which opens the DB and runs
+`MigrationRunner.migrate()`. That is an accidental side effect of sharing the
+helper. Make the command read-only. See `PR5-08`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L283, comment `4443928026`.
+
+---
+
+#### **Q: What is `synchronous=NORMAL`?**
+
+**A:** It is SQLite’s fsync policy. In WAL mode, `NORMAL` avoids an fsync on every
+commit and syncs at checkpoints. Commits are fast; a power loss can lose recent
+transactions, but the database remains consistent. `FULL` is safer and slower.
+The local baseline chooses `NORMAL`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L346, comment `4443985940`.
+
+---
+
+#### **Q: Do these steps run every time?**
+
+**A:** Every connection opened by `Database` runs the PRAGMAs (`busy_timeout`,
+`foreign_keys`, WAL, `synchronous=NORMAL`). `MigrationRunner.migrate()` runs
+only when a command calls it: `_migrated_database()` users, `db migrate`, and
+the human-review commands. `quality evaluate` opens `Database` directly and
+currently skips migration (that is a bug, see L3249).
+
+`migrate()` is idempotent when up to date: it creates/reads
+`schema_migrations` and applies only pending files.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L347, comment `4443980491`.
+
+---
+
+#### **Q: What is the `schema_migrations` row for?**
+
+**A:** `schema_migrations` is the migration ledger: one row per applied file with
+`version`, `name`, `checksum`, and `applied_at`. It lets the runner:
+
+- know which files are already applied;
+- detect an edited applied migration by checksum;
+- enforce a contiguous, prefix-valid history;
+- apply only pending files.
+
+Without it, `migrate()` could not be idempotent or fail closed on drift.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L365, comment `4443992451`.
+
+---
+
+#### **Q: Why migrate on open?**
+
+**A:** That row describes the **target**, not current behavior: current
+`quality evaluate` opens `Database` directly and does not migrate; the proposed
+fix is “migrate on open” so the command is self-sufficient on a fresh database.
+Today a fresh DB fails with `no such table: quality_evaluations`. See `PR5-05`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1182, comment `4444388352`.
+
+---
+
+#### **Q: What does `CHECK` mean here?**
+
+**A:** It is a SQLite table-level `CHECK` constraint, for example
+`CHECK (complete IN (0,1))` or `CHECK (end_frame > start_frame)`. It rejects
+invalid rows at write time. It is unrelated to quality checks.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2015, comment `4444691914`.
+
+---
+
+#### **Q: Explain migrations in more detail**
+
+**A:** - **Why:** schema changes must be ordered, repeatable, and tamper-evident.
+- **What:** `NNNN_name.sql` files shipped with the package; ledger
+  `schema_migrations(version, name, checksum, applied_at)`.
+- **How:** discover contiguous versions; read applied rows; verify the applied
+  history is a prefix and each checksum matches; for each pending file,
+  `BEGIN IMMEDIATE`, execute statements, insert the ledger row, commit.
+
+Editing an applied file raises `MigrationChecksumError`; a missing file or gap
+raises `MigrationError`. It does not use `executescript()` (which would commit
+implicitly). Up to date, it is a cheap read-only check.
+
+For a concrete ledger row, a `0002` example, and the failure cases, see F5 and
+F12.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2259, comment `4445139731`.
+
+---
+
+#### **Q: Why are timestamps written two different ways?**
+
+**A:** Different paths use different serializers: `canonical_datetime()`/some code
+emits `...Z`, while `datetime.isoformat()` or Pydantic’s default JSON emits
+`+00:00`. Both are valid ISO-8601, but lexicographic string ordering differs,
+so `ORDER BY created_at` can misorder rows. Canonicalize every persisted
+timestamp to one representation (`Z`) and test both paths. See `PR5-07`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2780, comment `4445351702`.
+
+---
+
+#### **Q: What is a `schema_migrations` example?**
+
+**A:** The recorded demo database has this actual row:
 
 ```text
 version | name    | checksum (first 8) | applied_at
@@ -1767,75 +2178,470 @@ fix is to restore 0001 and put the change in a new `0003_...sql`.
 `schema_migrations` is per database file. A different `PIPELINE_HOME` points at
 a different SQLite file with its own ledger.
 
-## F6. What is `policy_ids` actually used for?
+**Source:** Follow-up `F5`.
 
-Honest answer: today, almost nothing. `WorkflowDefinition.policy_ids` is only
-checked for duplicates:
+---
+
+#### **Q: How does a migration actually run, step by step?**
+
+**A:** The runner is deliberately small:
 
 ```python
-policy_ids: list[NonEmptyStr] = Field(default_factory=list)
-
-if len(set(self.policy_ids)) != len(self.policy_ids):
-    raise ValueError("policy_ids must not contain duplicates")
+status = runner.status()          # read + validate applied history
+for migration in status.pending:
+    with database.transaction() as connection:
+        execute_sql_statements(connection, migration.path.read_text())
+        connection.execute(
+            "INSERT INTO schema_migrations "
+            "(version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
+            (...),
+        )
 ```
 
-The runtime loader does not resolve the IDs against a registry, and readiness
-and execution do not read them. `StageNode.recovery_policy_id` is separately
-validated against `RECOVERY_POLICY_IDS`, but execution still uses the default
-recovery policy rather than a node-specific lookup. The docs validator checks
-`policy_ids` against the recovery-policy registry, so docs and runtime disagree
-about how strict the field is.
+Details that matter:
 
-Intended use: a workflow-level declaration of the policy set/versions the
-definition expects. For example:
+- Files are `NNNN_name.sql`, contiguous from `0001`.
+- `status()` creates `schema_migrations` if needed, then validates the applied
+  rows against local files: prefix, name, checksum.
+- Each pending file runs in its own `BEGIN IMMEDIATE` transaction. If any
+  statement fails, the file’s changes and its ledger row roll back together.
+- The runner does not use `executescript()`, because that would commit
+  implicitly. It splits on complete SQL statements and executes them inside the
+  caller’s transaction.
+- `applied_at` is audit data, not ordering data. Ordering is `version`.
+- Running `migrate()` when up to date is a read-only check and a no-op.
 
-```yaml
-policy_ids: [default_recovery_v1]
-nodes:
-  - node_id: research
-    recovery_policy_id: default_recovery_v1
-```
-
-A correct loader would resolve each ID to a typed policy, fail if it is unknown
-or the wrong version, and record the resolved policy IDs/versions in
-`EffectiveConfig`. That lets a run fail before spending money:
+Adding a migration, concretely:
 
 ```text
-workflow says policy_ids: [default_recovery_v2]
-registry only has default_recovery_v1
--> loader rejects the workflow
+1. Add src/pipeline/storage/migrations/0002_rename_artifact_key.sql
+2. Run: pipeline db status --database <db>
+   -> 0002 is listed as pending
+3. Run: pipeline db migrate --database <db>
+   -> 0002 executes; schema_migrations gains row (2, rename_artifact_key, ...)
+4. Run status again
+   -> current version 2; pending none
 ```
 
-Today that workflow loads, and execution silently uses
-`default_recovery_policy()` v1. That is the bug.
+Failure examples:
 
-There is also a precedence question: workflow-level `policy_ids` versus
-node-level `recovery_policy_id`. Pick one rule:
+- Edit `0001_initial.sql` after it was applied -> checksum mismatch; restore
+  the file and add `0003_...sql`.
+- Delete `0001_initial.sql` -> “applied migration 1 has no local file”.
+- Add `0003` without `0002` -> “migration versions must be contiguous”.
+- Put `BEGIN`/`COMMIT` inside a migration file -> the runner owns the
+  transaction; remove them.
 
-- workflow-level defaults, node-level override; or
-- remove workflow-level `policy_ids` and require every node to name its policy.
+`quality evaluate` currently bypasses this and opens `Database` directly, which
+is why a fresh database fails with `no such table`. That is `PR5-05`, not a
+migration-runner bug.
 
-Recommended: keep the workflow-level list as a manifest, validate it against
-the registry, and define node-level `recovery_policy_id` as the override. If
-that is not wanted, remove `policy_ids` rather than leaving a dead field.
-Tracked as `PR5-22`.
+**Source:** Follow-up `F12`.
 
-## F7. There is no PR5-21
+---
 
-Correct. The earlier references to `PR5-21` and `PR5-22` were stale
-placeholders; no such TODO items existed. The dangling references are fixed:
+### Capabilities, Providers, and Outbox
 
-- queue names -> `PR5-18` (docs expansion), not `PR5-21`;
-- `latency_budget_ms` -> `PR5-17` (factual doc fix), not `PR5-22`;
-- payload-size tradeoff -> `PR5-18`, not `PR5-22`.
+#### **Q: Why does a capability need `input_artifact_ids`?**
 
-`PR5-21` is now allocated to the capability idempotency table rename and
-`PR5-22` to `policy_ids`. No GitHub comment uses these IDs; they are local
-tracking IDs.
+**A:** They bind the request to exact input artifact versions for provenance,
+idempotency validation, and replay. They may be empty for an operation with no
+artifact inputs; the CLI fixture uses `[]`. On key reuse the executor compares
+the list, and the idempotency record stores it.
 
-## F8. Rename `logical_slot` to `artifact_key`
+**Source:** PR #5 review, `REQUEST_FLOW.md` L811, comment `4444221315`.
 
-Decision: yes, rename it to `artifact_key`.
+---
+
+#### **Q: Which payload’s fingerprint is this?**
+
+**A:** It is the fingerprint of `request.payload`, the capability’s input payload. The
+CLI computes `sha256_text(json.dumps(payload, sort_keys=True))`; the executor
+only compares the fingerprint for equality and does not inspect the payload.
+It does not cover requirements or runtime context.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L812, comment `4444226847`.
+
+---
+
+#### **Q: What do `requirements` mean? Where is effective config?**
+
+**A:** `requirements` are per-request hard eligibility constraints: `capability`,
+`required_features`, `locale`, `quality_requirement`, `latency_requirement`,
+`data_classification`, and `cost_limit_minor`.
+
+The effective config is **not** part of `CapabilityRequest`. It is the
+run-level policy snapshot; its ID is `ExecutionContext.effective_config_id`.
+The CLI inserts a fixture `EffectiveConfig` before invoking the executor.
+
+Doc bug: the golden example in §2.8.1 shows `latency_budget_ms`, but the
+contract has no such field (and extra fields are forbidden). It should be
+`latency_requirement` (a string) or be removed. See `PR5-17`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L813, comment `4444230048`.
+
+---
+
+#### **Q: Why is quota not reconcilable? Does dead letter solve it?**
+
+**A:** “Reconcile” here means resolving an **ambiguous external outcome** by checking
+provider state: did the call happen, and what result did it produce? It is not
+“retry later”.
+
+`QUOTA` is a definite policy refusal with no unknown side effect, so it is
+`retryable=False` and there is nothing to reconcile. A dependency being down
+should classify as `TRANSIENT` (retryable) and use backoff; after the retry
+budget is exhausted, policy chooses `WAIT_HUMAN` or `FAIL`. Dead letter is
+terminal and does not retry, so it does not solve a later quota reset. A
+quota-reset retry is a new scheduling decision and is not implemented.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1124, comment `4444351379`.
+
+---
+
+#### **Q: Why only three Protocols?**
+
+**A:** They are the only real plugin/handler boundaries:
+
+- `Evaluator` — quality check implementations.
+- `JobHandler` — worker job execution.
+- `OutboxDeliveryHandler` — outbox consumer effect.
+
+Everything else is a concrete class or function, either because there is one
+implementation or there is no injection point. Protocols are not used just for
+documentation; they are structural interfaces at real substitution seams. See
+F9 for the `JobHandler` example and when not to add a Protocol.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1853, comment `4444599405`.
+
+---
+
+#### **Q: Who is the consumer, and what does a new consumer pick up?**
+
+**A:** `consumer_id` is a logical subscriber using `InboxConsumer` (for example, a
+stage engine, metrics collector, or notification handler). Each
+`(consumer_id, event_id)` gets one receipt, which makes that consumer’s effect
+exactly-once.
+
+The outbox row has a single global `DELIVERED` status/ack. A consumer added
+after an event was delivered will not see that event; it only sees future
+events unless a backfill/replay is added. This is a real limitation. Decide
+between per-consumer delivery rows/cursors and documented future-only
+semantics. See `PR5-09`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2207, comment `4444748481`.
+
+---
+
+#### **Q: What is a Protocol, and why only three?**
+
+**A:** A `Protocol` is a structural interface: a class does not inherit from it; it
+just has to provide matching methods. The caller depends on the Protocol, and
+any conforming object can be injected. It is a real seam, not documentation.
+
+Example:
+
+```python
+class JobHandler(Protocol):
+    def __call__(self, claim: JobClaim) -> JobHandlerResult: ...
+
+
+class NoopJobHandler:
+    def __call__(self, claim: JobClaim) -> JobHandlerResult:
+        return JobHandlerResult(succeeded=True)
+
+
+class FutureSpeechJobHandler:          # illustrative, not shipped
+    def __call__(self, claim: JobClaim) -> JobHandlerResult:
+        ...
+
+
+def run_once(handler: JobHandler) -> ...:
+    ...
+```
+
+`run_once` does not care which class it receives. Tests can pass a fake that
+records the claim; production passes the real handler. `SpeechJobHandler` does
+not need `class SpeechJobHandler(JobHandler)`, and there is no import cycle
+between the worker and every handler implementation.
+
+The three Protocols are the three places where substitution is actually
+useful:
+
+- `Evaluator`: deterministic checks today, ML/semantic evaluators later; tests
+  inject a fake evaluator.
+- `JobHandler`: the worker loop versus the actual stage work; tests inject a
+  no-op or failing handler.
+- `OutboxDeliveryHandler`: the dispatcher versus the consumer effect; tests
+  inject a handler that counts deliveries.
+
+Why not make everything a Protocol? A Protocol only pays for itself when there
+is more than one implementation, a test fake, or a module boundary you want to
+decouple. If there is one concrete class and callers need its exact transaction
+semantics, a Protocol adds indirection without a seam. For example,
+`LeaseManager` is concrete because a fake would hide the SQL/fencing behavior
+under test; `Database` is concrete because it owns connection and PRAGMA
+behavior.
+
+A Protocol is also not runtime-enforced. It is checked by the type checker; at
+runtime, any object with the right method name is accepted. `@runtime_checkable`
+only checks method presence, not signatures. So “Protocols are not used just for
+documentation” means: use one when you need substitutability, not to describe a
+class that will only ever have one implementation.
+
+**Source:** Follow-up `F9`.
+
+---
+
+#### **Q: How can duplicate provider side effects still happen? Give an example.**
+
+**A:** The database can prevent two identical rows. It cannot see an external charge,
+upload, or generated asset. Concrete timeline:
+
+```text
+t0  executor INSERTs idempotency_records(key=idem_speech_x, status=RESERVED)
+t1  executor UPDATEs status=IN_FLIGHT, COMMITs
+t2  executor calls provider: POST /generate
+t3  provider creates the asset and charges $0.12
+t4  process crashes before persisting the result
+t5  retry with idem_speech_x sees IN_FLIGHT -> "already in flight"
+t6  operator reconciles. If they decide to retry, the provider creates a
+    second asset and charges again
+```
+
+What the current code does well:
+
+- `BEGIN IMMEDIATE` serializes concurrent executors, so two processes cannot
+  both insert the same key and both call the provider.
+- A retry that sees `IN_FLIGHT` returns an error instead of calling again.
+- A timeout that becomes `UNKNOWN` returns “reconciliation required” instead of
+  blindly retrying.
+- `FAILED` can be retried, but only after the executor has recorded a failure.
+
+The remaining gaps:
+
+1. The provider is not given an idempotency key derived from
+   `idem_speech_x`. If the process dies after the provider succeeds, the
+   provider has no way to recognize the retry.
+2. `provider_operation_id` is stored, but the executor never uses it to query
+   the provider’s status before retrying an `UNKNOWN` outcome.
+3. A provider error after the side effect (for example, the response is lost)
+   may be classified as `FAILED`; a later retry calls the provider again.
+4. The fake provider is deterministic, so the demo cannot show this failure
+   mode. A real provider would.
+
+The fix is provider-side idempotency plus reconciliation:
+
+```text
+request header: Idempotency-Key: idem_speech_x
+provider returns: operation_id=op_123, status=accepted
+persist op_123
+on UNKNOWN: GET /operations/op_123 before any retry
+```
+
+Only retry when the provider says the operation does not exist or failed
+without side effects. Tracked as `PR5-24`.
+
+**Source:** Follow-up `F10`.
+
+---
+
+#### **Q: What is the outbox multi-consumer limitation? Give an example.**
+
+**A:** Mental model: `outbox_messages` is **one mailbox with one copy of each event**,
+not a mailing list with one copy per subscriber. `consumer_id` on the inbox
+means “who processed this copy”; it does not mean a copy exists for every
+consumer.
+
+```text
+event E1: stage.succeeded
+outbox row: status=PENDING -> CLAIMED -> DELIVERED
+```
+
+`inbox_receipts` is per consumer: `(consumer_id, event_id)`. That dedupes a
+consumer’s repeated delivery, but it does not give a new consumer the event.
+A receipt can only exist after that consumer has received the event.
+
+Scenario:
+
+```text
+E1 appended.
+Consumer A (stage engine) claims E1, processes it, acks it.
+outbox E1 is now DELIVERED.
+
+Later, Consumer B (metrics/notification) is added.
+claim_pending() selects only PENDING rows.
+E1 is DELIVERED, so B never sees it.
+B has no inbox receipt, but there is no delivery to dedupe.
+```
+
+A second problem: if A and B run at the same time, only one can claim E1,
+because the outbox row has one `claimed_by` and one status. The outbox is
+single-consumer delivery even though the inbox is per-consumer.
+
+```text
+What people expect from "consumer_id":
+  E1 -> copy for A
+  E1 -> copy for B
+
+What the outbox actually has:
+  E1 -> one row -> first claimant wins -> DELIVERED
+```
+
+If you reset E1 to `PENDING` by hand, B can then process it; A may also see it
+again, but A’s inbox receipt makes that a no-op. That is manual replay, not
+automatic multi-consumer delivery. It also means “new consumer gets old events”
+only if someone performs that replay/backfill.
+
+Options:
+
+1. **Per-consumer delivery rows.** Add
+   `outbox_deliveries(outbox_id, consumer_id, status, attempts, available_at,
+   claimed_by, lease_expires_at, delivered_at)` with primary key
+   `(outbox_id, consumer_id)`. Claim and ack per row. A new consumer can
+   backfill by inserting delivery rows for retained events.
+2. **Per-consumer cursor.** Keep the event log and store
+   `last_event_sequence` per consumer. Each consumer reads forward. Simpler,
+   but requires a retention/compaction policy and a sequence column.
+3. **Document future-only semantics.** Consumers only see events appended
+   after registration; no replay. Then stop describing the outbox as
+   multi-consumer pub/sub; it is a single local dispatcher.
+
+Recommended for the current SQLite scale: per-consumer delivery rows. The
+inbox already makes redelivery safe, so delivery rows can be at-least-once.
+Tracked as `PR5-09`.
+
+**Source:** Follow-up `F11`.
+
+---
+
+### Quality Gates and Checks
+
+#### **Q: What is `ABSTAIN`?**
+
+**A:** `ABSTAIN` is a `CheckOutcome`: the evaluator could not make a PASS/FAIL
+decision (for example, insufficient evidence or a deliberately
+non-determinable check). It is not PASS and not `NOT_APPLICABLE`. The gate
+escalates any ABSTAIN to `HUMAN_REVIEW` rather than silently passing.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1266, comment `4444420827`.
+
+---
+
+#### **Q: Is `after_max_regenerations` a code?**
+
+**A:** It is a policy field, not a failure code. `QualityGatePolicy` has
+`after_max_regenerations: RepeatedFailureAction`, whose values are
+`HUMAN_REVIEW` and `FAIL`. The CLI sets `HUMAN_REVIEW`. The gate applies it
+when the regeneration budget is exhausted.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1268, comment `4444422667`.
+
+---
+
+#### **Q: How were the thresholds decided?**
+
+**A:** They were not calibrated. The CLI hardcodes `0.8` pass and `0.65` review for
+`claim_support`, `clarity`, `structure`, and `tone`. `ThresholdRegistry` exists
+with per-dimension records and recalibration fields, but the CLI gate path does
+not use it. This is a placeholder policy. See `PR5-10` to load policies from
+the database, use threshold records, and record calibration/rationale in an
+ADR.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1271, comment `4444430560`.
+
+---
+
+#### **Q: `QualityGatePolicy` vs `QualityCheck` — what is the difference?**
+
+**A:** `QualityCheck` is one registered check definition: target artifact types,
+evaluator, severity, repair scope, required flag, and rubric version.
+`QualityGatePolicy` is the gate composition: required check IDs, hard failure
+codes, pass/review thresholds, regeneration limit, and after-max action.
+
+In short: a check is “what to evaluate”; a policy is “which checks, with what
+thresholds and decision rules”.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1985, comment `4444663829`.
+
+---
+
+#### **Q: Why does `quality evaluate` need migrations?**
+
+**A:** It opens `Database(arguments.database)` directly and then queries
+`quality_evaluations`/`quality_gate_results`; it never calls
+`MigrationRunner`. A fresh database therefore has no tables and fails with
+`no such table: quality_evaluations`. It should use the migrated-database path
+(or require explicit `db migrate`) and be re-runnable.
+
+Related bugs: a second identical evaluation fails with `ConflictError` on the
+deterministic evaluation IDs, and the command returns exit code `0` for a
+`REGENERATE` decision (it only returns nonzero for `FAIL`/`HUMAN_REVIEW`).
+Fix all three under `PR5-05`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L3249, comment `4445489477`.
+
+---
+
+### Artifacts, Slots, and Repair
+
+#### **Q: What is a `RepairPlan`?**
+
+**A:** It is a durable **instruction**, not an executed action. It records the source
+gate result, reason codes, target artifact/stage-instance IDs, invalidation
+scope, max attempts, and creation time. Creating it does not invalidate
+artifacts or enqueue replacement work; no executor consumes it yet. It is a
+plan for a future repair/recovery path.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1356, comment `4444456524`.
+
+---
+
+#### **Q: What is `logical_slot`, and why that name?**
+
+**A:** `logical_slot` is the stable editorial position/name for an artifact within a
+run (`script`, `speech_scene_001`, `render_chunk_02`), independent of version.
+Successive artifact versions fill the same slot; `(run_id, logical_slot,
+version)` is unique, and pointers select the active version per slot/type.
+
+The name comes from the content/timeline idea of a “slot” that gets filled.
+It is being renamed to `artifact_key`: it says what the value is, and it stays
+accurate for manifests and render chunks that are not “content”. The rename
+needs a new migration (not an edit to `0001_initial.sql`), plus contract,
+repository, index, test, and docs updates. See F8 and `PR5-12`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L1478, comment `4444498798`.
+
+---
+
+#### **Q: Is there a better name than “slot”?**
+
+**A:** See L1478. Decided: rename to `artifact_key`. It is the key for the artifact’s
+editorial position, not a content-only slot. Do it with a new migration plus
+the contract/repository/test/docs change. See F8 and `PR5-12`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2143, comment `4444727788`.
+
+---
+
+#### **Q: What about artifact types? A script is an artifact; how is it repaired?**
+
+**A:** A script is an artifact, but repair is scoped to editorial/execution units, not
+arbitrary artifact types. A script problem is repaired by regenerating the
+script stage (or a narrower scene/shot scope for downstream content), producing
+new artifact versions and invalidating descendants. `RepairPlan` targets
+artifact IDs and stage-instance IDs with an `invalidation_scope`.
+
+There is no separate “repair this artifact type” API. Add a mapping table
+(artifact type → checks → repair scope) to the docs. See `PR5-15`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2445, comment `4445207566`.
+
+---
+
+#### **Q: Should `logical_slot` be renamed to `artifact_key`?**
+
+**A:** Decision: yes, rename it to `artifact_key`.
 
 `artifact_key` is the stable editorial identity of an artifact within one run,
 independent of version:
@@ -1919,417 +2725,98 @@ Why this name:
 `PR5-12` is now the rename plan, not a “decide” item. No production data means
 no backfill beyond the migration; demo databases can be recreated.
 
-## F9. What is a Protocol, and why only three?
-
-A `Protocol` is a structural interface: a class does not inherit from it; it
-just has to provide matching methods. The caller depends on the Protocol, and
-any conforming object can be injected. It is a real seam, not documentation.
-
-Example:
-
-```python
-class JobHandler(Protocol):
-    def __call__(self, claim: JobClaim) -> JobHandlerResult: ...
-
-
-class NoopJobHandler:
-    def __call__(self, claim: JobClaim) -> JobHandlerResult:
-        return JobHandlerResult(succeeded=True)
-
-
-class FutureSpeechJobHandler:          # illustrative, not shipped
-    def __call__(self, claim: JobClaim) -> JobHandlerResult:
-        ...
-
-
-def run_once(handler: JobHandler) -> ...:
-    ...
-```
-
-`run_once` does not care which class it receives. Tests can pass a fake that
-records the claim; production passes the real handler. `SpeechJobHandler` does
-not need `class SpeechJobHandler(JobHandler)`, and there is no import cycle
-between the worker and every handler implementation.
-
-The three Protocols are the three places where substitution is actually
-useful:
-
-- `Evaluator`: deterministic checks today, ML/semantic evaluators later; tests
-  inject a fake evaluator.
-- `JobHandler`: the worker loop versus the actual stage work; tests inject a
-  no-op or failing handler.
-- `OutboxDeliveryHandler`: the dispatcher versus the consumer effect; tests
-  inject a handler that counts deliveries.
-
-Why not make everything a Protocol? A Protocol only pays for itself when there
-is more than one implementation, a test fake, or a module boundary you want to
-decouple. If there is one concrete class and callers need its exact transaction
-semantics, a Protocol adds indirection without a seam. For example,
-`LeaseManager` is concrete because a fake would hide the SQL/fencing behavior
-under test; `Database` is concrete because it owns connection and PRAGMA
-behavior.
-
-A Protocol is also not runtime-enforced. It is checked by the type checker; at
-runtime, any object with the right method name is accepted. `@runtime_checkable`
-only checks method presence, not signatures. So “Protocols are not used just for
-documentation” means: use one when you need substitutability, not to describe a
-class that will only ever have one implementation.
-
-## F10. How can duplicate provider side effects still happen? Give an example
-
-The database can prevent two identical rows. It cannot see an external charge,
-upload, or generated asset. Concrete timeline:
-
-```text
-t0  executor INSERTs idempotency_records(key=idem_speech_x, status=RESERVED)
-t1  executor UPDATEs status=IN_FLIGHT, COMMITs
-t2  executor calls provider: POST /generate
-t3  provider creates the asset and charges $0.12
-t4  process crashes before persisting the result
-t5  retry with idem_speech_x sees IN_FLIGHT -> "already in flight"
-t6  operator reconciles. If they decide to retry, the provider creates a
-    second asset and charges again
-```
-
-What the current code does well:
-
-- `BEGIN IMMEDIATE` serializes concurrent executors, so two processes cannot
-  both insert the same key and both call the provider.
-- A retry that sees `IN_FLIGHT` returns an error instead of calling again.
-- A timeout that becomes `UNKNOWN` returns “reconciliation required” instead of
-  blindly retrying.
-- `FAILED` can be retried, but only after the executor has recorded a failure.
-
-The remaining gaps:
-
-1. The provider is not given an idempotency key derived from
-   `idem_speech_x`. If the process dies after the provider succeeds, the
-   provider has no way to recognize the retry.
-2. `provider_operation_id` is stored, but the executor never uses it to query
-   the provider’s status before retrying an `UNKNOWN` outcome.
-3. A provider error after the side effect (for example, the response is lost)
-   may be classified as `FAILED`; a later retry calls the provider again.
-4. The fake provider is deterministic, so the demo cannot show this failure
-   mode. A real provider would.
-
-The fix is provider-side idempotency plus reconciliation:
-
-```text
-request header: Idempotency-Key: idem_speech_x
-provider returns: operation_id=op_123, status=accepted
-persist op_123
-on UNKNOWN: GET /operations/op_123 before any retry
-```
-
-Only retry when the provider says the operation does not exist or failed
-without side effects. Tracked as `PR5-24`.
-
-## F11. Explain the outbox multi-consumer limitation with an example
-
-Mental model: `outbox_messages` is **one mailbox with one copy of each event**,
-not a mailing list with one copy per subscriber. `consumer_id` on the inbox
-means “who processed this copy”; it does not mean a copy exists for every
-consumer.
-
-```text
-event E1: stage.succeeded
-outbox row: status=PENDING -> CLAIMED -> DELIVERED
-```
-
-`inbox_receipts` is per consumer: `(consumer_id, event_id)`. That dedupes a
-consumer’s repeated delivery, but it does not give a new consumer the event.
-A receipt can only exist after that consumer has received the event.
-
-Scenario:
-
-```text
-E1 appended.
-Consumer A (stage engine) claims E1, processes it, acks it.
-outbox E1 is now DELIVERED.
-
-Later, Consumer B (metrics/notification) is added.
-claim_pending() selects only PENDING rows.
-E1 is DELIVERED, so B never sees it.
-B has no inbox receipt, but there is no delivery to dedupe.
-```
-
-A second problem: if A and B run at the same time, only one can claim E1,
-because the outbox row has one `claimed_by` and one status. The outbox is
-single-consumer delivery even though the inbox is per-consumer.
-
-```text
-What people expect from "consumer_id":
-  E1 -> copy for A
-  E1 -> copy for B
-
-What the outbox actually has:
-  E1 -> one row -> first claimant wins -> DELIVERED
-```
-
-If you reset E1 to `PENDING` by hand, B can then process it; A may also see it
-again, but A’s inbox receipt makes that a no-op. That is manual replay, not
-automatic multi-consumer delivery. It also means “new consumer gets old events”
-only if someone performs that replay/backfill.
-
-Options:
-
-1. **Per-consumer delivery rows.** Add
-   `outbox_deliveries(outbox_id, consumer_id, status, attempts, available_at,
-   claimed_by, lease_expires_at, delivered_at)` with primary key
-   `(outbox_id, consumer_id)`. Claim and ack per row. A new consumer can
-   backfill by inserting delivery rows for retained events.
-2. **Per-consumer cursor.** Keep the event log and store
-   `last_event_sequence` per consumer. Each consumer reads forward. Simpler,
-   but requires a retention/compaction policy and a sequence column.
-3. **Document future-only semantics.** Consumers only see events appended
-   after registration; no replay. Then stop describing the outbox as
-   multi-consumer pub/sub; it is a single local dispatcher.
-
-Recommended for the current SQLite scale: per-consumer delivery rows. The
-inbox already makes redelivery safe, so delivery rows can be at-least-once.
-Tracked as `PR5-09`.
-
-## F12. How does a migration actually run, step by step?
-
-The runner is deliberately small:
-
-```python
-status = runner.status()          # read + validate applied history
-for migration in status.pending:
-    with database.transaction() as connection:
-        execute_sql_statements(connection, migration.path.read_text())
-        connection.execute(
-            "INSERT INTO schema_migrations "
-            "(version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
-            (...),
-        )
-```
-
-Details that matter:
-
-- Files are `NNNN_name.sql`, contiguous from `0001`.
-- `status()` creates `schema_migrations` if needed, then validates the applied
-  rows against local files: prefix, name, checksum.
-- Each pending file runs in its own `BEGIN IMMEDIATE` transaction. If any
-  statement fails, the file’s changes and its ledger row roll back together.
-- The runner does not use `executescript()`, because that would commit
-  implicitly. It splits on complete SQL statements and executes them inside the
-  caller’s transaction.
-- `applied_at` is audit data, not ordering data. Ordering is `version`.
-- Running `migrate()` when up to date is a read-only check and a no-op.
-
-Adding a migration, concretely:
-
-```text
-1. Add src/pipeline/storage/migrations/0002_rename_artifact_key.sql
-2. Run: pipeline db status --database <db>
-   -> 0002 is listed as pending
-3. Run: pipeline db migrate --database <db>
-   -> 0002 executes; schema_migrations gains row (2, rename_artifact_key, ...)
-4. Run status again
-   -> current version 2; pending none
-```
-
-Failure examples:
-
-- Edit `0001_initial.sql` after it was applied -> checksum mismatch; restore
-  the file and add `0003_...sql`.
-- Delete `0001_initial.sql` -> “applied migration 1 has no local file”.
-- Add `0003` without `0002` -> “migration versions must be contiguous”.
-- Put `BEGIN`/`COMMIT` inside a migration file -> the runner owns the
-  transaction; remove them.
-
-`quality evaluate` currently bypasses this and opens `Database` directly, which
-is why a fresh database fails with `no such table`. That is `PR5-05`, not a
-migration-runner bug.
-
-## F13. What is updated in place, what is appended, and what decides that?
-
-The rule is about **identity and history**, not table size:
-
-- If there is one current truth per identity and readers only want the latest,
-  update in place.
-- If the old value must remain explainable, auditable, or replayable, append a
-  new row.
-- If the row is an immutable identity or content snapshot, never update it;
-  create a new version.
-
-Examples:
-
-**Update in place (current-state projection):**
-
-- `workflow_runs.status`, `updated_at`.
-- `stage_instances.execution_status`, `acceptance_status`, `active_attempt_id`.
-- `stage_attempts.status`, `worker_id`, `lease_expires_at`, `finished_at`.
-- `jobs.status`, `claimed_by`, `lease_expires_at`, `delivery_count`.
-- `idempotency_records.status`, result linkage, `completed_at`. The key,
-  fingerprint, input artifacts, and capability are immutable.
-- `budget_reservations.status`, `actual_cost_minor`, `settled_at`. The reserved
-  amount is immutable; a new operation gets a new reservation.
-- `outbox_messages.status`, attempts, delivery timestamps. The row is retained,
-  not deleted.
-- `human_reviews.status`, `resolved_at`.
-
-**Append (historical fact):**
-
-- `workflow_events`: every event is a fact; never rewrite an old event.
-- `artifacts`: a regeneration creates version 2; version 1 remains for lineage
-  and rollback.
-- `artifact_pointers`: activating a new pointer deactivates the old row and
-  inserts a new one; the old pointer row is retained. The `active` flag is
-  updated, but the pointer identity/content is not rewritten.
-- `quality_evaluations` and `quality_gate_results`: a re-evaluation is a new
-  evaluation/result; do not overwrite a prior FAIL with a PASS.
-- `repair_plans`: each plan is a decision record.
-- `human_review_decisions`: each decision is a new sequence row.
-- `recovery_decisions`: each recovery choice is a new audit row.
-- `inbox_receipts`: one row per `(consumer_id, event_id)`.
-- `routing_decisions`, `provider_invocations`, `usage_records`: each invocation
-  is a fact.
-
-**Immutable identity/snapshot:**
-
-- `workflow_definitions`: a new version is a new definition.
-- `effective_configs`: the resolved snapshot is immutable.
-- artifact content (`uri`, `sha256`, `size_bytes`): a new artifact version, not
-  an edit.
-
-Borderline cases:
-
-- `leases`: a new claim inserts a new `(job_id, fencing_token)` row, so the
-  ownership history is append-only. A renewal updates the current term’s
-  `expires_at`/`heartbeat_at`; that is an update to the live term, not a
-  rewrite of history. The latest term wins.
-- `idempotency_records`: status is current state, but the request identity is
-  immutable. A retry does not rewrite the fingerprint.
-- `artifact_pointers`: the row is a historical pointer record; only the
-  `active` flag changes when it is superseded.
-
-The test to apply: “If I delete the old value, can I still explain what
-happened and reproduce the decision?” If no, append. “Do all readers want only
-the latest, and is the old value uninteresting?” Then update in place.
-
-## F14. What is a “mutating transition”, in plain terms?
-
-It is a write that changes durable execution state and must be authorized by
-the current owner. A read/readiness check is not a mutating transition.
-
-Concrete fencing example:
-
-```text
-Worker W1 claims job J -> lease token 7, expires at 10:01.
-W1 stalls.
-Worker W2 recovers the expired lease and claims J -> token 8.
-W1 wakes up and calls complete_success(J, token=7).
-```
-
-Without a fence, W1’s `UPDATE jobs SET status='ACKED'` would overwrite W2’s
-work and record W1’s stale output. With `verify_live_claim()` inside
-`BEGIN IMMEDIATE`:
-
-```text
-re-read job J
-re-read latest lease -> token 8
-compare owner/token/expiry
-token 7 != 8 -> REJECTED: FENCING_TOKEN_MISMATCH
-```
-
-W1’s result is discarded; W2 remains the owner. That is the point of the
-fencing token.
-
-The claim path does this in one transaction:
-
-1. `BEGIN IMMEDIATE` takes the write lock before reading state, so no other
-   writer can change the job between the decision and the write.
-2. Recover expired leases (return them to READY and record a recovery
-   decision).
-3. Select the next READY job.
-4. Read the job, attempt, stage, and latest lease.
-5. Compute the next fencing token (`latest + 1`).
-6. Insert the new lease row; update the attempt, stage, and job with the owner,
-   token, and expiry.
-7. Commit. A crash rolls the whole claim back; there is no half-claimed job.
-
-`renew()` only extends the caller’s own live term. `complete_success()` accepts
-an idempotent repeat only when the job is already ACKED with the same token;
-otherwise it requires a live claim. `recover_expired()` treats an expired term
-as lost ownership and does not let the old owner commit.
-
-Mutating transitions include claim, renew, start, complete, fail, recover,
-cancel, outbox ack, and idempotency status changes. Pure reads include
-readiness evaluation, status/report queries, and list commands. Not every write
-needs a fencing token: a quality evaluation write needs idempotency, but it is
-not owned by a worker lease.
-
-## F15. How do UUIDs make replay and dedupe harder? Concrete examples
-
-Deterministic ID/key:
-
-```text
-create_job(stage, attempt=1) -> job_abc..., key=idem_job_def...
-retry the same call        -> key lookup finds job_abc...
-                              created=False
-```
-
-Even if the lookup were skipped, the deterministic `job_id` primary key turns
-the second insert into a `ConflictError` instead of a duplicate row.
-
-UUIDv4:
-
-```text
-create_job(stage, attempt=1) -> job_9f3a...
-retry the same call        -> job_7c21...
-INSERT succeeds             -> two jobs for one logical unit
-```
-
-Now the database has two claimable jobs. Two workers can claim them and call
-the provider twice. The UUID did not encode “this is the same logical work,” so
-you need a separate unique natural key `(stage_instance_id, attempt_number)` to
-catch it. At that point the UUID is just a random row label; the dedupe work is
-elsewhere.
-
-Other examples:
-
-- **Artifact regeneration:** a deterministic stage/artifact ID lets a rerun
-  find the existing version and either return it or create version 2. A UUID
-  creates a new stage instance/artifact with no link to the first, so
-  downstream fan-in sees duplicates.
-- **Event append:** if callers derive `event_id` from
-  `(run, type, stage, attempt)`, a repeated append is a primary-key conflict.
-  The current `EventOutbox.append()` takes the envelope as supplied, so this
-  depends on the producer. A random UUID creates a second event and outbox row;
-  the inbox only dedupes by `event_id`, so a different UUID is a different
-  event and the consumer runs twice.
-- **Golden tests:** deterministic IDs let fixtures assert exact values and make
-  parent/child relationships visible. UUIDs force tests to normalize or ignore
-  IDs, which can hide a broken relationship (for example, an attempt pointing
-  at the wrong stage).
-- **Crash recovery:** after a crash, the caller may not know whether the first
-  call committed. A deterministic key lets it recompute the same ID and probe;
-  a UUID requires a stored request->UUID mapping, and if that mapping write was
-  not atomic with the effect, the retry still duplicates.
-
-UUIDv5 (name-based) is deterministic and avoids the random-retry problem, but
-it is still a hash namespace: you must choose the name inputs, and formula
-changes have the same versioning problem. The project’s `deterministic_id` is
-essentially a truncated SHA-256 with a prefix, so it has the same tradeoff.
-
-Random IDs are still right where there is no natural key and independence is
-desired: request IDs, correlation IDs, some report IDs. The rule is: use a
-deterministic ID when the identity is derived from durable inputs; use a random
-ID when the identity is genuinely new.
+**Source:** Follow-up `F8`.
 
 ---
 
-## Follow-up decisions recorded
+### Failure Handling and Recovery
 
-- Rename `idempotency_records` -> `capability_idempotency_records` (`PR5-21`).
-- Rename `logical_slot` -> `artifact_key` (`PR5-12`).
-- Keep `jobs.idempotency_key` as the enqueue dedupe key; it is not a second
-  `job_id`.
-- Implement or remove `policy_ids`; do not leave it as duplicate-only metadata
-  (`PR5-22`).
-- Fingerprint the full semantic request, not just `payload` (`PR5-23`).
-- Add provider-side idempotency/reconciliation for unknown outcomes (`PR5-24`).
-- Document the outbox as single-consumer until per-consumer delivery exists
-  (`PR5-09`).
+#### **Q: What does the recovery-actions table mean?**
+
+**A:** It maps a recovery decision (`FailureAction`, defined in
+`src/pipeline/execution/retry.py`) to the resulting status of each execution
+record: attempt, job, and stage. It answers “if this action is chosen, what
+happens to each record?” It is not a table of failure codes or gate decisions.
+
+Doc improvement: label the columns “Attempt status / Job status / Stage status”
+and note that `FailureAction` lives in `execution/retry.py`, while
+`RecoveryAction`, `QualityFailureAction`, and `RepeatedFailureAction` live in
+`contracts/vocabularies.py`. See `PR5-14`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2472, comment `4445225805`.
+
+---
+
+#### **Q: Failure action for what component?**
+
+**A:** For the stage execution records: attempt, job, and stage. The action is chosen
+at the stage-recovery boundary after a capability attempt fails. It is not an
+outbox or quality-gate action.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2474, comment `4445236064`.
+
+---
+
+#### **Q: Failure code for what component?**
+
+**A:** `FailureCode` classifies why a capability/provider invocation failed
+(`EXEC.VALIDATION`, `EXEC.QUOTA`, and so on). It is stored on the attempt
+(`failure_code`) and in `NormalizedError`; its category drives retry/recovery.
+It is not a quality-check code or an HTTP status.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2484, comment `4445238712`.
+
+---
+
+#### **Q: Default action for what component?**
+
+**A:** “Default action” means the stage-level `RecoveryAction` selected by
+`classify_failure()` under the default retry/recovery policy when that failure
+code occurs. It maps to the attempt/job/stage transitions in §6.12.
+
+Doc bug: the catalogue uses `PAUSE`, `DEFER`, and `HUMAN_REVIEW` as default
+actions, but `FailureAction` only has `RETRY`, `RECONCILE`, `WAIT_HUMAN`, and
+`FAIL`; `RecoveryAction` has `RESUME`, `RETRY`, `RECONCILE`, `REGENERATE`,
+`WAIT_HUMAN`, and `FAIL`. `PAUSE` and `DEFER` do not exist in code. The
+catalogue must be corrected or mapped explicitly. See `PR5-14`.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2486, comment `4445242361`.
+
+---
+
+#### **Q: What happens once it is `FAIL`?**
+
+**A:** Attempt `FAILED`, job `DEAD_LETTER`, stage `FAILED`. If the node is required,
+readiness derives run `FAILED`. There is no automatic retry; an operator or
+human must repair or re-run. `RECONCILE` and `WAIT_HUMAN` are the other
+terminal branches.
+
+**Source:** PR #5 review, `REQUEST_FLOW.md` L2633, comment `4445277313`.
+
+---
+
+### PR #5 Decision Summary
+
+| Topic | Decision | TODO |
+|-------|----------|------|
+| Atlas rendering | Fix enum names, escape union pipes, and render `default_factory` defaults | `PR5-01` |
+| Repository projections | Store every extracted column, including JSON-encoded lists | `PR5-02` |
+| Stage identity | Include `logical_item_key` in the `stage_` formula and add a stage creator | `PR5-03` |
+| Double prefixes | Use the helper result directly for `eval_`, `qgr_`, and `repair_` | `PR5-04` |
+| `quality evaluate` | Migrate, be re-runnable, and return a distinct `REGENERATE` status | `PR5-05` |
+| Human review CLI | Implement `list`/`show` and test the full command group | `PR5-06` |
+| Timestamps | Persist one canonical UTC representation | `PR5-07` |
+| `capabilities list` | Make it a read-only registry query | `PR5-08` |
+| Outbox | Add per-consumer delivery rows or document future-only semantics | `PR5-09` |
+| Quality policy | Load gate policy/thresholds from the database and calibrate them | `PR5-10` |
+| ID contract | Document formulas, shared digests, opacity, and versioning | `PR5-11` |
+| Artifact identity | Rename `logical_slot` to `artifact_key` | `PR5-12` |
+| Run overrides | Resolve defaults, bounds, `source_map`, and `config_hash` | `PR5-13` |
+| Failure actions | Reconcile the docs catalogue with the real enums | `PR5-14` |
+| Repair scopes | Map artifact types to checks and allowed repair scopes | `PR5-15` |
+| Readiness persistence | Persist `next_status` and create stages/attempts/jobs end to end | `PR5-16` |
+| Capability idempotency | Rename `idempotency_records` to `capability_idempotency_records` | `PR5-21` |
+| `policy_ids` | Resolve it against the registry or remove it | `PR5-22` |
+| Request fingerprint | Fingerprint the full semantic request, not only `payload` | `PR5-23` |
+| Provider side effects | Add provider idempotency keys and reconcile `UNKNOWN` outcomes | `PR5-24` |
+| Stage item key | Optionally rename `logical_item_key` to `stage_item_key` | `PR5-25` |
