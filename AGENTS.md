@@ -48,6 +48,29 @@ whenever adding or editing review material.
 - Keep the Contents list and the decision summary current when adding a review
   or changing a decision.
 
+### Issue priority
+
+Every issue has exactly one priority label. Priority is the single measure of
+importance: how much the work matters now. Do not add a separate severity axis.
+
+- `P0` Critical / now: blocks the active slice or release gate, or is a critical
+  correctness, safety, or data-integrity defect in an enabled path. Fix before
+  anything else.
+- `P1` High / next: required for current milestone acceptance. Schedule
+  immediately after `P0`.
+- `P2` Medium / planned: meaningful hardening, contract, documentation, or test
+  work for the current or next milestone. Not gate-blocking.
+- `P3` Low / deferred: optional, cosmetic, or later-milestone work.
+
+Rules:
+
+- Title: `PR5-NN [P0][code] Short title`.
+- Put `**Priority:** P0` at the top of the issue body, before `Context`.
+- Use exactly one priority label.
+- Reassess priority when the issue is picked up, deferred, or the active
+  milestone changes.
+- `starter-slice` is a scope label, not a priority.
+
 ### Review issues
 
 - One issue per independently shippable concern. Merge duplicates; do not file
@@ -55,11 +78,21 @@ whenever adding or editing review material.
 - IDs: `PR5-NN` for PR #5 review items, `GEN-NN` for carried-over FV-11 items.
   IDs are stable; never renumber or reuse.
 - Title: `PR5-NN [P0][code] Short title`.
-- Priority: `P0` blocking, `P1` next design/behavior, `P2` normal documentation
-  and hardening, `P3` opportunistic or scale-dependent.
+- Priority: exactly one label, as defined in “Issue priority”.
 - Type tag: one primary tag, `[code]`, `[docs]`, `[test]`, `[ops]`, `[build]`,
   or `[design]`. Secondary work stays in `Work`.
-- Every issue body has `Context`, `Work`, `Acceptance`, and `Files/References`.
+- Every issue body has `Context`, `Work`, `Acceptance`, and `Files/References`,
+  preceded by the priority header.
 - Reference other items by ID, never by position or line number.
 - When work lands: close the issue with the PR/commit. When an item is dropped,
   close it as not planned with the reason.
+
+## Pull requests
+
+Every pull request description must follow `.github/pull_request_template.md`.
+Fill all seven sections — Summary, Why, Impact if not merged, Examples, Changes,
+Verification, and Risk — with a short, direct explanation. The goal is that a
+reviewer understands the purpose, consequence, scope, and evidence without
+reading the diff first. Every PR must include at least one concrete example that
+shows why the change matters, such as a failing command, before/after behavior,
+or a real scenario. Do not paste commit logs or restate the diff line by line.
