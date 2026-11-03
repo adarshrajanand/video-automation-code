@@ -1105,6 +1105,7 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
             ExecutionContext,
         )
         from pipeline.contracts.routing import RoutingDecision
+        from pipeline.execution.stages import derive_stage_instance_id
         from pipeline.fingerprints import sha256_text
         from pipeline.ids import deterministic_id
 
@@ -1144,8 +1145,8 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
 
         run_suffix = f"cli_{uuid.uuid4().hex[:8]}"
         run_id = arguments.run_id or deterministic_id("run", run_suffix)
-        stage_instance_id = arguments.stage_instance_id or deterministic_id(
-            "stage", run_id
+        stage_instance_id = arguments.stage_instance_id or derive_stage_instance_id(
+            run_id, "test_node", "test_item"
         )
         attempt_id = arguments.attempt_id or deterministic_id(
             "attempt", stage_instance_id
