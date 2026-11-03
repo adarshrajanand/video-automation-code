@@ -19,6 +19,8 @@ Components:
 - **JobDispatcher**: Claims READY stage instances, creates Jobs with
   idempotency keys and fenced leases.
 - **JobFactory**: Creates StageAttempt + Job atomically with deterministic IDs.
+- **StageFactory**: Creates logical StageInstance rows idempotently per run,
+  node, and logical item key.
 - **LeaseManager**: Fenced leases with monotonic tokens. Expired leases
   reclaimed with audit trail (RecoveryDecision).
 - **WorkerLoop**: Claims jobs, runs handlers, handles completion/failure
@@ -84,6 +86,12 @@ from pipeline.execution.retry import (
     deterministic_jitter,
     retry_backoff_seconds,
 )
+from pipeline.execution.stages import (
+    StageCreationError,
+    StageCreationResult,
+    StageFactory,
+    derive_stage_instance_id,
+)
 from pipeline.execution.worker import (
     JobHandler,
     JobHandlerResult,
@@ -127,6 +135,9 @@ __all__ = [
     "RecoveryManager",
     "RecoveryOutcome",
     "RetryDecision",
+    "StageCreationError",
+    "StageCreationResult",
+    "StageFactory",
     "WorkerLoop",
     "WorkerRunResult",
     "WorkerRunStatus",
@@ -134,6 +145,7 @@ __all__ = [
     "classify_failure",
     "default_recovery_policy",
     "default_retry_policy",
+    "derive_stage_instance_id",
     "deterministic_jitter",
     "retry_backoff_seconds",
     "utc_now",
