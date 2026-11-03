@@ -8,7 +8,9 @@ the original review.
 - **PR #1 review:** consolidated questions and answers from the initial review.
 - **PR #5 review:** 81 line comments plus 15 follow-up questions. The 81 replies
   were posted on the PR. No code or reviewed-document fixes were made in
-  response; follow-ups are tracked in `TODO_POST_REVIEW.md` under `PR5-*`.
+  response; follow-ups are tracked as
+  [GitHub issues](https://github.com/adarshrajanand/video-automation-code/issues)
+  with `PR5-*` IDs.
 
 Formatting rules for this file are in `AGENTS.md`.
 
@@ -720,7 +722,9 @@ Applies to: hash mismatches, missing artifacts, threshold failures.
 
 **Source:** 81 line comments on PR #5 (`docs/request-flow-atlas`, head `7e2004e`) and 15 follow-up questions.
 **Status:** the 81 replies were posted on the PR. No code or reviewed-document
-fixes were made in response; follow-ups are tracked in `TODO_POST_REVIEW.md`.
+fixes were made in response; follow-ups are tracked as
+[GitHub issues](https://github.com/adarshrajanand/video-automation-code/issues).
+Each `PR5-NN` ID matches an issue title.
 
 Questions are grouped by topic, not by comment order. The original line and
 comment ID are in each `**Source:**` line. Follow-up questions keep their
@@ -2797,7 +2801,7 @@ terminal branches.
 
 ### PR #5 Decision Summary
 
-| Topic | Decision | TODO |
+| Topic | Decision | Issue |
 |-------|----------|------|
 | Atlas rendering | Fix enum names, escape union pipes, and render `default_factory` defaults | `PR5-01` |
 | Repository projections | Store every extracted column, including JSON-encoded lists | `PR5-02` |

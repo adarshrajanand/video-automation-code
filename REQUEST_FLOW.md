@@ -3528,7 +3528,7 @@ atlas is a contract change and needs the same review as a code change.
 | a quality check or gate policy | §2.10.3, §3.5, registry/thresholds | `quality list-checks`, gate tests |
 | an ID prefix or formula | §0.5, §8.4 | `ids` unit tests, regenerated examples |
 | a wiring change (`[P]`/`[T]` → `[W]`) | §2 markers, §2.14 gap table | end-to-end test that exercises the loop |
-| a quirk or limitation | §8.8, and `TODO_POST_REVIEW.md` if actionable | manual reproduction |
+| a quirk or limitation | §8.8, and a GitHub issue if actionable | manual reproduction |
 | a recorded demo run | §0.4, §2.8, §2.10, §2.11, §8.3 | re-run the CLI and copy exact output |
 
 ### 9.4 Counts and drift detectors
@@ -3564,7 +3564,7 @@ appropriate. Counts are cheap to verify and easy to let rot.
 | `REQUEST_FLOW.md` | this end-to-end request atlas |
 | `CONTRACT_FIELD_ATLAS.md` | generated field-level contract reference |
 | `FAQ.md` | detailed design Q&A and rationale |
-| `TODO_POST_REVIEW.md` | prioritized follow-up work |
+| [GitHub issues](https://github.com/adarshrajanand/video-automation-code/issues) | prioritized follow-up work |
 | `docs/kb/docs/AI_Video_Pipeline_Architecture.md` | canonical architecture |
 | `docs/kb/docs/AI_Video_Pipeline_Contracts_and_Data_Model.md` | canonical contracts/data model |
 | `docs/kb/docs/AI_Video_Pipeline_Workflow_and_Event_Execution.md` | workflow/event semantics |
