@@ -90,7 +90,9 @@ Rules:
 ## Pull requests
 
 Every pull request description must follow `.github/pull_request_template.md`.
-Fill all five sections — Summary, Why, Changes, Verification, and Risk — with a
-short, direct explanation. The goal is that a reviewer understands the purpose,
-scope, and evidence without reading the diff first. Do not paste commit logs or
-restate the diff line by line.
+Fill all seven sections — Summary, Why, Impact if not merged, Examples, Changes,
+Verification, and Risk — with a short, direct explanation. The goal is that a
+reviewer understands the purpose, consequence, scope, and evidence without
+reading the diff first. Every PR must include at least one concrete example that
+shows why the change matters, such as a failing command, before/after behavior,
+or a real scenario. Do not paste commit logs or restate the diff line by line.
