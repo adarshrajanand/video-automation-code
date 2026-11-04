@@ -10,11 +10,13 @@ from __future__ import annotations
 
 import re
 import sqlite3
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 from pipeline.fingerprints import canonical_datetime, sha256_bytes
+from pipeline.storage.backfill import canonicalize_persisted_timestamps
 from pipeline.storage.database import Database
 from pipeline.storage.errors import MigrationChecksumError, MigrationError
 
@@ -31,6 +33,12 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     applied_at TEXT NOT NULL
 )
 """
+
+# Data-only migrations keep their SQL file as the version/checksum anchor while
+# structured JSON and timezone-aware repairs run here inside the same transaction.
+_DATA_MIGRATION_HOOKS: dict[tuple[int, str], Callable[[sqlite3.Connection], None]] = {
+    (2, "canonical_timestamps"): canonicalize_persisted_timestamps,
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -226,6 +234,17 @@ class MigrationRunner:
                     _execute_sql_script(
                         connection, migration.path.read_text(encoding="utf-8")
                     )
+                    hook = _DATA_MIGRATION_HOOKS.get(
+                        (migration.version, migration.name)
+                    )
+                    if hook is not None:
+                        try:
+                            hook(connection)
+                        except Exception as error:
+                            raise MigrationError(
+                                f"migration {migration.version:04d}_"
+                                f"{migration.name} failed: {error}"
+                            ) from error
                     connection.execute(
                         "INSERT INTO schema_migrations "
                         "(version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",

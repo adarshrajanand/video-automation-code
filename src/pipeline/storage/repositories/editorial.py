@@ -13,6 +13,7 @@ from pipeline.contracts.editorial import (
     Shot,
 )
 from pipeline.contracts.review import HumanReview, HumanReviewDecision
+from pipeline.fingerprints import canonical_datetime, canonical_json
 from pipeline.storage.repositories.base import SqliteRepository
 
 
@@ -228,9 +229,9 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
                 decision.review_id,
                 decision.decision.value,
                 decision.reviewer,
-                decision.created_at.isoformat(),
+                canonical_datetime(decision.created_at),
                 decision.schema_version,
-                decision.model_dump_json(),
+                canonical_json(decision),
             ),
         )
 
