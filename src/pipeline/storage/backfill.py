@@ -11,39 +11,22 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime
-from typing import Any
+from functools import lru_cache
+from types import UnionType
+from typing import Annotated, Any, Union, get_args, get_origin
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
+from pipeline.contracts.base import Contract
 from pipeline.contracts.capabilities import IdempotencyRecord
+from pipeline.contracts.registry import CONTRACT_MODELS, contract_schema_version
 from pipeline.fingerprints import canonical_datetime, canonical_json
 from pipeline.storage.errors import MigrationError, StorageError
 
-_CANONICAL_TIMESTAMP_FIELDS = frozenset(
-    {
-        "acquired_at",
-        "assembled_at",
-        "available_at",
-        "claimed_at",
-        "completed_at",
-        "created_at",
-        "delivered_at",
-        "expires_at",
-        "extracted_at",
-        "finished_at",
-        "heartbeat_at",
-        "lease_expires_at",
-        "processed_at",
-        "published_at",
-        "render_finished_at",
-        "render_started_at",
-        "resolved_at",
-        "retrieved_at",
-        "settled_at",
-        "started_at",
-        "updated_at",
-    }
-)
+
+@lru_cache(maxsize=1)
+def _contracts_by_schema_version() -> dict[str, type[Contract]]:
+    return {contract_schema_version(model): model for model in CONTRACT_MODELS}
 
 
 def canonicalize_persisted_timestamps(connection: sqlite3.Connection) -> None:
@@ -120,16 +103,22 @@ def _normalize_table(connection: sqlite3.Connection, table: str) -> None:
 
         payload: dict[str, Any] | None = None
         canonical_payload: str | None = None
+        payload_timestamps: frozenset[str] = frozenset()
         if has_payload:
             payload = _parse_payload(values["payload"], table=table, key=key)
-            payload = _normalize_payload(payload, table=table, key=key)
-            canonical_payload = canonical_json(payload)
+            payload, payload_changed, payload_timestamps = _normalize_payload(
+                payload,
+                table=table,
+                key=key,
+            )
+            if payload_changed:
+                canonical_payload = canonical_json(payload)
 
         updates: dict[str, Any] = {}
         if canonical_payload is not None and canonical_payload != values["payload"]:
             updates["payload"] = canonical_payload
         for column in timestamp_columns:
-            if payload is not None and column in payload:
+            if payload is not None and column in payload_timestamps:
                 normalized = payload[column]
             else:
                 normalized = _normalize_timestamp(
@@ -156,27 +145,149 @@ def _normalize_table(connection: sqlite3.Connection, table: str) -> None:
 
 
 def _normalize_payload(
-    value: Any,
+    value: dict[str, Any],
     *,
     table: str,
     key: object,
-) -> Any:
-    if isinstance(value, dict):
-        normalized: dict[str, Any] = {}
-        for name, item in value.items():
-            if name in _CANONICAL_TIMESTAMP_FIELDS:
-                normalized[name] = _normalize_timestamp(
-                    item,
-                    table=table,
-                    column=name,
-                    key=key,
-                )
-            else:
-                normalized[name] = _normalize_payload(item, table=table, key=key)
-        return normalized
-    if isinstance(value, list):
-        return [_normalize_payload(item, table=table, key=key) for item in value]
-    return value
+) -> tuple[dict[str, Any], bool, frozenset[str]]:
+    """Normalize only timestamps declared by the payload's contract model.
+
+    Payloads are opaque when no registered contract claims their
+    ``schema_version``. Declared extension fields and identifier-keyed maps are
+    never traversed, so provider metadata and configuration values keep their
+    original representation.
+    """
+
+    schema_version = value.get("schema_version")
+    if not isinstance(schema_version, str):
+        return value, False, frozenset()
+    model = _contracts_by_schema_version().get(schema_version)
+    if model is None:
+        return value, False, frozenset()
+
+    timestamps = frozenset(
+        name
+        for name, field in model.model_fields.items()
+        if name in value and _unwrap_annotation(field.annotation) is datetime
+    )
+    normalized, changed = _normalize_nested_model(
+        value,
+        model,
+        table=table,
+        key=key,
+    )
+    return normalized, changed, timestamps
+
+
+def _normalize_field_value(
+    value: Any,
+    annotation: Any,
+    *,
+    table: str,
+    key: object,
+) -> tuple[Any, bool]:
+    if value is None:
+        return value, False
+
+    model = _contract_model(annotation)
+    if model is not None:
+        return _normalize_nested_model(value, model, table=table, key=key)
+
+    item_model = _sequence_item_model(annotation)
+    if item_model is not None and isinstance(value, list):
+        normalized: list[Any] = []
+        changed = False
+        for item in value:
+            nested, nested_changed = _normalize_nested_model(
+                item,
+                item_model,
+                table=table,
+                key=key,
+            )
+            normalized.append(nested)
+            changed = changed or nested_changed
+        return (normalized if changed else value), changed
+
+    return value, False
+
+
+def _normalize_nested_model(
+    value: Any,
+    model: type[BaseModel],
+    *,
+    table: str,
+    key: object,
+) -> tuple[Any, bool]:
+    if not isinstance(value, dict):
+        return value, False
+
+    normalized = dict(value)
+    changed = False
+    for name, field in model.model_fields.items():
+        if name not in value:
+            continue
+        annotation = _unwrap_annotation(field.annotation)
+        if annotation is datetime:
+            timestamp = _normalize_timestamp(
+                value[name],
+                table=table,
+                column=name,
+                key=key,
+            )
+            if timestamp != value[name]:
+                normalized[name] = timestamp
+                changed = True
+            continue
+
+        nested, nested_changed = _normalize_field_value(
+            value[name],
+            annotation,
+            table=table,
+            key=key,
+        )
+        if nested_changed:
+            normalized[name] = nested
+            changed = True
+
+    return (normalized if changed else value), changed
+
+
+def _unwrap_annotation(annotation: Any) -> Any:
+    while True:
+        origin = get_origin(annotation)
+        if origin is Annotated:
+            annotation = get_args(annotation)[0]
+            continue
+        if origin in (Union, UnionType):
+            arguments = tuple(
+                argument
+                for argument in get_args(annotation)
+                if argument is not type(None)
+            )
+            if len(arguments) == 1:
+                annotation = arguments[0]
+                continue
+        return annotation
+
+
+def _contract_model(annotation: Any) -> type[BaseModel] | None:
+    if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+        return annotation
+    return None
+
+
+def _sequence_item_model(annotation: Any) -> type[BaseModel] | None:
+    origin = get_origin(annotation)
+    if origin not in (list, tuple, set, frozenset):
+        return None
+    arguments = get_args(annotation)
+    if origin is tuple:
+        if len(arguments) != 2 or arguments[1] is not Ellipsis:
+            return None
+        arguments = arguments[:1]
+    if not arguments:
+        return None
+    return _contract_model(_unwrap_annotation(arguments[0]))
 
 
 def _normalize_timestamp(

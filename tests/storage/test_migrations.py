@@ -6,12 +6,15 @@ from pathlib import Path
 
 import pytest
 
+from pipeline.contracts.config import EffectiveConfig
 from pipeline.storage import (
     Database,
+    EffectiveConfigRepository,
     IdempotencyRecordRepository,
     MigrationChecksumError,
     MigrationError,
     MigrationRunner,
+    OutboxMessageRepository,
     discover_migrations,
 )
 from pipeline.storage.backfill import canonicalize_persisted_timestamps
@@ -396,6 +399,146 @@ def test_timestamp_migration_repairs_payload_and_projection_together(
     assert json.loads(decision["payload"])["created_at"] == (
         "2026-10-21T09:05:00.123456Z"
     )
+
+
+def test_timestamp_migration_preserves_opaque_configuration_values(
+    tmp_path: Path,
+) -> None:
+    database = _legacy_v1_database(tmp_path)
+    resolved_values = {
+        "provider_options": {
+            "created_at": "provider-managed",
+            "updated_at": "2026-10-21T12:00:00Z",
+        }
+    }
+    config = EffectiveConfig(
+        schema_version="effective-config.v1",
+        effective_config_id="cfg_opaque",
+        system_policy_version="1.0",
+        domain_profile_id="software_engineering_explainer_v1",
+        domain_profile_version="1.0",
+        channel_profile_id="channel_explainer_v1",
+        channel_profile_version="1.0",
+        workflow_id="explainer_validation_v1",
+        workflow_version="1.0",
+        run_overrides={"schema_version": "run-overrides.v1"},
+        resolved_values=resolved_values,
+        source_map={"provider_options": "channel_profile:channel_explainer_v1"},
+        config_hash=HASH_A,
+    )
+    with database.transaction() as connection:
+        EffectiveConfigRepository(connection).insert(config)
+        original_payload = connection.execute(
+            "SELECT payload FROM effective_configs WHERE effective_config_id = ?",
+            (config.effective_config_id,),
+        ).fetchone()[0]
+
+    MigrationRunner(database).migrate()
+
+    with database.connection() as connection:
+        row = connection.execute(
+            "SELECT config_hash, payload FROM effective_configs "
+            "WHERE effective_config_id = ?",
+            (config.effective_config_id,),
+        ).fetchone()
+        stored = EffectiveConfigRepository(connection).get(config.effective_config_id)
+
+    assert row is not None
+    assert row["payload"] == original_payload
+    assert row["config_hash"] == HASH_A
+    assert stored.config_hash == HASH_A
+    assert stored.resolved_values == resolved_values
+
+
+def test_timestamp_migration_normalizes_nested_contract_timestamps(
+    tmp_path: Path,
+) -> None:
+    database = _legacy_v1_database(tmp_path)
+    event_payload = {
+        "schema_version": "event-envelope.v1",
+        "event_id": "event_legacy",
+        "event_type": "stage.ready",
+        "run_id": "run_legacy",
+        "stage_instance_id": "stage_legacy",
+        "correlation_id": "corr_legacy",
+        "payload_schema_version": "stage-ready.v1",
+        "payload": {
+            "run_id": "run_legacy",
+            "stage_instance_id": "stage_legacy",
+            "job_id": "job_legacy",
+            "created_at": "provider-managed",
+            "updated_at": "2026-10-21T12:00:00Z",
+        },
+        "created_at": "2026-10-21T09:00:00Z",
+    }
+    outbox_payload = {
+        "schema_version": "outbox-message.v1",
+        "outbox_id": "outbox_legacy",
+        "event_id": "event_legacy",
+        "event": event_payload,
+        "status": "PENDING",
+        "delivery_attempts": 0,
+        "available_at": "2026-10-21T09:00:00Z",
+    }
+    with database.transaction() as connection:
+        connection.execute(
+            "INSERT INTO workflow_events "
+            "(event_id, event_type, correlation_id, payload_schema_version, "
+            "created_at, schema_version, payload) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                event_payload["event_id"],
+                event_payload["event_type"],
+                event_payload["correlation_id"],
+                event_payload["payload_schema_version"],
+                event_payload["created_at"],
+                event_payload["schema_version"],
+                json.dumps(event_payload),
+            ),
+        )
+        connection.execute(
+            "INSERT INTO outbox_messages "
+            "(outbox_id, event_id, status, delivery_attempts, available_at, "
+            "schema_version, payload) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (
+                outbox_payload["outbox_id"],
+                outbox_payload["event_id"],
+                outbox_payload["status"],
+                outbox_payload["delivery_attempts"],
+                outbox_payload["available_at"],
+                outbox_payload["schema_version"],
+                json.dumps(outbox_payload),
+            ),
+        )
+
+    MigrationRunner(database).migrate()
+
+    with database.connection() as connection:
+        event_row = connection.execute(
+            "SELECT created_at, payload FROM workflow_events WHERE event_id = ?",
+            ("event_legacy",),
+        ).fetchone()
+        outbox_row = connection.execute(
+            "SELECT available_at, payload FROM outbox_messages WHERE outbox_id = ?",
+            ("outbox_legacy",),
+        ).fetchone()
+        message = OutboxMessageRepository(connection).get("outbox_legacy")
+
+    assert event_row is not None
+    assert outbox_row is not None
+    assert event_row["created_at"] == "2026-10-21T09:00:00.000000Z"
+    assert outbox_row["available_at"] == "2026-10-21T09:00:00.000000Z"
+
+    stored_event = json.loads(event_row["payload"])
+    assert stored_event["created_at"] == "2026-10-21T09:00:00.000000Z"
+    assert stored_event["payload"]["created_at"] == "provider-managed"
+    assert stored_event["payload"]["updated_at"] == "2026-10-21T12:00:00Z"
+
+    stored_outbox = json.loads(outbox_row["payload"])
+    assert stored_outbox["available_at"] == "2026-10-21T09:00:00.000000Z"
+    assert stored_outbox["event"]["created_at"] == ("2026-10-21T09:00:00.000000Z")
+    assert stored_outbox["event"]["payload"] == event_payload["payload"]
+    assert message.event.created_at.isoformat() == "2026-10-21T09:00:00+00:00"
 
 
 def test_timestamp_migration_rolls_back_and_retries_after_invalid_payload(
