@@ -19,12 +19,17 @@ class IdempotencyRecordRepository(SqliteRepository[IdempotencyRecord]):
     columns = (
         "idempotency_key",
         "capability",
+        "operation_version",
         "request_fingerprint",
+        "input_artifact_ids",
+        "required_features",
+        "locale",
         "provider",
         "status",
         "capability_execution_id",
         "provider_invocation_id",
         "provider_operation_id",
+        "result_artifact_ids",
         "created_at",
         "completed_at",
     )

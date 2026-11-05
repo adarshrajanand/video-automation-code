@@ -1,0 +1,7 @@
+-- Canonical timestamp and projection repair.
+--
+-- SQLite cannot reliably normalize timezone offsets, fixed-precision fractional
+-- seconds, or JSON payload timestamps with a schema-neutral SQL statement. The
+-- transaction-scoped Python hook registered by MigrationRunner for this version
+-- rewrites payloads and extracted columns together and fails closed on invalid
+-- legacy rows. This file remains the ordered version and checksum anchor.

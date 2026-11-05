@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
@@ -45,7 +45,7 @@ def test_canonical_json_sorts_keys_and_normalizes_values() -> None:
     }
 
     assert canonical_json(value) == (
-        '{"a":"2026-10-21T12:00:00Z","flag":true,"n":"1.23",'
+        '{"a":"2026-10-21T12:00:00.000000Z","flag":true,"n":"1.23",'
         '"none":null,"z":["blue","red"],"zero":0.0}'
     )
 
@@ -97,7 +97,33 @@ def test_canonical_datetime_normalizes_offsets() -> None:
         2026, 10, 21, 14, 30, tzinfo=timezone(timedelta(hours=2, minutes=30))
     )
 
-    assert canonical_datetime(value) == "2026-10-21T12:00:00Z"
+    assert canonical_datetime(value) == "2026-10-21T12:00:00.000000Z"
+
+
+def test_canonical_datetime_uses_fixed_fractional_precision() -> None:
+    assert (
+        canonical_datetime(datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC))
+        == "2026-10-21T12:00:00.000001Z"
+    )
+    assert (
+        canonical_datetime(datetime(2026, 10, 21, 12, 0, 0, 999_999, tzinfo=UTC))
+        == "2026-10-21T12:00:00.999999Z"
+    )
+
+
+def test_canonical_datetime_text_order_matches_chronological_order() -> None:
+    instants = [
+        datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC),
+        datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC),
+        datetime(2026, 10, 21, 12, 0, 0, 999_999, tzinfo=UTC),
+        datetime(2026, 10, 21, 12, 0, 1, tzinfo=UTC),
+        datetime(2026, 10, 21, 12, 0, 1, 1, tzinfo=UTC),
+        datetime(2026, 10, 21, 12, 0, 2, tzinfo=UTC),
+    ]
+
+    rendered = [canonical_datetime(instant) for instant in instants]
+
+    assert rendered == sorted(rendered)
 
 
 @pytest.mark.parametrize(

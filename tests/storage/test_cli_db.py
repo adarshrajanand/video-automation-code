@@ -22,20 +22,21 @@ def test_db_migrate_then_status_then_noop(tmp_path: Path, capsys) -> None:
 
     assert main(["db", "migrate", "--database", str(database)]) == 0
     first = capsys.readouterr().out
-    assert "Applied 1 migration(s)" in first
-    assert "Schema version: 1" in first
+    assert "Applied 2 migration(s)" in first
+    assert "Schema version: 2" in first
     assert database.is_file()
 
     assert main(["db", "migrate", "--database", str(database)]) == 0
     second = capsys.readouterr().out
     assert "No pending migrations" in second
-    assert "Schema version: 1" in second
+    assert "Schema version: 2" in second
 
     assert main(["db", "status", "--database", str(database)]) == 0
     status = capsys.readouterr().out
     assert f"Database: {database}" in status
-    assert "Current version: 1" in status
+    assert "Current version: 2" in status
     assert "0001_initial" in status
+    assert "0002_canonical_timestamps" in status
     assert "Pending migrations:" in status
     assert "(none)" in status
 

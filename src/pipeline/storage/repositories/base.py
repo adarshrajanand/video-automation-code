@@ -59,6 +59,8 @@ class SqliteRepository[ModelT: BaseModel]:
             return value.value
         if isinstance(value, datetime):
             return canonical_datetime(value)
+        if isinstance(value, (list, tuple)):
+            return canonical_json(value)
         return value
 
     def _extracted(self, record: ModelT) -> dict[str, Any]:

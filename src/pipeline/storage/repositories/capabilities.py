@@ -12,7 +12,7 @@ from pipeline.contracts.routing import (
     ProviderInvocation,
     RoutingDecision,
 )
-from pipeline.fingerprints import canonical_datetime
+from pipeline.fingerprints import canonical_datetime, canonical_json
 from pipeline.ids import deterministic_id
 from pipeline.storage.repositories.base import SqliteRepository
 from pipeline.storage.repositories.control import (
@@ -151,7 +151,7 @@ class UsageRecordRepository(SqliteRepository["UsageRecord"]):
                 record.actual_cost_minor,
                 now,
                 record.schema_version,
-                record.model_dump_json(),
+                canonical_json(record),
             ),
         )
         return record

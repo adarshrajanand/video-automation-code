@@ -41,14 +41,21 @@ _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
 def canonical_datetime(value: datetime) -> str:
-    """Return an ISO-8601 UTC representation with a ``Z`` suffix."""
+    """Return a fixed-precision ISO-8601 UTC representation with a ``Z`` suffix.
+
+    Every persisted timestamp uses exactly six fractional digits so SQLite text
+    ordering agrees with chronological ordering even when one value has zero
+    microseconds and another has nonzero microseconds.
+    """
 
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("canonical datetimes must be timezone-aware")
-    normalized = value.astimezone(UTC).isoformat()
-    if normalized.endswith("+00:00"):
-        return normalized[:-6] + "Z"
-    return normalized
+    normalized = value.astimezone(UTC)
+    return (
+        f"{normalized.year:04d}-{normalized.month:02d}-{normalized.day:02d}T"
+        f"{normalized.hour:02d}:{normalized.minute:02d}:{normalized.second:02d}."
+        f"{normalized.microsecond:06d}Z"
+    )
 
 
 def canonical_decimal(value: Decimal) -> str:
