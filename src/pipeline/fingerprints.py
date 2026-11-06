@@ -43,9 +43,15 @@ _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 def canonical_datetime(value: datetime) -> str:
     """Return a fixed-precision ISO-8601 UTC representation with a ``Z`` suffix.
 
-    Every persisted timestamp uses exactly six fractional digits so SQLite text
-    ordering agrees with chronological ordering even when one value has zero
-    microseconds and another has nonzero microseconds.
+    Every persisted SQL timestamp projection and JSON payload datetime uses
+    exactly six fractional digits so SQLite text ordering agrees with
+    chronological order even when one value has zero microseconds and another
+    has nonzero microseconds.
+
+    Display and export code may use ``isoformat()`` because it is not an
+    ordering or fingerprint input. GEN-24 (#92) may change SQL projections (and
+    payload datetime values) to integer microseconds; persistence, payload
+    serialization, and fingerprints must then move together.
     """
 
     if value.tzinfo is None or value.utcoffset() is None:

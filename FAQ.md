@@ -11,6 +11,13 @@ the original review.
   response; follow-ups are tracked as
   [GitHub issues](https://github.com/adarshrajanand/video-automation-code/issues)
   with `PR5-*` IDs.
+- **PR #89 review:** 21 line comments on canonical timestamp persistence and the
+  migration backfill. Replies were posted on the PR. This review established the
+  payload/projection distinction and the canonical ISO-8601 representation that
+  GEN-24 (#92) later revises.
+- **PR #94 review:** 18 line comments on the timestamp-column registry. Follow-up
+  questions were answered in the PR threads and are recorded below. The
+  `CHECK`-only schema-hardening follow-up is GEN-26 (#95).
 
 Formatting rules for this file are in `AGENTS.md`.
 
@@ -29,6 +36,20 @@ Formatting rules for this file are in `AGENTS.md`.
   - [Artifacts, Slots, and Repair](#artifacts-slots-and-repair)
   - [Failure Handling and Recovery](#failure-handling-and-recovery)
   - [PR #5 Decision Summary](#pr-5-decision-summary)
+- [PR #89 Review — Canonical Timestamps and Migration Backfill](#pr-89-review--canonical-timestamps-and-migration-backfill)
+  - [Migration Model and Checksums](#migration-model-and-checksums)
+  - [Payloads, Projections, and Backfill](#payloads-projections-and-backfill)
+  - [Tests and Isolation](#tests-and-isolation)
+  - [PR #89 Decision Summary](#pr-89-decision-summary)
+- [PR #94 Review — Timestamp Column Registry](#pr-94-review--timestamp-column-registry)
+  - [Follow-up index](#follow-up-index-1)
+  - [Registry Scope: Payloads, Projections, and Storage Format](#registry-scope-payloads-projections-and-storage-format)
+  - [Migration Discipline](#migration-discipline)
+  - [Registry Behavior](#registry-behavior)
+  - [Generated Columns](#generated-columns)
+  - [Constraints and NULL Semantics](#constraints-and-null-semantics)
+  - [Tests and SQLite Mechanics](#tests-and-sqlite-mechanics)
+  - [PR #94 Decision Summary](#pr-94-decision-summary)
 
 ---
 
@@ -2824,3 +2845,1173 @@ terminal branches.
 | Request fingerprint | Fingerprint the full semantic request, not only `payload` | `PR5-23` |
 | Provider side effects | Add provider idempotency keys and reconcile `UNKNOWN` outcomes | `PR5-24` |
 | Stage item key | Optionally rename `logical_item_key` to `stage_item_key` | `PR5-25` |
+
+---
+
+## PR #89 Review — Canonical Timestamps and Migration Backfill
+
+**Source:** PR #89 review (`fix/storage-projections-canonical-timestamps`), 21
+line comments. Replies are on the PR. Each answer names its comment ID.
+
+PR #89 introduced the canonical six-digit UTC timestamp representation, the
+0002 data migration, and the Python backfill module. GEN-25 (#93) later replaced
+suffix-based column detection with an explicit registry, and GEN-24 (#92)
+revisits the storage representation.
+
+### Migration Model and Checksums
+
+#### **Q: Why is `0002_canonical_timestamps.sql` empty?**
+
+**A:** It is a comment-only SQL anchor. `MigrationRunner` needs an
+`NNNN_name.sql` file to assign version 2, compute a checksum, enforce ordering,
+and record the migration in `schema_migrations`. The actual repair needs Python:
+JSON parsing, Pydantic validation, schema-directed traversal, and datetime
+canonicalization. The runner executes the SQL file, then calls the Python hook
+registered for `(2, "canonical_timestamps")` in the same transaction. If the
+hook fails, the transaction rolls back and no version row is recorded.
+
+**Source:** PR #89 review, `0002_canonical_timestamps.sql` L1, comment
+`4481070984`; reply `4483039420`.
+
+---
+
+#### **Q: Why can SQLite not normalize these timestamps reliably in SQL?**
+
+**A:** SQLite's date functions understand offsets, but they cannot produce the
+required representation reliably:
+
+```text
+datetime('2026-10-21T14:00:00.123456+02:00')
+-> '2026-10-21 12:00:00'        -- drops microseconds
+
+strftime('%Y-%m-%dT%H:%M:%fZ', '2026-10-21T14:00:00.123456+02:00')
+-> '2026-10-21T12:00:00.123Z'   -- milliseconds, not six digits
+```
+
+JSON is the harder problem. SQL sees two strings named `created_at` but cannot
+tell that one is a typed `EventEnvelope.created_at` and the other is opaque
+extension data such as `resolved_values.provider_options.created_at`. A generic
+SQL/JSON rewrite would repeat the key-name-matching bug from the earlier
+projection defect. Python plus Pydantic supplies the schema context.
+
+**Source:** PR #89 review, `0002_canonical_timestamps.sql` L3, comment
+`4481076266`; reply `4483040131`.
+
+---
+
+#### **Q: What is `migrations.py`, who uses it, and when?**
+
+**A:** It is the migration runner. It discovers `NNNN_name.sql` files, validates
+unique and contiguous versions from `0001`, verifies checksums of already-applied
+migrations, applies pending migrations in explicit transactions, records each
+applied version, and invokes registered Python data-migration hooks.
+
+It is used by the CLI (`python -m pipeline db migrate` and `db status`) and by
+`_migrated_database()` before database-backed CLI commands. Tests use it to
+create temporary migrated databases. It should run before repository access on
+a new or existing database. It is not a general normalization utility.
+
+**Source:** PR #89 review, `migrations.py` L9, comment `4481112450`.
+
+---
+
+#### **Q: Why does 0002 need a Python hook when other migrations are plain SQL?**
+
+**A:** Most migrations are pure SQL. This one needs operations SQL cannot do
+reliably: parse JSON, validate it through Pydantic, traverse typed models, and
+canonicalize datetimes while preserving opaque extension values.
+
+The hook registry maps an exact migration identity to a Python callable. During
+`migrate()`, the runner executes the SQL file, looks up `(version, name)`, calls
+the hook inside the same transaction, and records the migration only if both
+succeed. To add another data migration, add a `(version, name): function` entry
+and a matching `.sql` file. The hook must be idempotent and fail closed.
+
+**Source:** PR #89 review, `migrations.py` L39, comment `4481128869`.
+
+---
+
+#### **Q: Why is the hook tied to version 2?**
+
+**A:** Because the matching file is `0002_canonical_timestamps.sql`: version `2`,
+name `canonical_timestamps`. `0001_initial.sql` creates the schema, so this repair
+is the next contiguous migration. The runner looks up hooks by
+`(migration.version, migration.name)`, not just by filename, so a hook cannot
+accidentally run for a different migration with a similar name. Version and name
+are also part of the checksum/history record.
+
+**Source:** PR #89 review, `migrations.py` L40, comment `4481134362`.
+
+---
+
+#### **Q: Why is the filename `0002`, and what happens after 9999 migrations?**
+
+**A:** `0002` is the next contiguous version after `0001_initial.sql`. The
+four-digit zero-padded format keeps filenames ordered and readable. The current
+implementation is strictly four digits, so version `10000` would be rejected by
+`MIGRATION_FILE_PATTERN`. Supporting more would require widening the regex and
+the `:04d` formatting. This is tracked as GEN-23 (#90).
+
+**Source:** PR #89 review, `0002_canonical_timestamps.sql` L1, comment
+`4481147817`; reply `4483042690`.
+
+---
+
+### Payloads, Projections, and Backfill
+
+#### **Q: What is `backfill.py`, who calls it, and when?**
+
+**A:** It is the Python data-repair module for migration 0002. It is called by
+`MigrationRunner.migrate()` through
+`_DATA_MIGRATION_HOOKS[(2, "canonical_timestamps")]`, immediately after the empty
+SQL anchor and inside the same transaction.
+
+Its jobs are:
+
+- rebuild the broken `idempotency_records` projection columns from validated
+  payloads;
+- normalize schema-declared payload timestamps;
+- normalize extracted timestamp columns;
+- fail closed if durable data is invalid.
+
+It is also called directly by tests. It is not part of the normal repository
+request path and is not intended to run outside a migration transaction.
+
+**Source:** PR #89 review, `backfill.py` L1, comment `4481175059`.
+
+---
+
+#### **Q: Why does 0002 special-case `idempotency_records`? Does that make the migration pass artificially?**
+
+**A:** It is not only `idempotency_records`. After the special step, the function
+loops over every user table and calls `_normalize_table()` for any table with a
+`payload` column or registered timestamp columns. All other payloads and
+timestamp columns are processed too.
+
+`idempotency_records` gets an extra step because its SQL projection columns were
+incomplete or wrong (the #9 defect). Its non-timestamp projection columns
+(`operation_version`, `locale`, artifact ID lists, and so on) must be rebuilt
+from the validated payload, not just have timestamps normalized. Other tables do
+not have that known projection defect. The special case is a targeted repair,
+not a workaround to make the migration pass.
+
+**Source:** PR #89 review, `backfill.py` L46, comment `4481184588`; reply
+`4483043776`.
+
+---
+
+#### **Q: Why read all rows before writing them back?**
+
+**A:** It is a deliberate read-modify-write:
+
+1. Read the durable rows once with `fetchall()`.
+2. Validate each stored JSON payload through the current model.
+3. Check that the payload key matches the SQL row key.
+4. Recompute projection columns from that validated record.
+5. Write the corrected payload and projections back.
+
+The correct projections cannot be computed without reading the payload first.
+`fetchall()` materializes the rows before updates, so iterating and updating is
+safe. All updates remain inside the caller's transaction; any validation or write
+failure rolls the whole migration back.
+
+**Source:** PR #89 review, `backfill.py` L74, comment `4481194446`; reply
+`4483044239`.
+
+---
+
+#### **Q: If payload traversal is schema-directed, why does the SQL side use an `_at` suffix?**
+
+**A:** They are two different scopes:
+
+- Inside JSON payloads, key names are not trusted because extension data can
+  contain arbitrary keys such as `created_at`. Payload traversal is
+  schema-directed.
+- At the SQL table level, `_at` columns were the schema's declared timestamp
+  convention. `PRAGMA table_info` only reports `TEXT`, not the semantic
+  “timestamp”, so the DDL convention was the available signal.
+
+The `_at` rule was not guessing inside arbitrary metadata; it was recognizing the
+storage schema. When a future column ends in `_at` but is not a timestamp, an
+explicit map is needed. GEN-25 (#93) replaced the suffix inference with the
+explicit `TIMESTAMP_COLUMNS` registry; the suffix now survives only as a
+test-time completeness guard.
+
+**Source:** PR #89 review, `backfill.py` L83, comment `4481208521`; reply
+`4483044699`.
+
+---
+
+#### **Q: Where does the backfill decide which payload fields are timestamps?**
+
+**A:** In `_normalize_payload()`. The payload's `schema_version` resolves to a
+contract model through `CONTRACT_MODELS`. Each declared field is inspected;
+`_unwrap_annotation()` removes `Annotated`, `Optional`, and similar wrappers. If
+the resolved annotation is `datetime`, and the field is present, it is treated as
+a timestamp.
+
+`UTCDateTime` resolves to `datetime`, so typed fields such as `created_at` and
+`available_at` are recognized. `ExtensionObject` is a `dict`, so it is not
+included and its contents are never traversed. The annotation comes from Pydantic
+model metadata, not from SQLite.
+
+**Source:** PR #89 review, `backfill.py` L171, comment `4481231031`; reply
+`4483045182`.
+
+---
+
+#### **Q: Walk through the normalization with a concrete dry run.**
+
+**A:** Take this stored outbox payload:
+
+```json
+{
+  "schema_version": "outbox-message.v1",
+  "outbox_id": "outbox_1",
+  "event_id": "event_1",
+  "event": {
+    "schema_version": "event-envelope.v1",
+    "event_id": "event_1",
+    "created_at": "2026-10-21T09:00:00Z",
+    "payload": {"created_at": "provider-managed"}
+  },
+  "status": "PENDING",
+  "available_at": "2026-10-21T09:00:00Z"
+}
+```
+
+1. `_normalize_table()` finds the payload and the registered timestamp columns.
+2. `_parse_payload()` parses the JSON object.
+3. `_normalize_payload()` resolves `outbox-message.v1` to `OutboxMessage`.
+4. It identifies `available_at` as a declared `datetime`.
+5. `_normalize_nested_model()` walks declared fields.
+6. `available_at` becomes `2026-10-21T09:00:00.000000Z`.
+7. `event` is a declared `EventEnvelope`, so it recurses.
+8. `event.created_at` becomes `2026-10-21T09:00:00.000000Z`.
+9. `event.payload` is an `ExtensionObject` (`dict`), so recursion stops and
+   `"provider-managed"` is untouched.
+10. The payload is serialized with `canonical_json()` and written with the
+    normalized projection columns in one `UPDATE`.
+
+If a declared timestamp is invalid or naive, `_normalize_timestamp()` raises
+`MigrationError` and the transaction rolls back.
+
+**Source:** PR #89 review, `backfill.py` L182, comment `4481245130`; reply
+`4483045832`.
+
+---
+
+#### **Q: Is the nested normalization recursive? Can it loop forever?**
+
+**A:** Yes, it is recursive by design, but only through declared model fields:
+
+```text
+_normalize_payload
+  -> _normalize_nested_model
+    -> _normalize_field_value
+      -> _normalize_nested_model   # for another declared BaseModel field
+```
+
+It does not recursively walk arbitrary dictionaries. For `OutboxMessage` it
+recurses into `event` because that field is declared `EventEnvelope`. For
+`EventEnvelope.payload` or `EffectiveConfig.resolved_values`, the annotation is
+`ExtensionObject`/`dict`, so recursion stops. Depth is bounded by the JSON
+nesting depth, and the input is finite.
+
+**Source:** PR #89 review, `backfill.py` L173, comment `4481253896`; reply
+`4483046288`.
+
+---
+
+#### **Q: What does `canonical_datetime()` do, and is it used everywhere?**
+
+**A:** It returns fixed-precision ISO-8601 UTC text with exactly six fractional
+digits and a trailing `Z`. Fixed precision makes SQLite text ordering agree with
+chronological ordering.
+
+For durable SQLite writes it is used directly or indirectly:
+
+- `canonical_json()` uses it for every serialized `datetime`, so repository
+  payloads and fingerprints use it.
+- `SqliteRepository._column_value()` uses it for extracted datetime columns.
+- Direct SQL writers use it, for example `HumanReviewRepository.insert_decision()`
+  and `UsageRecordRepository.insert()`.
+- Event/outbox helper timestamps, lease parameters, `schema_migrations.applied_at`,
+  and the migration backfill use it.
+- `fingerprints._normalize()` uses it for datetime values.
+
+It is not used for every datetime the application displays. Report, CLI, and
+quality-export code may use `.isoformat()` because those are presentation/export
+formats, not SQLite ordering or fingerprint inputs. GEN-24 (#92) may change SQL
+projections and payload datetime values to integer microseconds; persistence,
+payload serialization, and fingerprints must then move together.
+
+**Source:** PR #89 review, `fingerprints.py` L43, comment `4481101399`; reply
+`4483040673`.
+
+---
+
+#### **Q: Do we need the backfill at all if the test data can be deleted?**
+
+**A:** No — if you delete and recreate the development database, the legacy
+timestamp backfill is unnecessary. It only repairs old rows. The canonical write
+path is still required.
+
+The migration is kept because it must also be safe for existing version-1
+databases that are not discarded. A local pipeline database can contain real
+runs, artifacts, effective configs, idempotency records, human reviews, and audit
+history. Deleting rows would lose durable runtime data, break foreign-key
+references, and discard audit history. A destructive reset policy is a separate
+scope decision, not the migration's behavior.
+
+**Source:** PR #89 review, `backfill.py` L2, comment `4481475025`; reply
+`4483049311`.
+
+---
+
+### Tests and Isolation
+
+#### **Q: Do these tests insert into my real SQLite database?**
+
+**A:** No. The `database` fixture in `tests/storage/conftest.py` creates
+`Database(tmp_path / "state" / "pipeline.sqlite3")`. `tmp_path` is pytest's
+per-test temporary directory, the fixture runs migrations on that temporary
+database, and the file is discarded after the test. Your pipeline database is not
+touched.
+
+**Source:** PR #89 review, `tests/storage/test_timestamps.py` L146, comment
+`4481311507`; reply `4483046646`.
+
+---
+
+#### **Q: What is the persisted-text ordering test for?**
+
+**A:** It is the regression for the ordering bug in #14. SQLite stores
+timestamps as text, so `ORDER BY created_at` is lexicographic. The test inserts
+six timestamps around second and microsecond boundaries:
+
+```text
+12:00:00.000000
+12:00:00.000001
+12:00:00.999999
+12:00:01.000000
+12:00:01.000001
+12:00:02.000000
+```
+
+It asserts that SQL order equals chronological order, every value ends in `Z`,
+and every value has the same 27-character length. Without fixed six-digit
+precision, a value with no fractional part can sort after a fractional value
+because `.` sorts before `Z`.
+
+**Source:** PR #89 review, `tests/storage/test_timestamps.py` L52, comment
+`4481374691`; reply `4483047122`.
+
+---
+
+#### **Q: What is an idempotency projection, and what does the repair test cover?**
+
+**A:** An idempotency projection is the set of SQL columns extracted from the
+canonical `IdempotencyRecord` JSON payload for indexing and filtering:
+`operation_version`, `input_artifact_ids`, `required_features`, `locale`,
+`provider_invocation_id`, `provider_operation_id`, `result_artifact_ids`,
+`created_at`, `completed_at`, and so on. The payload remains the source of truth;
+the columns are a queryable copy.
+
+The test simulates a version-1 database with a valid payload but wrong/defaulted
+extracted columns (the #9 defect). It runs migration 0002 and asserts that the
+projection columns are rebuilt, payload timestamps are canonicalized, projection
+timestamps agree with the payload, `schema_migrations.applied_at` is canonical,
+and the row still round-trips through `IdempotencyRecordRepository`.
+
+**Source:** PR #89 review, `tests/storage/test_migrations.py` L278, comment
+`4481401747`; reply `4483047453`.
+
+---
+
+#### **Q: Why separate tests for idempotency projection and generic payload/projection repair?**
+
+**A:** They cover different migration paths:
+
+- The idempotency test exercises `_reproject_idempotency_records()`: validating a
+  payload and rebuilding non-timestamp projection columns.
+- The generic test exercises `_normalize_table()`: normalizing a schema-declared
+  payload timestamp and keeping the extracted column consistent with it.
+
+Keeping them separate makes failures easier to localize. If generic timestamp
+normalization breaks, one test fails; if idempotency projection rebuilding
+breaks, the other fails. They are not redundant.
+
+**Source:** PR #89 review, `tests/storage/test_migrations.py` L323, comment
+`4481418891`; reply `4483047895`.
+
+---
+
+#### **Q: What is nested in the nested-timestamp test?**
+
+**A:** The nested record is:
+
+```text
+outbox_messages.payload
+  -> OutboxMessage.event
+       -> EventEnvelope.created_at
+```
+
+`OutboxMessage.event` is declared as `EventEnvelope`, so `event.created_at` is a
+real typed timestamp nested inside the outbox payload and must be normalized.
+At the same time, `EventEnvelope.payload` is an `ExtensionObject` containing:
+
+```python
+"created_at": "provider-managed",
+"updated_at": "2026-10-21T12:00:00Z",
+```
+
+Those are opaque extension values and must remain unchanged. The test proves both
+behaviors at once: recurse into typed nested records, stop at extension objects.
+
+**Source:** PR #89 review, `tests/storage/test_migrations.py` L453, comment
+`4481435231`; reply `4483048257`.
+
+---
+
+#### **Q: What does the restored-columns SQL filter test add?**
+
+**A:** It tests the user-visible consequence of the #9 bug: the restored columns
+must actually work in SQL filters. It inserts two idempotency records and queries
+each restored column, including JSON-encoded list columns, asserting that
+filtering returns exactly the expected record and that empty lists are stored and
+filterable as `[]`. Checking that columns exist is not enough; this proves their
+values are correctly projected and queryable.
+
+**Source:** PR #89 review, `tests/storage/test_idempotency_projection.py` L105,
+comment `4481464329`; reply `4483048748`.
+
+---
+
+### PR #89 Decision Summary
+
+| Topic | Decision |
+|-------|----------|
+| Timestamp representation | Canonical UTC ISO-8601 text with exactly six fractional digits and `Z` |
+| Migration 0002 shape | Comment-only SQL anchor plus a Python hook in the same transaction |
+| Payload timestamps | Schema-directed through Pydantic annotations; never inferred from JSON keys |
+| SQL timestamp columns | Extracted projections, normalized in the same transaction as the payload |
+| Idempotency repair | Rebuild every projection column from the validated payload |
+| Backfill safety | Idempotent, fail-closed, read-modify-write inside the migration transaction |
+| Display formatting | `isoformat()` is acceptable outside persistence, ordering, and fingerprints |
+| Follow-up | GEN-24 (#92) revisits the SQL and payload representation; GEN-25 (#93) replaces suffix detection with a registry |
+
+---
+
+## PR #94 Review — Timestamp Column Registry
+
+**Source:** PR #94 review (`fix/timestamp-column-registry`), 18 line comments.
+Replies are on the PR. Follow-up questions are labelled `F1`–`F13` in the Source
+lines.
+
+### Follow-up index
+
+| ID | Question | Topic |
+|----|----------|-------|
+| `F1` | What is the payload, and aren't SQL columns derived from it? | Registry Scope |
+| `F2` | Why does checksum validation fail, how do I revert, and what does “versioned” mean? | Migration Discipline |
+| `F3` | Does the test require the migration to run first? | Migration Discipline |
+| `F4` | What are “writable columns”? | Registry Behavior |
+| `F5` | Are payload keys and values also changing to `*_timestamp_micro`? | Registry Scope |
+| `F6` | Is the suffix check just a safety check, and what do “register” and “rename” mean? | Registry Behavior |
+| `F7` | Why does the backfill not touch unregistered timestamp-like columns? | Registry Behavior |
+| `F8` | What is a generated column, and how are generated timestamps handled? | Generated Columns |
+| `F9` | Are `STRICT` and `CHECK` good practice, and how does `NULL` behave? | Constraints and NULL Semantics |
+| `F10` | Are the `PRAGMA` tuple indices SQLite-provided? | Tests and SQLite Mechanics |
+| `F11` | Where does `monkeypatch.setitem` write? | Tests and SQLite Mechanics |
+| `F12` | Where should a derived timestamp live so code is unaffected? | Generated Columns |
+| `F13` | What was decided about `CHECK` and `STRICT`? | Constraints and NULL Semantics |
+
+### Registry Scope: Payloads, Projections, and Storage Format
+
+#### **Q: What is the payload, and aren't SQL columns derived from it?**
+
+**A:** A payload is the JSON document stored in a row's `payload` column (or an
+equivalent JSON column such as `effective_configs.resolved_values`). It is the
+full serialized Pydantic contract and the source of truth for the record.
+
+A **projection column** is a SQL column that duplicates one payload field for
+querying: filtering, ordering, uniqueness, and `NOT NULL` enforcement. For
+`WorkflowRun`, the payload contains `created_at` and `updated_at` from
+`UTCRecord`, and `workflow_runs` contains matching `created_at` and `updated_at`
+columns listed in `WorkflowRunRepository.columns`.
+
+So yes, the SQL columns are derived from the payload — but “derived” does not mean
+“automatically kept in sync”. They are denormalized copies. The write path
+usually writes both, but a direct SQL writer or an old migration can update only
+one. That is why backfill reconciles them and why validation exists.
+
+**Source:** PR #94 review, `timestamp_columns.py` L9, comment `4493551868`;
+follow-up `F1`.
+
+---
+
+#### **Q: What does “projection” mean here?**
+
+**A:** It means the extracted SQL copy of a payload field, not a relational
+algebra projection and not a Pydantic projection. Concrete examples:
+
+```text
+payload JSON:        {"run_id": "...", "status": "running",
+                      "created_at": "2026-10-21T09:00:00.000000Z"}
+projection columns:  run_id TEXT, status TEXT, created_at TEXT
+```
+
+`created_at` appears twice: inside the JSON payload and as a column. The column
+is the projection. It exists so SQL can do `WHERE status = ? ORDER BY created_at`
+with an index without parsing JSON.
+
+Related but distinct terms:
+
+- **payload field** — the authoritative value inside JSON;
+- **projection column** — the denormalized SQL copy;
+- **generated column** — a column SQLite derives from other SQL columns, not from
+  the payload.
+
+The migration only rewrites timestamp projections it owns (the registry). It
+does not touch IDs, statuses, or the JSON payload.
+
+**Source:** PR #94 review, `timestamp_columns.py` L9, comment `4493551868`;
+follow-up `F1`.
+
+---
+
+#### **Q: Is the registry still using ISO text, or are we moving to epoch microseconds?**
+
+**A:** Not in #93. #93 records the current representation so the safety net
+matches today's schema. The registry entry `_iso()` expands to
+`TimestampColumn(TimestampFormat.ISO8601_TEXT, nullable=False)`, which expects
+`TEXT`. Writing `UNIX_MICROSECONDS` today would immediately fail validation
+because `0001_initial.sql` declares these columns `TEXT`.
+
+GEN-24 (#92) performs the representation change: rename to
+`*_timestamp_micro`, store integer microseconds, and migrate values. The registry
+already supports both formats through `TimestampFormat` and `_DECLARED_TYPES`
+(`TEXT` for ISO, `INTEGER` for micros), so #92 can flip entries safely.
+
+**Source:** PR #94 review, `timestamp_columns.py` L92, comment `4493613829`;
+follow-up `F5`.
+
+---
+
+#### **Q: Did we decide to align payload keys and values too?**
+
+**A:** Yes. GEN-24 (#92) now records **full alignment**:
+
+- rename JSON payload timestamp keys to `*_timestamp_micro`;
+- store integer microseconds in payload values as well;
+- bump affected `schema_version` literals;
+- update fingerprints, events, and consumers.
+
+There is no real data yet, so the contract break is acceptable. The decision is
+recorded in the issue; implementation is deferred and no code changes were
+authorized by that record.
+
+**Source:** PR #94 review, `timestamp_columns.py` L20/L92, comments
+`4493567274` and `4493613829`; follow-up `F5`; GEN-24 (#92).
+
+---
+
+### Migration Discipline
+
+#### **Q: Why does an existing database fail the checksum check on startup?**
+
+**A:** The runner compares each migration file's bytes with the checksum recorded
+when it was applied, before doing anything else. `migrations.py:189` raises:
+
+```text
+migration 0001_initial.sql changed after it was applied; add a new migration instead
+```
+
+If `0001_initial.sql` is edited after it was applied, the new hash differs from
+the recorded one, so startup fails. The alternative — silently rerunning or
+ignoring the difference — would either fail partway or leave the database in a
+shape that does not match the files. That is exactly the silent drift this
+project is trying to eliminate.
+
+**Source:** PR #94 review, `timestamp_columns.py` L15, comment `4493558590`;
+follow-up `F2`.
+
+---
+
+#### **Q: How do I revert an edited migration, and what does “versioned” mean?**
+
+**A:** Restore the exact applied bytes:
+
+```bash
+git restore src/pipeline/storage/migrations/0001_initial.sql
+```
+
+Then add a new migration for the intended change. If the modified file was
+already applied to a development database, that database recorded the modified
+checksum, so restoring the file creates the reverse mismatch. Recreate the
+development database; never rewrite `schema_migrations` by hand.
+
+“Versioned” means two things: the file is git-versioned, and the filename number
+is the schema version whose content is frozen by the checksum once applied.
+Applied migrations are append-only.
+
+**Source:** PR #94 review, `timestamp_columns.py` L15, comment `4493558590`;
+follow-up `F2`.
+
+---
+
+#### **Q: Does the test require the migration to run first?**
+
+**A:** You must write the migration file first, but you do not run it manually.
+The `database` fixture creates a fresh temporary database and calls
+`MigrationRunner(database).migrate()`. The test then validates the real
+post-migration shape. The loop is:
+
+1. write `0003_....sql`;
+2. add the registry entry;
+3. run `uv run pytest tests/storage/test_timestamp_registry.py`.
+
+Your real `PIPELINE_HOME` database is not involved.
+
+**Source:** PR #94 review, `timestamp_columns.py` L17, comment `4493561511`;
+follow-up `F3`.
+
+---
+
+### Registry Behavior
+
+#### **Q: What are “writable columns”?**
+
+**A:** The columns the backfill is allowed to `UPDATE`: the intersection of the
+registry and the live schema, excluding primary keys and generated/hidden
+columns. In `backfill.py`:
+
+```python
+registered = registered_timestamp_columns(table)
+timestamp_columns = [name for name, _ in columns if name in registered]
+```
+
+Only those columns are read and rewritten. Key columns go in `WHERE`, not `SET`;
+generated columns cannot be written at all; unrelated columns are out of scope.
+“Writable” is the mutation boundary, not a claim that every timestamp-like
+column is writable.
+
+**Source:** PR #94 review, `timestamp_columns.py` L17, comment `4493561511`;
+follow-up `F4`.
+
+---
+
+#### **Q: Is the `_at` suffix check just a safety check? What if we remove it?**
+
+**A:** Yes. It is not required for correct writes. It is a completeness guard
+against omission. Without it, a developer could add `archived_at TEXT`, forget the
+registry entry, and nothing would complain; the column would silently never be
+normalized and could hold a different format after #92.
+
+With it, the test fails immediately with `unregistered timestamp column
+workflow_runs.archived_at`, and the developer either registers or renames the
+column. The trade is occasional false positives on names such as `note_at`,
+resolved by renaming. The check runs only in validation/tests, not in the write
+path.
+
+**Source:** PR #94 review, `timestamp_columns.py` L21, comment `4493571892`;
+follow-up `F6`.
+
+---
+
+#### **Q: What does “register” mean, and when should I rename instead?**
+
+**A:** Registering means adding an explicit entry to `TIMESTAMP_COLUMNS` with the
+column's format and nullability:
+
+```python
+"workflow_runs": {
+    "created_at": _iso(),
+    "updated_at": _iso(nullable=True),
+    "archived_at": _iso(nullable=True),
+}
+```
+
+After that, the column is no longer unregistered, and the backfill will normalize
+it according to the declared format. Registration is not a way to silence the
+check; type and nullability are still validated against the live schema.
+
+Rename when the column is **not** a timestamp. The suffix is reserved, so a free
+text column such as `note_at` should become `note_text` (or another name without
+the reserved suffix). The two outcomes are: real timestamp -> register; not a
+timestamp -> rename.
+
+**Source:** PR #94 review, `timestamp_columns.py` L21, comment `4493571892`;
+follow-up `F6`.
+
+---
+
+#### **Q: Why doesn't the backfill touch unregistered timestamp-like columns?**
+
+**A:** Because detection and mutation are deliberately separate. Detection is
+broad and heuristic (name-based) so it catches omissions. Mutation is narrow and
+explicit (registry-based) so it only touches columns whose representation is
+known. If backfill guessed from the suffix, an unrelated `note_at` containing
+`'not-a-timestamp'` would be parsed or rewritten. The regression
+`test_backfill_ignores_unregistered_timestamp_suffix` asserts that the value
+stays unchanged.
+
+So `note_at` is reported by validation (“classify me”) but ignored by the
+backfill (“I only rewrite classified columns”).
+
+**Source:** PR #94 review, `timestamp_columns.py` L21 and
+`tests/storage/test_timestamp_registry.py` L180, comments `4493571892` and
+`4493739869`; follow-up `F7`.
+
+---
+
+#### **Q: Why is `updated_at` registered as `nullable=True`?**
+
+**A:** Because the actual column is nullable. In `0001_initial.sql`,
+`workflow_runs.created_at` is `TEXT NOT NULL` while `workflow_runs.updated_at` is
+`TEXT` with no `NOT NULL`. A row is created before its first update, so
+`updated_at` is legitimately `NULL` until then. The registry must match the
+schema exactly; declaring it `NOT NULL` would fail validation with:
+
+```text
+timestamp column workflow_runs.updated_at is nullable, expected NOT NULL
+```
+
+The same applies to `stage_instances.updated_at`.
+
+**Source:** PR #94 review, `timestamp_columns.py` L187, comment `4493629712`.
+
+---
+
+#### **Q: What does `actual` contain during validation?**
+
+**A:** It is a three-tuple built from `PRAGMA table_xinfo` in `_table_columns`:
+
+```python
+columns[str(column[1])] = (
+    str(column[2]),   # declared_type, e.g. "TEXT"
+    bool(column[3]),  # not_null, e.g. False
+    int(column[6]),   # hidden, e.g. 0
+)
+```
+
+Examples:
+
+| column | `actual` |
+|---|---|
+| `workflow_runs.created_at` | `("TEXT", True, 0)` |
+| `workflow_runs.updated_at` | `("TEXT", False, 0)` |
+| generated `workflow_runs.archived_at` | `("TEXT", False, 2)` |
+
+`hidden` is `0` for an ordinary column, `1` for hidden, `2` for generated
+`VIRTUAL`, and `3` for generated `STORED`.
+
+**Source:** PR #94 review, `timestamp_columns.py` L224, comment `4493635360`;
+follow-up `F10`.
+
+---
+
+#### **Q: Are those tuple indices something SQLite provides?**
+
+**A:** Yes. `PRAGMA table_xinfo(table)` returns rows with seven fields: `cid`,
+`name`, `type`, `notnull`, `dflt_value`, `pk`, and `hidden`. The code keeps only
+`name`, `type`, `notnull`, and `hidden`. `table_xinfo` is `table_info` plus
+generated/hidden columns, which is why the earlier `table_info` version missed
+generated timestamp columns.
+
+**Source:** PR #94 review, `timestamp_columns.py` L224, comment `4493635360`;
+follow-up `F10`.
+
+---
+
+### Generated Columns
+
+#### **Q: What is a generated column, and why does it break the backfill?**
+
+**A:** A generated column is a real table column whose value SQLite computes from
+other columns:
+
+```sql
+ALTER TABLE workflow_runs ADD COLUMN archived_at TEXT
+    GENERATED ALWAYS AS (created_at) VIRTUAL;
+```
+
+`archived_at` always mirrors `created_at`; you cannot insert or update it
+directly. `PRAGMA table_info` omits it, so the original validator could not see
+it. If it were registered, the backfill would try:
+
+```sql
+UPDATE workflow_runs SET archived_at = ?
+```
+
+and SQLite would reject it with `cannot UPDATE generated column`. If it were
+silently skipped, it would appear supported but never be normalized. GEN-25
+(#93) now uses `table_xinfo` and rejects generated timestamp columns explicitly.
+
+**Source:** PR #94 review, `timestamp_columns.py` L28, comment `4493578234`;
+follow-up `F8`.
+
+---
+
+#### **Q: Is a generated column just a view? Where is it defined, and when is it computed?**
+
+**A:** No, it is a real column of the table, but read-only. Similar in spirit to a
+view, different in mechanism.
+
+- Definition: stored in the table schema (`sqlite_master.sql`), created once by
+  `CREATE TABLE` or `ALTER TABLE`.
+- `VIRTUAL`: computed on every read, not stored on disk.
+- `STORED`: computed on every insert/update of the source, stored on disk, and
+  indexable.
+- A view is a separate named query object, not part of a row.
+
+The definition is created once; the value is computed per read or per write
+depending on the kind.
+
+**Source:** PR #94 review, `timestamp_columns.py` L28, comment `4493578234`;
+follow-up `F8`.
+
+---
+
+#### **Q: Should generated columns never be created? How are they backed up?**
+
+**A:** Generated columns are valid and can be created by migrations. The
+restriction is narrower: a **generated timestamp column cannot be registered as a
+normal writable projection**. Non-timestamp generated columns such as a lowercase
+hash are unaffected.
+
+“Backup” and “backfill” are different. A SQLite backup stores the generated
+column's definition, not its values; on restore, SQLite recomputes them. A
+generated column needs no backfill because it is derived from its source:
+normalize the source and the derived value follows.
+
+**Source:** PR #94 review, `timestamp_columns.py` L28, comment `4493578234`;
+follow-up `F8`.
+
+---
+
+#### **Q: Why reject generated timestamps instead of only skipping them in the backfill?**
+
+**A:** Because early rejection is better than a late runtime failure or silent
+divergence. If a generated column is registered and included in the writable set,
+the backfill issues `UPDATE` and SQLite raises `cannot UPDATE generated column`
+during a migration, on someone's database, possibly mid-startup. If it is
+silently skipped, it looks supported but is never normalized, which is worse after
+#92 changes representations.
+
+Validation therefore fails early and actionably:
+
+```text
+timestamp column workflow_runs.archived_at is generated or hidden;
+generated timestamp columns are not supported because the backfill cannot write them
+```
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L126,
+comment `4493727578`; follow-up `F8`.
+
+---
+
+#### **Q: If we need a derived timestamp, where should it live so code is unaffected?**
+
+**A:** Do not persist it as an independently normalized value. Options:
+
+1. **Compute at read time** in the query or a view, keeping the output column name
+   the same. No schema column, no backfill.
+2. **STORED generated column** with the same name and representation your code
+   already expects. Readers keep working; writers never wrote it anyway.
+3. Under #92, define it in terms of the new source and drop/re-add it in the same
+   migration:
+   ```sql
+   archived_timestamp_micro INTEGER
+       GENERATED ALWAYS AS (created_timestamp_micro) STORED
+   ```
+   Keep the exported name and type stable so upper layers do not change.
+
+The rule is: derived values are defined next to their source, not normalized
+independently. Once that holds, choosing view vs virtual vs stored is a
+performance decision (storage, read cost, indexability), not a correctness
+decision.
+
+**Source:** PR #94 review, `timestamp_columns.py` L28 and
+`tests/storage/test_timestamp_registry.py` L126; follow-up `F12`.
+
+---
+
+#### **Q: Does the representation change affect ordinary columns too?**
+
+**A:** Yes, but differently. Every column has the same representation-change
+problem when #92 moves from ISO text to integer micros. Ordinary columns can be
+converted with `UPDATE` and are writable by the backfill. Generated columns
+cannot be written, and their expression may reference the old source, so they must
+be dropped/re-added or the table rebuilt.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L126,
+comment `4493727578`; follow-up `F8`.
+
+---
+
+#### **Q: How is a generated-column migration actually done?**
+
+**A:** SQLite supports more than a full rebuild:
+
+```sql
+-- rename the source; the generated expression follows automatically
+ALTER TABLE t RENAME COLUMN created_at TO created_ts;
+
+-- drop the generated column when nothing depends on it
+ALTER TABLE t DROP COLUMN archived_at;
+
+-- re-add with the new expression
+ALTER TABLE t ADD COLUMN archived_at TEXT
+    GENERATED ALWAYS AS (upper(created_at)) STORED;
+```
+
+For #92, add the new ordinary column, convert values, drop dependent indexes or
+triggers, drop and re-add the generated column against the new source, recreate
+dependents, then drop the old column when nothing references it.
+
+A full 12-step rebuild is still needed when a dependency cannot be dropped first,
+when changing table properties such as `STRICT`, when altering an ordinary
+column's type in place, or when the intermediate state would violate a
+constraint.
+
+**Source:** PR #94 review, `timestamp_columns.py` L28; follow-up `F12`.
+
+---
+
+### Constraints and NULL Semantics
+
+#### **Q: Why not add `CHECK` or `STRICT` in the registry PR?**
+
+**A:** Because adding either to an existing table requires a rebuild, and #93's
+job is the registry safety net. SQLite cannot add a `CHECK` in place, and `STRICT`
+is fixed at table creation. A rebuild of the existing tables would mix schema
+hardening with the registry change, require a data audit, and risk unrelated
+breakage. GEN-24 (#92) is the natural place because it already changes the
+timestamp columns and may rebuild tables anyway.
+
+**Source:** PR #94 review, `timestamp_columns.py` L35, comment `4493597139`.
+
+---
+
+#### **Q: Are `STRICT` and `CHECK` good practice? What are the costs?**
+
+**A:** Yes, in the right role, but they are not interchangeable with code
+validation.
+
+`STRICT` enforces declared types at the table level. It still allows lossless
+conversion (`'12'` becomes `12`, `123` becomes `'123'`) and rejects lossy
+conversion (`12.5` into `INTEGER`, `'abc'` into `INTEGER`). It does not enforce
+`NOT NULL`, and it cannot be added to an existing table without a rebuild.
+
+`CHECK` enforces a boolean expression on writes. It is good for cheap, stable
+physical invariants such as `x >= 0` or `finished >= started`. It is poor for
+business rules because changing a `CHECK` requires a table rebuild, and business
+rules change often. Keep policy in Pydantic/service code.
+
+**Source:** PR #94 review, `timestamp_columns.py` L35, comment `4493597139`;
+follow-up `F9`.
+
+---
+
+#### **Q: What does `NULL` do in a `CHECK`?**
+
+**A:** SQL uses three-valued logic. A `CHECK` fails only when the expression is
+`FALSE`; if it evaluates to `NULL`/`UNKNOWN`, the row is accepted:
+
+```sql
+CREATE TABLE c (x INTEGER CHECK (x > 0));
+INSERT INTO c (x) VALUES (NULL);  -- accepted
+INSERT INTO c (x) VALUES (0);     -- rejected
+```
+
+So `CHECK (x > 0)` means “if `x` is present, it must be positive”. State the
+intent explicitly:
+
+```sql
+-- reject NULL explicitly
+CHECK (x IS NOT NULL AND x > 0)
+
+-- allow NULL, validate only when present
+CHECK (x IS NULL OR x > 0)
+```
+
+For nullable timestamps, the second form is usually correct. If the value must be
+present, use `NOT NULL` instead of encoding it in `CHECK`.
+
+**Source:** PR #94 review, `timestamp_columns.py` L35, comment `4493597139`;
+follow-up `F9`.
+
+---
+
+#### **Q: What did we decide about `STRICT` and `CHECK`?**
+
+**A:** Adopt `CHECK` only, in a separate PR: GEN-26 (#95). Do not adopt `STRICT`.
+Keep only physical/structural invariants that will not change with product
+policy, and state `NULL` behavior explicitly in each constraint. Business rules
+stay in code. The change is blocked by GEN-24 (#92) because it targets the final
+integer-microsecond columns, and it is separate from both #92 and #93 so it gets
+its own review and verification.
+
+**Source:** PR #94 review, `timestamp_columns.py` L35; follow-up `F13`; GEN-26
+(#95).
+
+---
+
+### Tests and SQLite Mechanics
+
+#### **Q: What does the freshly-migrated-schema test cover?**
+
+**A:** It runs `validate_timestamp_columns` against a temporary database with
+every migration applied. It asserts that every registered table exists, every
+registered column exists, declared types match (`TEXT` now, `INTEGER` later),
+nullability matches, no registered column is generated/hidden, and no
+timestamp-like column is missing from the registry. It is the single test that
+fails if the migrations and `TIMESTAMP_COLUMNS` drift apart.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L21,
+comment `4493656226`.
+
+---
+
+#### **Q: What is pytest `MonkeyPatch`, and where does `monkeypatch.setitem` write?**
+
+**A:** `MonkeyPatch` is a built-in pytest fixture for temporary, automatically
+reverted changes to attributes, dict items, environment variables, and similar
+state.
+
+In `test_registered_generated_timestamp_column_is_rejected`, this:
+
+```python
+monkeypatch.setitem(TIMESTAMP_COLUMNS, "workflow_runs", {...})
+```
+
+mutates the imported `TIMESTAMP_COLUMNS` dict **in process memory** for the
+duration of the test, storing the old value on the fixture's undo stack. It does
+not write to SQLite or disk. After the test, pass or fail, pytest restores the
+original entry. That is how the test can simulate “someone registered this
+column” without changing the production registry or leaking state.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L105,
+comment `4493711659`; follow-up `F11`.
+
+---
+
+#### **Q: What does “unregistered” mean?**
+
+**A:** The column exists in the live SQLite schema but has no matching entry in
+`TIMESTAMP_COLUMNS`. For example, adding:
+
+```sql
+ALTER TABLE workflow_runs ADD COLUMN archived_at TEXT
+    GENERATED ALWAYS AS (created_at) VIRTUAL;
+```
+
+without a registry entry produces:
+
+```text
+unregistered timestamp column workflow_runs.archived_at; add it to
+pipeline.storage.timestamp_columns.TIMESTAMP_COLUMNS
+```
+
+The opposite case is a registered column missing from the database
+(`registered timestamp column ... does not exist`). Both are registry/schema
+drift.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L80,
+comment `4493717355`; follow-up `F6`.
+
+---
+
+#### **Q: Why does a registered generated timestamp still fail validation?**
+
+**A:** Because registration implies “the backfill may write this column”, and
+SQLite forbids writing generated columns. In the test, `monkeypatch` adds
+`archived_at` to the registry, then the column is created as
+`GENERATED ALWAYS AS (created_at) VIRTUAL`. `table_xinfo` reports
+`("TEXT", False, 2)`, and the `hidden` check rejects it before type/nullability
+checks:
+
+```text
+timestamp column workflow_runs.archived_at is generated or hidden;
+generated timestamp columns are not supported because the backfill cannot write them
+```
+
+So registration is necessary but not sufficient: support is determined by
+writability.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L126,
+comment `4493727578`; follow-up `F8`.
+
+---
+
+#### **Q: What is the suffix-bypass/backfill test?**
+
+**A:** `test_backfill_ignores_unregistered_timestamp_suffix` adds
+`schema_migrations.note_at`, fills it with `'not-a-timestamp'`, runs the real
+backfill, and asserts the value is unchanged. It proves the backfill does not
+guess from `_at`; it only rewrites columns in the registry. This is the
+regression against the old `name.endswith("_at")` implementation, which would
+have tried to normalize the text and either raised or corrupted it.
+
+Validation would still flag `note_at` as unregistered. Detection and mutation are
+separate steps.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L180,
+comment `4493739869`; follow-up `F7`.
+
+---
+
+#### **Q: Do we need the backfill if tables are always written correctly?**
+
+**A:** You do not need an ongoing repair backfill if every write is correct and
+there is no legacy data. You still need schema migrations for structural changes,
+and GEN-24 (#92) needs a one-time conversion from ISO text to integer micros.
+Validation also remains valuable because “I take care of my tables” is a human
+process; the registry test proves it.
+
+Backfill is a one-time conversion/repair tool, not a permanent runtime path.
+
+**Source:** PR #94 review, `tests/storage/test_timestamp_registry.py` L180,
+comment `4493739869`; follow-up `F7`.
+
+---
+
+#### **Q: What do `@dataclass(frozen=True, slots=True)` and the Java analogy mean?**
+
+**A:** `frozen=True` makes instances immutable and hashable; assigning a field
+raises `FrozenInstanceError`. `slots=True` gives the class `__slots__` instead of
+a per-instance `__dict__`: lower memory, no arbitrary attribute creation, and a
+typo like `col.nullabel = True` fails immediately.
+
+The closest Java analogy is a `record` with all-final components:
+
+```java
+record TimestampColumn(TimestampFormat format, boolean nullable) {}
+```
+
+`frozen=True` is like `final` fields plus generated `equals`/`hashCode`;
+`slots=True` is a fixed field layout with no ability to attach dynamic fields.
+Java never allows dynamic fields, so that part is more of a memory-layout
+guarantee than a semantic one.
+
+This matters because `TIMESTAMP_COLUMNS` is module-level shared state; immutable
+entries prevent one caller or test from mutating the registry for everyone.
+
+**Source:** PR #94 review, `timestamp_columns.py` L70, comment `4493606856`.
+
+---
+
+### PR #94 Decision Summary
+
+| Topic | Decision | Issue |
+|-------|----------|-------|
+| Timestamp registry | Explicit `TIMESTAMP_COLUMNS` table/column/format/nullability map | GEN-25 (#93) |
+| Completeness guard | `_at` and `_timestamp_micro` suffixes are reserved and checked in validation | GEN-25 (#93) |
+| Backfill source | Registry-driven; payload timestamps stay Pydantic-directed | GEN-25 (#93) |
+| Generated columns | Enumerated with `table_xinfo`; generated timestamp projections rejected | GEN-25 (#93) |
+| Migration discipline | Applied migrations are immutable and checksummed; restore bytes or reset dev DB | GEN-25 (#93) |
+| Future representation | `*_timestamp_micro` integer microseconds for SQL and payload | GEN-24 (#92) |
+| Payload alignment | Rename payload keys and values to integer microseconds; bump schema versions | GEN-24 (#92) |
+| Schema constraints | `CHECK` only, physical invariants, explicit `NULL` semantics, no `STRICT` | GEN-26 (#95) |

@@ -48,6 +48,10 @@ class MigrationChecksumError(MigrationError):
     """An already-applied migration changed after it was recorded."""
 
 
+class TimestampSchemaError(StorageError):
+    """The timestamp-column registry disagrees with the migrated schema."""
+
+
 class ArtifactStoreError(StorageError):
     """Base class for immutable artifact-store failures."""
 
@@ -85,4 +89,5 @@ __all__ = [
     "MigrationError",
     "NotFoundError",
     "StorageError",
+    "TimestampSchemaError",
 ]

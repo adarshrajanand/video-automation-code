@@ -18,6 +18,10 @@ Architecture:
 - **Migrations**: Ordered SQL files in ``storage/migrations/``. Each migration
   has a name, checksum, and application timestamp. Applied migrations are
   recorded in ``schema_migrations`` table. Checksums prevent silent corruption.
+- **Timestamp columns**: ``storage/timestamp_columns.py`` is the explicit
+  registry of every SQL timestamp projection column, its physical format, and
+  nullability. The migration backfill uses the registry instead of name
+  suffixes, and schema-validation tests keep it aligned with the migrations.
 - **Repositories**: Typed SQLite repositories (SqliteRepository base).
   Each repository owns a table, stores canonical JSON in ``payload`` column,
   extracts key columns for indexing. All reads revalidate through Pydantic.
@@ -77,6 +81,7 @@ from pipeline.storage.errors import (
     MigrationError,
     NotFoundError,
     StorageError,
+    TimestampSchemaError,
 )
 from pipeline.storage.migrations import (
     AppliedMigration,
@@ -112,9 +117,17 @@ from pipeline.storage.repositories import (
     WorkflowRunRepository,
     insert_event_and_outbox,
 )
+from pipeline.storage.timestamp_columns import (
+    TIMESTAMP_COLUMNS,
+    TimestampColumn,
+    TimestampFormat,
+    timestamp_column_problems,
+    validate_timestamp_columns,
+)
 
 __all__ = [
     "ARTIFACT_URI_PREFIX",
+    "TIMESTAMP_COLUMNS",
     "AppliedMigration",
     "ArtifactCollisionError",
     "ArtifactDependencyRepository",
@@ -156,8 +169,13 @@ __all__ = [
     "StageInstanceRepository",
     "StorageError",
     "StoredArtifact",
+    "TimestampColumn",
+    "TimestampFormat",
+    "TimestampSchemaError",
     "WorkflowEventRepository",
     "WorkflowRunRepository",
     "discover_migrations",
     "insert_event_and_outbox",
+    "timestamp_column_problems",
+    "validate_timestamp_columns",
 ]
