@@ -25,6 +25,11 @@ authoritative. Treat those two suffixes as reserved for timestamps: a
 non-timestamp column that happens to end in ``_at`` will fail validation and
 should be renamed rather than silently ignored.
 
+Generated columns are enumerated with ``PRAGMA table_xinfo`` so they cannot hide
+from validation. A generated timestamp projection is rejected explicitly:
+the migration backfill can only rewrite ordinary columns, so registering a
+generated timestamp column would leave it silently unnormalized.
+
 Why not ``CHECK`` or ``STRICT``?
 --------------------------------
 ``CHECK`` constraints and ``STRICT`` tables can enforce a storage class, for
@@ -216,7 +221,14 @@ def timestamp_column_problems(connection: sqlite3.Connection) -> tuple[str, ...]
                     f"registered timestamp column {table}.{column} does not exist"
                 )
                 continue
-            declared_type, not_null = actual
+            declared_type, not_null, hidden = actual
+            if hidden:
+                problems.append(
+                    f"timestamp column {table}.{column} is generated or hidden; "
+                    "generated timestamp columns are not supported because the "
+                    "backfill cannot write them"
+                )
+                continue
             if declared_type.upper() != expected.declared_type:
                 problems.append(
                     f"timestamp column {table}.{column} has declared type "
@@ -256,18 +268,24 @@ def validate_timestamp_columns(connection: sqlite3.Connection) -> None:
 
 def _table_columns(
     connection: sqlite3.Connection,
-) -> dict[str, dict[str, tuple[str, bool]]]:
+) -> dict[str, dict[str, tuple[str, bool, int]]]:
     rows = connection.execute(
         "SELECT name FROM sqlite_master "
         "WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     ).fetchall()
-    tables: dict[str, dict[str, tuple[str, bool]]] = {}
+    tables: dict[str, dict[str, tuple[str, bool, int]]] = {}
     for (table,) in rows:
-        columns: dict[str, tuple[str, bool]] = {}
+        columns: dict[str, tuple[str, bool, int]] = {}
+        # table_xinfo, unlike table_info, includes generated columns. They must
+        # be visible to validation so they cannot bypass registry coverage.
         for column in connection.execute(
-            f"PRAGMA table_info({_quote(str(table))})"
+            f"PRAGMA table_xinfo({_quote(str(table))})"
         ).fetchall():
-            columns[str(column[1])] = (str(column[2]), bool(column[3]))
+            columns[str(column[1])] = (
+                str(column[2]),
+                bool(column[3]),
+                int(column[6]),
+            )
         tables[str(table)] = columns
     return tables
 

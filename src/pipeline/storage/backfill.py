@@ -355,6 +355,9 @@ def _table_exists(connection: sqlite3.Connection, table: str) -> bool:
 
 
 def _columns(connection: sqlite3.Connection, table: str) -> list[tuple[str, int]]:
+    # table_info intentionally excludes generated columns: the backfill updates
+    # ordinary columns only. The timestamp registry validator uses table_xinfo
+    # so generated timestamp columns are detected and rejected separately.
     rows = connection.execute(f"PRAGMA table_info({_quote(table)})").fetchall()
     return [(str(row[1]), int(row[5])) for row in rows]
 

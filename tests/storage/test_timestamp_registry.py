@@ -37,7 +37,8 @@ def test_registry_covers_every_timestamp_like_column(database: Database) -> None
 
         actual: set[tuple[str, str]] = set()
         for (table,) in tables:
-            for column in connection.execute(f'PRAGMA table_info("{table}")'):
+            # table_xinfo includes generated columns, which table_info omits.
+            for column in connection.execute(f'PRAGMA table_xinfo("{table}")'):
                 name = str(column[1])
                 if is_timestamp_like_name(name):
                     actual.add((str(table), name))
@@ -73,6 +74,57 @@ def test_unregistered_timestamp_like_column_fails_validation(
     assert (
         f"unregistered timestamp column workflow_runs.{column}; add it to "
         "pipeline.storage.timestamp_columns.TIMESTAMP_COLUMNS"
+    ) in problems
+
+
+def test_unregistered_generated_timestamp_column_fails_validation(
+    database: Database,
+) -> None:
+    with database.transaction() as connection:
+        connection.execute(
+            "ALTER TABLE workflow_runs ADD COLUMN archived_at TEXT "
+            "GENERATED ALWAYS AS (created_at) VIRTUAL"
+        )
+
+    with database.connection() as connection:
+        problems = timestamp_column_problems(connection)
+        with pytest.raises(
+            TimestampSchemaError,
+            match=re.escape("unregistered timestamp column workflow_runs.archived_at"),
+        ):
+            validate_timestamp_columns(connection)
+
+    assert (
+        "unregistered timestamp column workflow_runs.archived_at; add it to "
+        "pipeline.storage.timestamp_columns.TIMESTAMP_COLUMNS"
+    ) in problems
+
+
+def test_registered_generated_timestamp_column_is_rejected(
+    database: Database,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setitem(
+        TIMESTAMP_COLUMNS,
+        "workflow_runs",
+        {
+            **TIMESTAMP_COLUMNS["workflow_runs"],
+            "archived_at": TimestampColumn(TimestampFormat.ISO8601_TEXT),
+        },
+    )
+    with database.transaction() as connection:
+        connection.execute(
+            "ALTER TABLE workflow_runs ADD COLUMN archived_at TEXT "
+            "GENERATED ALWAYS AS (created_at) VIRTUAL"
+        )
+
+    with database.connection() as connection:
+        problems = timestamp_column_problems(connection)
+
+    assert (
+        "timestamp column workflow_runs.archived_at is generated or hidden; "
+        "generated timestamp columns are not supported because the backfill "
+        "cannot write them"
     ) in problems
 
 
