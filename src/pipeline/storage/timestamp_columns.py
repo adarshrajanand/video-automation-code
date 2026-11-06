@@ -1,5 +1,19 @@
 """Explicit registry and validation for SQL timestamp projection columns.
 
+Terminology
+-----------
+A **payload** is the JSON document stored in a row's ``payload`` column (or an
+equivalent JSON column such as ``effective_configs.resolved_values``). It is the
+full serialized Pydantic contract and the source of truth for the record.
+
+A **projection column** is a SQL column that duplicates one payload field for
+querying: filtering, ordering, uniqueness, and ``NOT NULL`` enforcement. For
+example ``workflow_runs.created_at`` is the SQL projection of the
+``WorkflowRun.created_at`` field that also appears in the row's payload. The
+write path writes both copies; they can drift if a direct SQL writer or an old
+migration touches only one. Backfill and validation exist because of that
+duplication.
+
 SQLite has no native timestamp type. ``PRAGMA table_info`` reports only the
 declared storage class (``TEXT``, ``INTEGER``, ...), not whether a column is a
 timestamp, an enum, JSON, or an opaque string. The registry in this module is
@@ -12,10 +26,15 @@ arbitrary JSON keys. This module only covers extracted SQL projection columns.
 
 Adding a timestamp column
 -------------------------
-1. Add the column in a new migration. Never edit an already-applied migration.
+1. Add the column in a new migration. Never edit an already-applied migration:
+   the runner stores each file's checksum in ``schema_migrations`` and refuses
+   to start if an applied file's bytes change. To revert, restore the applied
+   bytes. If a modified file was already applied to a development database,
+   recreate that database; do not rewrite ``schema_migrations`` by hand.
 2. Add the table and column here with its format and nullability.
-3. Run ``uv run pytest tests/storage/test_timestamp_registry.py``. The test
-   fails if the registry and the migrated schema disagree.
+3. Run ``uv run pytest tests/storage/test_timestamp_registry.py``. The fixture
+   applies every migration to a fresh temporary database, then fails if the
+   registry and the migrated schema disagree.
 
 Validation treats columns ending in ``_at`` or ``_timestamp_micro`` as
 timestamp-like. That suffix check is a test-time completeness guard for new
@@ -23,21 +42,37 @@ columns; migration/backfill behavior is driven by this registry, not by the
 suffix. A registered column may use any name because the explicit entry is
 authoritative. Treat those two suffixes as reserved for timestamps: a
 non-timestamp column that happens to end in ``_at`` will fail validation and
-should be renamed rather than silently ignored.
+should be renamed rather than silently ignored. Registering means adding an
+explicit entry with format and nullability; it is not a way to silence the
+check.
 
 Generated columns are enumerated with ``PRAGMA table_xinfo`` so they cannot hide
-from validation. A generated timestamp projection is rejected explicitly:
-the migration backfill can only rewrite ordinary columns, so registering a
-generated timestamp column would leave it silently unnormalized.
+from validation. A generated column is a real table column whose value SQLite
+computes from other columns: ``VIRTUAL`` is evaluated on read, ``STORED`` on
+write, and neither can be written directly. It is not a view. A generated
+timestamp projection is rejected explicitly because the migration backfill can
+only rewrite ordinary columns; registering one would either fail late with
+``cannot UPDATE generated column`` or leave it silently unnormalized. Rejecting
+it at validation time makes the failure early and actionable. Derived values
+should be computed at read time (query or view) or defined as a generated column
+next to their source, never normalized independently.
 
-Why not ``CHECK`` or ``STRICT``?
---------------------------------
-``CHECK`` constraints and ``STRICT`` tables can enforce a storage class, for
-example that an integer-microsecond column contains only integers. They cannot
-say "this column is a timestamp", and adding either to an existing table
-requires a table rebuild. Existing ``TEXT`` timestamp columns therefore use
-neither. A new table may combine ``STRICT`` or ``CHECK`` with a registry entry,
-but those constraints complement the registry and do not replace it.
+Why not ``STRICT``?
+-------------------
+``STRICT`` is a table-level property that restricts stored types. It cannot be
+added to an existing table without a rebuild, it still allows lossless
+conversions such as ``'12'`` to ``INTEGER``, and it says nothing about timestamp
+semantics. It is optional for new tables and is not part of the timestamp work.
+
+Why ``CHECK`` constraints are separate
+--------------------------------------
+``CHECK`` can enforce a physical invariant, for example that an integer
+microsecond column is non-negative. It cannot say "this column is a timestamp",
+and changing or removing a ``CHECK`` requires a table rebuild. Business rules
+therefore stay in code. Any ``CHECK`` must state its ``NULL`` behavior
+explicitly because SQL passes a ``CHECK`` that evaluates to ``NULL``. Physical
+``CHECK`` constraints are tracked separately in GEN-26 (#95); they are not part
+of this registry.
 """
 
 from __future__ import annotations

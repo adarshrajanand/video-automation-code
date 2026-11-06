@@ -103,6 +103,9 @@ def test_idempotency_update_reprojects_every_ddl_column(database, records) -> No
 
 
 def test_idempotency_restored_columns_support_sql_filters(database, records) -> None:
+    # Checking that projection columns exist is not enough. This proves their
+    # values are usable by real SQL filters, including JSON-encoded list
+    # columns, which is the user-visible purpose of a projection.
     populated = _changed_record(records, "01")
     empty = records.idempotency_record("02").model_copy(
         update={"operation_version": "v1", "locale": "fr-FR"}

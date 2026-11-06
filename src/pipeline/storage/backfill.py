@@ -6,8 +6,20 @@ Every hook is idempotent and fails closed on malformed durable data so a failed
 migration rolls back instead of leaving payload and projection disagreement.
 
 SQL timestamp columns are identified by the explicit registry in
-:mod:`pipeline.storage.timestamp_columns`, not by a name suffix. Payload
-timestamps remain schema-directed through Pydantic annotations.
+:mod:`pipeline.storage.timestamp_columns`, not by a name suffix.
+
+Writable columns
+----------------
+The backfill only rewrites ordinary SQL columns listed in the registry. A
+registered column is *writable* when it exists in the live schema, is not a
+primary key, and is not generated or hidden. Detection is intentionally broader
+than mutation: validation flags every ``_at``/``_timestamp_micro`` column so a
+missing registration is caught, while the backfill touches only columns whose
+representation is known. This is why an unrelated ``note_at`` text column is
+reported by validation but never parsed or rewritten here.
+
+Payload timestamps remain schema-directed through Pydantic annotations and are
+never inferred from arbitrary JSON keys.
 """
 
 from __future__ import annotations
@@ -86,6 +98,10 @@ def _reproject_idempotency_records(connection: sqlite3.Connection) -> None:
 def _normalize_table(connection: sqlite3.Connection, table: str) -> None:
     columns = _columns(connection, table)
     registered = registered_timestamp_columns(table)
+    # Writability boundary: only ordinary registered columns are selected for
+    # rewriting. Generated columns are rejected by validation before a
+    # migration runs; table_info here also keeps them out of the SELECT/UPDATE
+    # set so this code never attempts to write one.
     timestamp_columns = [name for name, _ in columns if name in registered]
     has_payload = any(name == "payload" for name, _ in columns)
     if not has_payload and not timestamp_columns:
@@ -124,6 +140,9 @@ def _normalize_table(connection: sqlite3.Connection, table: str) -> None:
         if canonical_payload is not None and canonical_payload != values["payload"]:
             updates["payload"] = canonical_payload
         for column in timestamp_columns:
+            # A projection is a copy, not an independent value. When the payload
+            # declares the same timestamp, copy the normalized payload value so
+            # the two representations cannot disagree.
             if payload is not None and column in payload_timestamps:
                 normalized = payload[column]
             else:

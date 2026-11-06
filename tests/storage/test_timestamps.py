@@ -50,6 +50,9 @@ def _review(review_id: str, created_at: datetime) -> HumanReview:
 
 
 def test_persisted_text_order_matches_chronological_order(database) -> None:
+    # Regression for #14: SQLite TEXT ordering is lexicographic. Fixed six-digit
+    # fractional seconds make lexicographic order agree with chronological order
+    # across second and microsecond boundaries.
     base = datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)
     instants = [
         base,
@@ -124,6 +127,9 @@ def test_mixed_legacy_serializers_order_chronologically_after_backfill(
 
 
 def test_direct_decision_write_uses_canonical_timestamp(database) -> None:
+    # Direct SQL writers (outside SqliteRepository) must use the same canonical
+    # form. This inserts a +02:00 value and expects UTC normalization in both
+    # the projection column and the JSON payload.
     review = _review("review_01", datetime(2026, 10, 21, 9, 0, tzinfo=UTC))
     decision = HumanReviewDecision(
         schema_version="human-review-decision.v1",

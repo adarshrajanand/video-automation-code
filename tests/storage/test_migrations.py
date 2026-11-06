@@ -276,6 +276,9 @@ def test_non_contiguous_migrations_are_rejected(tmp_path: Path) -> None:
 
 
 def test_timestamp_migration_repairs_idempotency_projection(tmp_path: Path) -> None:
+    # A projection is the set of SQL columns extracted from a validated payload.
+    # This exercises the targeted repair for the #9 defect: rebuild every
+    # idempotency projection column from the payload, not only the timestamps.
     database = _legacy_v1_database(tmp_path)
     original_payload = _insert_legacy_idempotency(database)
     with database.transaction() as connection:
@@ -323,6 +326,9 @@ def test_timestamp_migration_repairs_idempotency_projection(tmp_path: Path) -> N
 def test_timestamp_migration_repairs_payload_and_projection_together(
     tmp_path: Path,
 ) -> None:
+    # Generic path: a declared payload timestamp and its SQL projection must be
+    # normalized to the same canonical value in one transaction. This is
+    # separate from the idempotency projection rebuild so failures localize.
     database = _legacy_v1_database(tmp_path)
     review_payload = {
         "schema_version": "human-review.v1",
@@ -453,6 +459,10 @@ def test_timestamp_migration_preserves_opaque_configuration_values(
 def test_timestamp_migration_normalizes_nested_contract_timestamps(
     tmp_path: Path,
 ) -> None:
+    # Recursion is schema-directed, not a generic JSON walk:
+    #   outbox_messages.payload -> OutboxMessage.event -> EventEnvelope.created_at
+    # is a declared datetime and is normalized. `event.payload` is
+    # ExtensionObject, so its `created_at`/`updated_at` keys stay untouched.
     database = _legacy_v1_database(tmp_path)
     event_payload = {
         "schema_version": "event-envelope.v1",

@@ -41,6 +41,9 @@ class SqliteRepository[ModelT: BaseModel]:
     model: type[ModelT]
     table: str
     key_columns: tuple[str, ...]
+    # Projection columns: SQL copies of payload fields for filtering and
+    # ordering. The payload remains the source of truth. Timestamp projections
+    # are also registered in pipeline.storage.timestamp_columns.
     columns: tuple[str, ...] = ()
     order_by: tuple[str, ...] = ()
 
@@ -64,6 +67,9 @@ class SqliteRepository[ModelT: BaseModel]:
         return value
 
     def _extracted(self, record: ModelT) -> dict[str, Any]:
+        # Projections are denormalized copies of payload fields.
+        # canonical_datetime keeps their text form identical to the payload so
+        # ORDER BY and SQL filters agree with the serialized record.
         values: dict[str, Any] = {}
         for column in self.columns:
             values[column] = self._column_value(column, getattr(record, column))

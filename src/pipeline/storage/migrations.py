@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 
 # Data-only migrations keep their SQL file as the version/checksum anchor while
 # structured JSON and timezone-aware repairs run here inside the same transaction.
+#
+# 0002 is intentionally a comment-only SQL anchor. SQLite cannot parse and
+# validate JSON through Pydantic, nor can it convert timezone offsets while
+# preserving six fractional digits. The Python hook below performs that work.
+# Do not add logic to an applied migration file; add a new migration instead.
 _DATA_MIGRATION_HOOKS: dict[tuple[int, str], Callable[[sqlite3.Connection], None]] = {
     (2, "canonical_timestamps"): canonicalize_persisted_timestamps,
 }
@@ -169,6 +174,14 @@ class MigrationRunner:
         )
 
     def _validate_applied(self, applied: tuple[AppliedMigration, ...]) -> None:
+        """Fail closed when applied history diverges from local migration files.
+
+        An applied migration is immutable: the stored checksum is its contract.
+        To undo an edit, restore the exact applied bytes. If the modified file
+        was already applied to a development database, recreate that database;
+        never rewrite ``schema_migrations`` by hand.
+        """
+
         by_version = {migration.version: migration for migration in self._migrations}
         for index, record in enumerate(applied):
             migration = by_version.get(record.version)

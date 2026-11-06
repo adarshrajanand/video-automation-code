@@ -423,6 +423,9 @@ class RecordFactory:
 
 @pytest.fixture
 def database(tmp_path: Path) -> Database:
+    # Each test gets a fresh temporary database with every migration applied.
+    # Tests never touch the developer's PIPELINE_HOME database, and schema
+    # assertions always run against the real post-migration shape.
     database = Database(tmp_path / "state" / "pipeline.sqlite3")
     MigrationRunner(database).migrate()
     return database

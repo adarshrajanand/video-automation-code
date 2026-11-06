@@ -19,11 +19,18 @@ from pipeline.storage.timestamp_columns import (
 
 
 def test_registry_matches_freshly_migrated_schema(database: Database) -> None:
+    # End-to-end guard: every registered table/column exists with the declared
+    # type and nullability, no registered column is generated, and no
+    # timestamp-like column is missing from the registry.
     with database.connection() as connection:
         validate_timestamp_columns(connection)
 
 
 def test_registry_covers_every_timestamp_like_column(database: Database) -> None:
+    # `table_xinfo` includes generated columns. This is the completeness check
+    # that a new `_at`/`_timestamp_micro` column cannot bypass by being
+    # generated. `validate_timestamp_columns` also checks the reverse direction
+    # (registered columns that are missing from the schema).
     expected = {
         (table, column)
         for table, columns in TIMESTAMP_COLUMNS.items()
@@ -58,6 +65,9 @@ def test_unregistered_timestamp_like_column_fails_validation(
     column: str,
     declared_type: str,
 ) -> None:
+    # Both reserved suffixes are covered: the current `_at` name and the
+    # planned `_timestamp_micro` name. "Unregistered" means the column exists
+    # but has no entry in TIMESTAMP_COLUMNS.
     with database.transaction() as connection:
         connection.execute(
             f'ALTER TABLE workflow_runs ADD COLUMN "{column}" {declared_type}'
@@ -80,6 +90,8 @@ def test_unregistered_timestamp_like_column_fails_validation(
 def test_unregistered_generated_timestamp_column_fails_validation(
     database: Database,
 ) -> None:
+    # Regression for the coverage hole where PRAGMA table_info omitted
+    # generated columns and validation silently passed.
     with database.transaction() as connection:
         connection.execute(
             "ALTER TABLE workflow_runs ADD COLUMN archived_at TEXT "
@@ -104,6 +116,11 @@ def test_registered_generated_timestamp_column_is_rejected(
     database: Database,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Registration cannot make a generated column writable. The backfill would
+    # issue UPDATE and SQLite would refuse, so validation rejects it early.
+    #
+    # monkeypatch.setitem mutates the imported TIMESTAMP_COLUMNS dict in process
+    # memory for this test only; pytest restores the original entry afterwards.
     monkeypatch.setitem(
         TIMESTAMP_COLUMNS,
         "workflow_runs",
@@ -129,6 +146,8 @@ def test_registered_generated_timestamp_column_is_rejected(
 
 
 def test_missing_registered_column_fails_validation(database: Database) -> None:
+    # Reverse drift: the registry promises a column that the migrated schema
+    # does not have.
     with database.transaction() as connection:
         connection.execute(
             "ALTER TABLE workflow_runs RENAME COLUMN updated_at TO updated_on"
@@ -144,6 +163,9 @@ def test_missing_registered_column_fails_validation(database: Database) -> None:
 
 
 def test_wrong_declared_type_fails_validation() -> None:
+    # Type drift: an ISO-text registry entry pointing at an INTEGER column.
+    # This is also the failure that guards the GEN-24 (#92) representation
+    # change if a migration and the registry are updated out of step.
     connection = sqlite3.connect(":memory:")
     try:
         connection.execute(
@@ -160,6 +182,8 @@ def test_wrong_declared_type_fails_validation() -> None:
 
 
 def test_wrong_nullability_fails_validation() -> None:
+    # Nullability is part of the persisted contract: created_at is NOT NULL,
+    # updated_at/resolved_at etc. may be NULL until the first transition.
     connection = sqlite3.connect(":memory:")
     try:
         connection.execute(
@@ -178,6 +202,10 @@ def test_wrong_nullability_fails_validation() -> None:
 
 
 def test_backfill_ignores_unregistered_timestamp_suffix(database: Database) -> None:
+    # Detection and mutation are separate. `note_at` fails validation as
+    # unregistered, but the backfill must not guess from its suffix and rewrite
+    # the arbitrary text value. This is the regression against the old
+    # `name.endswith("_at")` implementation.
     with database.transaction() as connection:
         connection.execute("ALTER TABLE schema_migrations ADD COLUMN note_at TEXT")
         connection.execute("UPDATE schema_migrations SET note_at = 'not-a-timestamp'")
@@ -194,6 +222,9 @@ def test_backfill_ignores_unregistered_timestamp_suffix(database: Database) -> N
 
 
 def test_validation_ignores_payload_timestamp_keys(database: Database, records) -> None:
+    # A payload is not a projection. `resolved_values` is an extension object,
+    # so its `created_at`/`updated_at` keys are opaque provider data and must
+    # not be validated as SQL timestamp columns.
     config = records.effective_config().model_copy(
         update={
             "resolved_values": {
