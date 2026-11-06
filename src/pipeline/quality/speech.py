@@ -388,7 +388,7 @@ def _evaluate_wer_cer_real(
         # Missing required inputs - fail closed
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -418,7 +418,7 @@ def _evaluate_wer_cer_real(
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=0,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
         # Get reference and hypothesis texts
@@ -476,7 +476,7 @@ def _evaluate_wer_cer_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -495,7 +495,7 @@ def _evaluate_wer_cer_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -513,7 +513,7 @@ def _evaluate_critical_tokens_real(
     if not asr_alignment or not speech_manifest:
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -543,7 +543,7 @@ def _evaluate_critical_tokens_real(
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=0,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     critical_tokens = (
@@ -579,7 +579,7 @@ def _evaluate_critical_tokens_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -598,7 +598,7 @@ def _evaluate_critical_tokens_real(
         actual_cost_minor=3,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -616,7 +616,7 @@ def _evaluate_forced_alignment_real(
     if not asr_alignment or not audio:
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -646,7 +646,7 @@ def _evaluate_forced_alignment_real(
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=0,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     expected_duration = int(audio.get("duration_seconds", 0) * 1000) if audio else 0
@@ -680,7 +680,7 @@ def _evaluate_forced_alignment_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -699,7 +699,7 @@ def _evaluate_forced_alignment_real(
         actual_cost_minor=4,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -717,7 +717,7 @@ def _evaluate_signal_quality_real(
     if not audio or not audio_path:
         latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -747,7 +747,7 @@ def _evaluate_signal_quality_real(
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=0,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     result = SpeechQualityChecks.measure_signal_quality(audio_path)
@@ -808,7 +808,7 @@ def _evaluate_signal_quality_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -827,5 +827,5 @@ def _evaluate_signal_quality_real(
         actual_cost_minor=3,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )

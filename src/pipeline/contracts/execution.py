@@ -38,7 +38,7 @@ from pipeline.contracts.vocabularies import (
 class WorkflowRun(UTCRecord):
     """One execution of a workflow definition."""
 
-    schema_version: Literal["workflow-run.v1"]
+    schema_version: Literal["workflow-run.v2"]
     run_id: OpaqueId
     run_key: NonEmptyStr
     workflow_id: OpaqueId
@@ -64,7 +64,7 @@ class RunCreateRequest(Contract):
 class StageInstance(UTCRecord):
     """Logical work for one workflow node and one logical item."""
 
-    schema_version: Literal["stage-instance.v1"]
+    schema_version: Literal["stage-instance.v2"]
     stage_instance_id: OpaqueId
     run_id: OpaqueId
     node_id: OpaqueId
@@ -89,7 +89,7 @@ class StageInstance(UTCRecord):
 class StageAttempt(Contract):
     """One claimable execution attempt for a logical stage instance."""
 
-    schema_version: Literal["stage-attempt.v1"]
+    schema_version: Literal["stage-attempt.v2"]
     attempt_id: OpaqueId
     stage_instance_id: OpaqueId
     attempt_number: PositiveInt
@@ -98,10 +98,10 @@ class StageAttempt(Contract):
     input_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     output_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     worker_id: NonEmptyStr | None = None
-    lease_expires_at: UTCDateTime | None = None
+    lease_expires_timestamp_micro: UTCDateTime | None = None
     fencing_token: PositiveInt | None = None
-    started_at: UTCDateTime | None = None
-    finished_at: UTCDateTime | None = None
+    started_timestamp_micro: UTCDateTime | None = None
+    finished_timestamp_micro: UTCDateTime | None = None
     failure_code: FailureCode | None = None
     failure_message: NonEmptyStr | None = None
 
@@ -112,11 +112,11 @@ class StageAttempt(Contract):
         if len(set(self.output_artifact_ids)) != len(self.output_artifact_ids):
             raise ValueError("output_artifact_ids must not contain duplicates")
         if (
-            self.started_at is not None
-            and self.finished_at is not None
-            and self.finished_at < self.started_at
+            self.started_timestamp_micro is not None
+            and self.finished_timestamp_micro is not None
+            and self.finished_timestamp_micro < self.started_timestamp_micro
         ):
-            raise ValueError("finished_at must not be earlier than started_at")
+            raise ValueError("finished_timestamp_micro must not be earlier than started_timestamp_micro")
         if self.status is AttemptStatus.SUCCEEDED and self.failure_code is not None:
             raise ValueError("a succeeded attempt must not carry a failure_code")
         return self
@@ -125,14 +125,14 @@ class StageAttempt(Contract):
 class InputManifest(Contract):
     """Frozen expected input set for one stage instance."""
 
-    schema_version: Literal["input-manifest.v1"]
+    schema_version: Literal["input-manifest.v2"]
     manifest_id: OpaqueId
     stage_instance_id: OpaqueId
     expected_artifact_slots: list[NonEmptyStr] = Field(default_factory=list)
     resolved_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     expected_count: NonNegativeInt | None = None
     complete: StrictBoolean = False
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_manifest(self) -> InputManifest:
@@ -194,7 +194,7 @@ class RecoveryPolicy(Contract):
 class RecoveryDecision(Contract):
     """Recorded recovery action for one run and optional failed attempt."""
 
-    schema_version: Literal["recovery-decision.v1"]
+    schema_version: Literal["recovery-decision.v2"]
     recovery_decision_id: OpaqueId
     run_id: OpaqueId
     failed_attempt_id: OpaqueId | None = None
@@ -202,7 +202,7 @@ class RecoveryDecision(Contract):
     target_stage_instance_ids: list[OpaqueId] = Field(default_factory=list)
     target_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     reason_codes: list[NonEmptyStr] = Field(default_factory=list)
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_unique_references(self) -> RecoveryDecision:

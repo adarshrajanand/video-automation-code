@@ -59,8 +59,8 @@ class ThresholdRecord:
     # Version tracking
     rubric_version: NonEmptyStr | None = None
     estimator_version: NonEmptyStr = "1.0.0"
-    created_at: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
-    updated_at: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
+    created_timestamp_micro: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
+    updated_timestamp_micro: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
 
     def __post_init__(self) -> None:
         if not (0.0 <= self.review_threshold <= self.pass_threshold <= 1.0):
@@ -108,8 +108,8 @@ class ThresholdRecord:
             "min_samples_for_recalibration": self.min_samples_for_recalibration,
             "rubric_version": self.rubric_version,
             "estimator_version": self.estimator_version,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_timestamp_micro": self.created_timestamp_micro.isoformat(),
+            "updated_timestamp_micro": self.updated_timestamp_micro.isoformat(),
         }
 
     @classmethod
@@ -118,11 +118,11 @@ class ThresholdRecord:
         data = data.copy()
         data["evaluation_kind"] = EvaluationKind(data["evaluation_kind"])
         data["confidence_interval"] = tuple(data["confidence_interval"])
-        data["created_at"] = datetime.fromisoformat(
-            data["created_at"].replace("Z", "+00:00")
+        data["created_timestamp_micro"] = datetime.fromisoformat(
+            data["created_timestamp_micro"].replace("Z", "+00:00")
         )
-        data["updated_at"] = datetime.fromisoformat(
-            data["updated_at"].replace("Z", "+00:00")
+        data["updated_timestamp_micro"] = datetime.fromisoformat(
+            data["updated_timestamp_micro"].replace("Z", "+00:00")
         )
         return cls(**data)
 
@@ -190,7 +190,7 @@ class ThresholdRegistry:
             current,
             pass_threshold=new_pass,
             review_threshold=new_review,
-            updated_at=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         self._thresholds[key] = updated
         return updated

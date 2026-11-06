@@ -122,7 +122,7 @@ class WorkflowFactory:
         run_id: str = "run_01",
     ) -> WorkflowRun:
         return WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id,
             run_key=f"run-key:{run_id}",
             workflow_id=workflow.workflow_id,
@@ -131,8 +131,8 @@ class WorkflowFactory:
             effective_config_hash="a" * 64,
             status=status,
             content_package_id="package_01",
-            created_at=at(0),
-            updated_at=at(0),
+            created_timestamp_micro=at(0),
+            updated_timestamp_micro=at(0),
         )
 
     def instance(
@@ -150,7 +150,7 @@ class WorkflowFactory:
         active_attempt_id: str | None = None,
     ) -> StageInstance:
         return StageInstance(
-            schema_version="stage-instance.v1",
+            schema_version="stage-instance.v2",
             stage_instance_id=instance_id or f"stage_{node_id}_{key}".replace(":", "_"),
             run_id=run.run_id,
             node_id=node_id,
@@ -162,8 +162,8 @@ class WorkflowFactory:
             expected_input_manifest_id=manifest_id,
             active_attempt_id=active_attempt_id,
             accepted_output_artifact_ids=list(outputs),
-            created_at=at(1),
-            updated_at=at(2),
+            created_timestamp_micro=at(1),
+            updated_timestamp_micro=at(2),
         )
 
     def accepted(
@@ -205,14 +205,14 @@ class WorkflowFactory:
         if expected_count is None:
             expected_count = len(slots) if slots else len(resolved)
         return InputManifest(
-            schema_version="input-manifest.v1",
+            schema_version="input-manifest.v2",
             manifest_id=manifest_id,
             stage_instance_id=stage_instance_id,
             expected_artifact_slots=list(slots),
             resolved_artifact_ids=list(resolved),
             expected_count=expected_count,
             complete=complete,
-            created_at=at(3),
+            created_timestamp_micro=at(3),
         )
 
     def gate_result(
@@ -223,7 +223,7 @@ class WorkflowFactory:
         decision: GateDecision = GateDecision.PASS,
         targets: Sequence[str] | None = None,
         result_id: str | None = None,
-        created_at: datetime | None = None,
+        created_timestamp_micro: datetime | None = None,
     ) -> QualityGateResult:
         target_ids = (
             list(targets)
@@ -233,7 +233,7 @@ class WorkflowFactory:
         if not target_ids:
             target_ids = [f"artifact_gate_{stage.stage_instance_id}"]
         return QualityGateResult(
-            schema_version="quality-gate-result.v1",
+            schema_version="quality-gate-result.v2",
             quality_gate_result_id=result_id or f"gate_{stage.stage_instance_id}",
             gate_id=gate_id,
             gate_version="1.0",
@@ -247,8 +247,8 @@ class WorkflowFactory:
             hard_failure_codes=[],
             repair_scope=None,
             policy_version="1.0",
-            created_at=created_at or at(4),
-            completed_at=created_at or at(4),
+            created_timestamp_micro=created_timestamp_micro or at(4),
+            completed_timestamp_micro=created_timestamp_micro or at(4),
         )
 
     def review(
@@ -260,7 +260,7 @@ class WorkflowFactory:
         review_id: str = "review_01",
     ) -> HumanReview:
         return HumanReview(
-            schema_version="human-review.v1",
+            schema_version="human-review.v2",
             review_id=review_id,
             run_id=run.run_id,
             stage_instance_id=None,
@@ -270,8 +270,8 @@ class WorkflowFactory:
             reason_codes=[],
             requested_action="approve",
             status=status,
-            created_at=at(5),
-            resolved_at=at(6)
+            created_timestamp_micro=at(5),
+            resolved_timestamp_micro=at(6)
             if status
             in (
                 ReviewStatus.RESOLVED,
@@ -291,14 +291,14 @@ class WorkflowFactory:
         pointer_id: str = "pointer_01",
     ) -> ArtifactPointer:
         return ArtifactPointer(
-            schema_version="artifact-pointer.v1",
+            schema_version="artifact-pointer.v2",
             pointer_id=pointer_id,
             run_id=run.run_id,
             logical_slot=artifact_id,
             artifact_id=artifact_id,
             pointer_type=pointer_type,
             active=active,
-            updated_at=at(5),
+            updated_timestamp_micro=at(5),
         )
 
     def context(

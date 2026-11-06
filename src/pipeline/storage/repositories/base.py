@@ -15,7 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from pipeline.fingerprints import canonical_datetime, canonical_json
+from pipeline.fingerprints import canonical_json, unix_microseconds
 from pipeline.storage.errors import ConflictError, IntegrityError, NotFoundError
 
 
@@ -61,15 +61,15 @@ class SqliteRepository[ModelT: BaseModel]:
         if isinstance(value, Enum):
             return value.value
         if isinstance(value, datetime):
-            return canonical_datetime(value)
+            return unix_microseconds(value)
         if isinstance(value, (list, tuple)):
             return canonical_json(value)
         return value
 
     def _extracted(self, record: ModelT) -> dict[str, Any]:
         # Projections are denormalized copies of payload fields.
-        # canonical_datetime keeps their text form identical to the payload so
-        # ORDER BY and SQL filters agree with the serialized record.
+        # unix_microseconds matches the integer representation written into the
+        # payload, so SQL ordering and filters agree with the serialized record.
         values: dict[str, Any] = {}
         for column in self.columns:
             values[column] = self._column_value(column, getattr(record, column))

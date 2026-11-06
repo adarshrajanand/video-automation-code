@@ -86,10 +86,10 @@ def test_claim_renew_release_preserves_lease_history(records, clock) -> None:
     clock.advance(seconds=10)
     renewed = manager.renew(claim, lease_seconds=30)
     assert renewed is not None
-    assert renewed.lease.expires_at == clock.now + timedelta(seconds=30)
-    assert renewed.lease.heartbeat_at == clock.now
-    assert renewed.job.lease_expires_at == renewed.lease.expires_at
-    assert renewed.attempt.lease_expires_at == renewed.lease.expires_at
+    assert renewed.lease.expires_timestamp_micro == clock.now + timedelta(seconds=30)
+    assert renewed.lease.heartbeat_timestamp_micro == clock.now
+    assert renewed.job.lease_expires_timestamp_micro == renewed.lease.expires_timestamp_micro
+    assert renewed.attempt.lease_expires_timestamp_micro == renewed.lease.expires_timestamp_micro
 
     other_owner = JobClaim(
         job=renewed.job,

@@ -25,9 +25,9 @@
       "title": "Attempt Id",
       "type": "string"
     },
-    "available_at": {
+    "available_timestamp_micro": {
       "format": "date-time",
-      "title": "Available At",
+      "title": "Available Timestamp Micro",
       "type": "string"
     },
     "claimed_by": {
@@ -78,7 +78,7 @@
       "title": "Job Id",
       "type": "string"
     },
-    "lease_expires_at": {
+    "lease_expires_timestamp_micro": {
       "anyOf": [
         {
           "format": "date-time",
@@ -89,7 +89,7 @@
         }
       ],
       "default": null,
-      "title": "Lease Expires At"
+      "title": "Lease Expires Timestamp Micro"
     },
     "queue_name": {
       "maxLength": 512,
@@ -99,7 +99,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "job.v1",
+      "const": "job.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -114,9 +114,9 @@
     "queue_name",
     "status",
     "idempotency_key",
-    "available_at"
+    "available_timestamp_micro"
   ],
   "title": "Job",
   "type": "object",
-  "x-contract-schema-version": "job.v1"
+  "x-contract-schema-version": "job.v2"
 }

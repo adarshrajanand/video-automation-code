@@ -76,9 +76,9 @@
       "title": "Output Uri",
       "type": "string"
     },
-    "render_finished_at": {
+    "render_finished_timestamp_micro": {
       "format": "date-time",
-      "title": "Render Finished At",
+      "title": "Render Finished Timestamp Micro",
       "type": "string"
     },
     "render_profile_id": {
@@ -88,9 +88,9 @@
       "title": "Render Profile Id",
       "type": "string"
     },
-    "render_started_at": {
+    "render_started_timestamp_micro": {
       "format": "date-time",
-      "title": "Render Started At",
+      "title": "Render Started Timestamp Micro",
       "type": "string"
     },
     "renderer_version": {
@@ -101,7 +101,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "render-chunk-manifest.v1",
+      "const": "render-chunk-manifest.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -124,10 +124,10 @@
     "output_size_bytes",
     "duration_frames",
     "renderer_version",
-    "render_started_at",
-    "render_finished_at"
+    "render_started_timestamp_micro",
+    "render_finished_timestamp_micro"
   ],
   "title": "RenderChunkManifest",
   "type": "object",
-  "x-contract-schema-version": "render-chunk-manifest.v1"
+  "x-contract-schema-version": "render-chunk-manifest.v2"
 }

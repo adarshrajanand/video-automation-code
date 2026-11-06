@@ -81,7 +81,7 @@ class RecordFactory:
         status: RunStatus = RunStatus.RUNNING,
     ) -> WorkflowRun:
         return WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=f"run_{suffix}",
             run_key=run_key or f"run-key:{suffix}",
             workflow_id=config.workflow_id,
@@ -90,8 +90,8 @@ class RecordFactory:
             effective_config_hash=config.config_hash,
             status=status,
             content_package_id=f"package_{suffix}",
-            created_at=at(0),
-            updated_at=at(10),
+            created_timestamp_micro=at(0),
+            updated_timestamp_micro=at(10),
         )
 
     def stage_instance(
@@ -105,7 +105,7 @@ class RecordFactory:
         acceptance_status: AcceptanceStatus = AcceptanceStatus.PASSED,
     ) -> StageInstance:
         return StageInstance(
-            schema_version="stage-instance.v1",
+            schema_version="stage-instance.v2",
             stage_instance_id=f"stage_{suffix}",
             run_id=run.run_id,
             node_id=node_id,
@@ -116,8 +116,8 @@ class RecordFactory:
             expected_input_manifest_id=None,
             active_attempt_id=f"attempt_{suffix}",
             accepted_output_artifact_ids=[],
-            created_at=at(1),
-            updated_at=at(20),
+            created_timestamp_micro=at(1),
+            updated_timestamp_micro=at(20),
         )
 
     def stage_attempt(
@@ -129,7 +129,7 @@ class RecordFactory:
         status: AttemptStatus = AttemptStatus.SUCCEEDED,
     ) -> StageAttempt:
         return StageAttempt(
-            schema_version="stage-attempt.v1",
+            schema_version="stage-attempt.v2",
             attempt_id=f"attempt_{suffix}",
             stage_instance_id=stage.stage_instance_id,
             attempt_number=attempt_number,
@@ -138,9 +138,9 @@ class RecordFactory:
             input_artifact_ids=[],
             output_artifact_ids=[],
             worker_id="worker_local_01",
-            lease_expires_at=at(30),
-            started_at=at(5),
-            finished_at=at(10) if status is AttemptStatus.SUCCEEDED else None,
+            lease_expires_timestamp_micro=at(30),
+            started_timestamp_micro=at(5),
+            finished_timestamp_micro=at(10) if status is AttemptStatus.SUCCEEDED else None,
         )
 
     def job(
@@ -152,25 +152,25 @@ class RecordFactory:
         status: JobStatus = JobStatus.READY,
     ) -> Job:
         return Job(
-            schema_version="job.v1",
+            schema_version="job.v2",
             job_id=f"job_{suffix}",
             attempt_id=attempt.attempt_id,
             queue_name="capability_default",
             status=status,
             idempotency_key=idempotency_key or f"idem_job_{suffix}",
-            available_at=at(10),
+            available_timestamp_micro=at(10),
             delivery_count=0,
         )
 
     def lease(self, job: Job, *, fencing_token: int = 1) -> Lease:
         return Lease(
-            schema_version="lease.v1",
+            schema_version="lease.v2",
             job_id=job.job_id,
             owner_id="worker_local_01",
             fencing_token=fencing_token,
-            acquired_at=at(20),
-            expires_at=at(25),
-            heartbeat_at=at(21),
+            acquired_timestamp_micro=at(20),
+            expires_timestamp_micro=at(25),
+            heartbeat_timestamp_micro=at(21),
         )
 
     def idempotency_record(
@@ -181,7 +181,7 @@ class RecordFactory:
         status: IdempotencyStatus = IdempotencyStatus.SUCCEEDED,
     ) -> IdempotencyRecord:
         return IdempotencyRecord(
-            schema_version="idempotency-record.v1",
+            schema_version="idempotency-record.v2",
             idempotency_key=key or f"idem_capability_{suffix}",
             capability="speech_generation",
             operation_version="v1",
@@ -193,8 +193,8 @@ class RecordFactory:
             status=status,
             capability_execution_id=f"capexec_{suffix}",
             result_artifact_ids=[],
-            created_at=at(20),
-            completed_at=at(25) if status is IdempotencyStatus.SUCCEEDED else None,
+            created_timestamp_micro=at(20),
+            completed_timestamp_micro=at(25) if status is IdempotencyStatus.SUCCEEDED else None,
         )
 
     def budget_reservation(
@@ -206,7 +206,7 @@ class RecordFactory:
         scope_id: str = "run_01",
     ) -> BudgetReservation:
         return BudgetReservation(
-            schema_version="budget-reservation.v1",
+            schema_version="budget-reservation.v2",
             reservation_id=f"reservation_{suffix}",
             scope_type=scope_type,
             scope_id=scope_id,
@@ -215,8 +215,8 @@ class RecordFactory:
             reserved_cost_minor=5,
             actual_cost_minor=2,
             status=BudgetReservationStatus.SETTLED,
-            created_at=at(20),
-            settled_at=at(30),
+            created_timestamp_micro=at(20),
+            settled_timestamp_micro=at(30),
         )
 
     def artifact(
@@ -236,7 +236,7 @@ class RecordFactory:
         )
         digest = sha256_bytes(payload_bytes)
         return Artifact(
-            schema_version="artifact.v1",
+            schema_version="artifact.v2",
             artifact_id=f"artifact_{suffix}",
             run_id=run.run_id,
             logical_slot=slot,
@@ -253,7 +253,7 @@ class RecordFactory:
             config_hash=run.effective_config_hash,
             state=state,
             retention_class="intermediate",
-            created_at=at(30),
+            created_timestamp_micro=at(30),
         )
 
     def dependency(
@@ -280,14 +280,14 @@ class RecordFactory:
         active: bool = True,
     ) -> ArtifactPointer:
         return ArtifactPointer(
-            schema_version="artifact-pointer.v1",
+            schema_version="artifact-pointer.v2",
             pointer_id=f"pointer_{suffix}",
             run_id=run.run_id,
             logical_slot=artifact.logical_slot,
             artifact_id=artifact.artifact_id,
             pointer_type=pointer_type,
             active=active,
-            updated_at=at(35),
+            updated_timestamp_micro=at(35),
         )
 
     def content_package(self, suffix: str = "01") -> ContentPackage:

@@ -4,8 +4,15 @@
   "source_composition_artifact_id": "artifact_composition_01",
   "target_render_profile_id": "vertical_1080x1920_30_v1",
   "schema_version": "short-selection-manifest.v1",
-  "selected_scene_ids": ["scene_01", "scene_02"],
-  "selected_shot_ids": ["shot_01", "shot_02", "shot_03"],
+  "selected_scene_ids": [
+    "scene_01",
+    "scene_02"
+  ],
+  "selected_shot_ids": [
+    "shot_01",
+    "shot_02",
+    "shot_03"
+  ],
   "safe_area": {
     "top": 0.1,
     "bottom": 0.1,

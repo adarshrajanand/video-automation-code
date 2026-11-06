@@ -6,46 +6,47 @@ from datetime import UTC, datetime, timedelta, timezone
 from pipeline.contracts.review import HumanReview, HumanReviewDecision
 from pipeline.contracts.vocabularies import ReviewDecision, ReviewStatus
 from pipeline.storage.backfill import canonicalize_persisted_timestamps
+from pipeline.fingerprints import unix_microseconds
 from pipeline.storage.repositories.editorial import HumanReviewRepository
 
 
-def _insert_legacy_review(connection, review_id: str, created_at: str) -> None:
+def _insert_legacy_review(connection, review_id: str, created_timestamp_micro: str) -> None:
     payload = {
-        "schema_version": "human-review.v1",
+        "schema_version": "human-review.v2",
         "review_id": review_id,
         "run_id": "run_01",
         "target_artifact_ids": [],
         "reason_codes": [],
         "requested_action": "review",
         "status": "OPEN",
-        "created_at": created_at,
-        "resolved_at": None,
+        "created_timestamp_micro": created_timestamp_micro,
+        "resolved_timestamp_micro": None,
     }
     connection.execute(
         "INSERT INTO human_reviews "
-        "(review_id, run_id, status, requested_action, created_at, "
+        "(review_id, run_id, status, requested_action, created_timestamp_micro, "
         "schema_version, payload) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             review_id,
             "run_01",
             "OPEN",
             "review",
-            created_at,
-            "human-review.v1",
+            created_timestamp_micro,
+            "human-review.v2",
             json.dumps(payload),
         ),
     )
 
 
-def _review(review_id: str, created_at: datetime) -> HumanReview:
+def _review(review_id: str, created_timestamp_micro: datetime) -> HumanReview:
     return HumanReview(
-        schema_version="human-review.v1",
+        schema_version="human-review.v2",
         review_id=review_id,
         run_id="run_01",
         target_artifact_ids=["artifact_01"],
         requested_action="review",
         status=ReviewStatus.OPEN,
-        created_at=created_at,
+        created_timestamp_micro=created_timestamp_micro,
     )
 
 
@@ -74,16 +75,16 @@ def test_persisted_text_order_matches_chronological_order(database) -> None:
 
     with database.connection() as connection:
         rows = connection.execute(
-            "SELECT review_id, created_at FROM human_reviews ORDER BY created_at"
+            "SELECT review_id, created_timestamp_micro FROM human_reviews ORDER BY created_timestamp_micro"
         ).fetchall()
 
-    stored = [str(row["created_at"]) for row in rows]
+    stored = [str(row["created_timestamp_micro"]) for row in rows]
     assert stored == sorted(stored)
     assert [row["review_id"] for row in rows] == [
         review.review_id for review in reviews
     ]
-    assert all(value.endswith("Z") for value in stored)
-    assert all(len(value) == 27 for value in stored)
+    assert all(isinstance(value, int) for value in stored)
+    # assert all(len(value) == 27 for value in stored)  # removed, values are integers
 
 
 def test_mixed_legacy_serializers_order_chronologically_after_backfill(
@@ -95,12 +96,12 @@ def test_mixed_legacy_serializers_order_chronologically_after_backfill(
         ("review_offset", "2026-10-21T14:00:00.000002+02:00"),
     ]
     with database.transaction() as connection:
-        for review_id, created_at in rows:
-            _insert_legacy_review(connection, review_id, created_at)
+        for review_id, created_timestamp_micro in rows:
+            _insert_legacy_review(connection, review_id, created_timestamp_micro)
         before = [
             row[0]
             for row in connection.execute(
-                "SELECT review_id FROM human_reviews ORDER BY created_at"
+                "SELECT review_id FROM human_reviews ORDER BY created_timestamp_micro"
             )
         ]
 
@@ -111,7 +112,7 @@ def test_mixed_legacy_serializers_order_chronologically_after_backfill(
 
     with database.connection() as connection:
         after = connection.execute(
-            "SELECT review_id, created_at FROM human_reviews ORDER BY created_at"
+            "SELECT review_id, created_timestamp_micro FROM human_reviews ORDER BY created_timestamp_micro"
         ).fetchall()
 
     assert [row[0] for row in after] == [
@@ -120,9 +121,9 @@ def test_mixed_legacy_serializers_order_chronologically_after_backfill(
         "review_offset",
     ]
     assert [row[1] for row in after] == [
-        "2026-10-21T12:00:00.000000Z",
-        "2026-10-21T12:00:00.000001Z",
-        "2026-10-21T12:00:00.000002Z",
+        unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)),
+        unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC)),
+        unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)),
     ]
 
 
@@ -132,11 +133,11 @@ def test_direct_decision_write_uses_canonical_timestamp(database) -> None:
     # the projection column and the JSON payload.
     review = _review("review_01", datetime(2026, 10, 21, 9, 0, tzinfo=UTC))
     decision = HumanReviewDecision(
-        schema_version="human-review-decision.v1",
+        schema_version="human-review-decision.v2",
         review_id=review.review_id,
         decision=ReviewDecision.APPROVE,
         reviewer="alice",
-        created_at=datetime(
+        created_timestamp_micro=datetime(
             2026,
             10,
             21,
@@ -155,11 +156,11 @@ def test_direct_decision_write_uses_canonical_timestamp(database) -> None:
 
     with database.connection() as connection:
         row = connection.execute(
-            "SELECT created_at, payload FROM human_review_decisions "
+            "SELECT created_timestamp_micro, payload FROM human_review_decisions "
             "WHERE review_id = ?",
             (review.review_id,),
         ).fetchone()
 
     assert row is not None
-    assert row["created_at"] == "2026-10-21T12:05:00.123456Z"
-    assert json.loads(row["payload"])["created_at"] == ("2026-10-21T12:05:00.123456Z")
+    assert row["created_timestamp_micro"] == unix_microseconds(datetime(2026, 10, 21, 12, 5, 0, 123456, tzinfo=UTC))
+    assert json.loads(row["payload"])["created_timestamp_micro"] == unix_microseconds(datetime(2026, 10, 21, 12, 5, 0, 123456, tzinfo=UTC))

@@ -91,7 +91,6 @@ from pipeline.contracts.vocabularies import (
     FailureCode,
     Severity,
 )
-from pipeline.fingerprints import canonical_datetime
 from pipeline.ids import deterministic_id
 from pipeline.storage.database import Database
 from pipeline.storage.errors import NotFoundError
@@ -330,7 +329,7 @@ class CapabilityExecutor:
                 failed_record = existing_record.model_copy(
                     update={
                         "status": IdempotencyStatus.FAILED,
-                        "completed_at": canonical_datetime(datetime.now(UTC)),
+                        "completed_timestamp_micro": datetime.now(UTC),
                     }
                 )
                 idempotency_repo.update(failed_record)
@@ -346,7 +345,7 @@ class CapabilityExecutor:
                 routing_repo.insert(routing_decision)
 
             capability_execution = CapabilityExecution(
-                schema_version="capability-execution.v1",
+                schema_version="capability-execution.v2",
                 capability_execution_id=execution_id,
                 attempt_id=context.attempt_id,
                 capability=request.capability,
@@ -365,8 +364,8 @@ class CapabilityExecutor:
                 status=CapabilityExecutionStatus.PENDING,
                 input_artifact_ids=request.input_artifact_ids,
                 output_artifact_ids=[],
-                started_at=None,
-                finished_at=None,
+                started_timestamp_micro=None,
+                finished_timestamp_micro=None,
                 normalized_error=None,
             )
 
@@ -409,7 +408,7 @@ class CapabilityExecutor:
 
         # PERSIST RESULTS IN A TRANSACTION
         final_status = self._map_result_status_to_idempotency(output.result.status)
-        completed_at = canonical_datetime(datetime.now(UTC))
+        completed_timestamp_micro = datetime.now(UTC)
 
         settled_reservation: BudgetReservation | None = None
 
@@ -435,7 +434,7 @@ class CapabilityExecutor:
                     reservation=budget_reservation,
                     output=output,
                     result_status=output.result.status,
-                    completed_at=completed_at,
+                    completed_timestamp_micro=completed_timestamp_micro,
                 )
 
             # Update idempotency record
@@ -449,7 +448,7 @@ class CapabilityExecutor:
                     if output.provider_invocation
                     else None,
                     "result_artifact_ids": output.result.artifact_ids,
-                    "completed_at": completed_at,
+                    "completed_timestamp_micro": completed_timestamp_micro,
                 }
             )
             idempotency_repo = IdempotencyRecordRepository(conn)
@@ -492,7 +491,7 @@ class CapabilityExecutor:
         except NotFoundError:
             # Create new record in RESERVED state
             record = IdempotencyRecord(
-                schema_version="idempotency-record.v1",
+                schema_version="idempotency-record.v2",
                 idempotency_key=request.idempotency_key,
                 capability=request.capability,
                 operation_version=request.operation_version,
@@ -506,8 +505,8 @@ class CapabilityExecutor:
                 provider_invocation_id=None,
                 provider_operation_id=None,
                 result_artifact_ids=[],
-                created_at=canonical_datetime(datetime.now(UTC)),
-                completed_at=None,
+                created_timestamp_micro=datetime.now(UTC),
+                completed_timestamp_micro=None,
             )
             repo.insert(record)
             return record
@@ -793,7 +792,7 @@ class CapabilityExecutor:
                     "estimated_cost_minor": estimated,
                     "reserved_cost_minor": estimated,
                     "actual_cost_minor": None,
-                    "settled_at": None,
+                    "settled_timestamp_micro": None,
                 }
             )
             budget_repo.update(updated)
@@ -824,7 +823,7 @@ class CapabilityExecutor:
             "bres", idempotency_key, scope_type.value, scope_id
         )
         new_reservation = BudgetReservation(
-            schema_version="budget-reservation.v1",
+            schema_version="budget-reservation.v2",
             reservation_id=reservation_id,
             scope_type=scope_type,
             scope_id=scope_id,
@@ -833,8 +832,8 @@ class CapabilityExecutor:
             reserved_cost_minor=estimated,
             actual_cost_minor=None,
             status=BudgetReservationStatus.RESERVED,
-            created_at=canonical_datetime(datetime.now(UTC)),
-            settled_at=None,
+            created_timestamp_micro=datetime.now(UTC),
+            settled_timestamp_micro=None,
         )
         budget_repo.insert(new_reservation)
         return _BudgetCheckResult(allowed=True, reservation=new_reservation)
@@ -846,7 +845,7 @@ class CapabilityExecutor:
         reservation: BudgetReservation,
         output: CapabilityExecutionOutput,
         result_status: CapabilityResultStatus,
-        completed_at: str,
+        completed_timestamp_micro: datetime,
     ) -> BudgetReservation:
         """Settle or release a budget reservation based on execution outcome."""
         budget_repo = BudgetReservationRepository(conn)
@@ -879,8 +878,8 @@ class CapabilityExecutor:
             update={
                 "status": final_status,
                 "actual_cost_minor": actual_cost,
-                "settled_at": (
-                    completed_at
+                "settled_timestamp_micro": (
+                    completed_timestamp_micro
                     if final_status == BudgetReservationStatus.SETTLED
                     else None
                 ),
@@ -902,14 +901,14 @@ class CapabilityExecutor:
         from pipeline.capabilities.errors import create_normalized_error_from_exception
 
         normalized_error = create_normalized_error_from_exception(exc)
-        completed_at = canonical_datetime(datetime.now(UTC))
+        completed_timestamp_micro = datetime.now(UTC)
 
         # Update records in transaction
         with self._database.transaction() as conn:
             # Update capability execution
             exec_repo = CapabilityExecutionRepository(conn)
             failed_execution = CapabilityExecution(
-                schema_version="capability-execution.v1",
+                schema_version="capability-execution.v2",
                 capability_execution_id=request.capability_execution_id,
                 attempt_id=context.attempt_id,
                 capability=request.capability,
@@ -926,8 +925,8 @@ class CapabilityExecutor:
                 status=CapabilityExecutionStatus.FAILED,
                 input_artifact_ids=request.input_artifact_ids,
                 output_artifact_ids=[],
-                started_at=completed_at,
-                finished_at=completed_at,
+                started_timestamp_micro=completed_timestamp_micro,
+                finished_timestamp_micro=completed_timestamp_micro,
                 normalized_error=normalized_error,
             )
             exec_repo.update(failed_execution)
@@ -942,7 +941,7 @@ class CapabilityExecutor:
                     result_status=CapabilityResultStatus.FAILED
                     if "timeout" not in str(exc).lower()
                     else CapabilityResultStatus.UNKNOWN,
-                    completed_at=completed_at,
+                    completed_timestamp_micro=completed_timestamp_micro,
                 )
 
             # Update idempotency to FAILED or UNKNOWN
@@ -954,7 +953,7 @@ class CapabilityExecutor:
             updated_record = idempotency_record.model_copy(
                 update={
                     "status": final_status,
-                    "completed_at": completed_at,
+                    "completed_timestamp_micro": completed_timestamp_micro,
                 }
             )
             idempotency_repo = IdempotencyRecordRepository(conn)

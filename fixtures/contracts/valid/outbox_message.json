@@ -1,14 +1,14 @@
 {
-  "available_at": "2026-10-21T12:02:00Z",
-  "claimed_at": null,
+  "available_timestamp_micro": 1792584120000000,
+  "claimed_timestamp_micro": null,
   "claimed_by": null,
-  "delivered_at": null,
+  "delivered_timestamp_micro": null,
   "delivery_attempts": 0,
   "event": {
     "attempt_id": "attempt_speech_01",
     "causation_id": "event_00",
     "correlation_id": "corr_run_01",
-    "created_at": "2026-10-21T12:02:00Z",
+    "created_timestamp_micro": 1792584120000000,
     "event_id": "event_01",
     "event_type": "stage.succeeded",
     "payload": {
@@ -21,12 +21,12 @@
     },
     "payload_schema_version": "stage-succeeded.v1",
     "run_id": "run_01",
-    "schema_version": "event-envelope.v1",
+    "schema_version": "event-envelope.v2",
     "stage_instance_id": "stage_speech_scene_01"
   },
   "event_id": "event_01",
-  "lease_expires_at": null,
+  "lease_expires_timestamp_micro": null,
   "outbox_id": "outbox_01",
-  "schema_version": "outbox-message.v1",
+  "schema_version": "outbox-message.v2",
   "status": "PENDING"
 }

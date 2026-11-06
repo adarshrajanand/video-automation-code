@@ -78,9 +78,9 @@
       "title": "Correlation Id",
       "type": "string"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "event_id": {
@@ -119,7 +119,7 @@
       "title": "Run Id"
     },
     "schema_version": {
-      "const": "event-envelope.v1",
+      "const": "event-envelope.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -145,9 +145,9 @@
     "event_type",
     "correlation_id",
     "payload_schema_version",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "EventEnvelope",
   "type": "object",
-  "x-contract-schema-version": "event-envelope.v1"
+  "x-contract-schema-version": "event-envelope.v2"
 }

@@ -32,7 +32,7 @@
       "title": "Capability Execution Id",
       "type": "string"
     },
-    "completed_at": {
+    "completed_timestamp_micro": {
       "anyOf": [
         {
           "format": "date-time",
@@ -43,11 +43,11 @@
         }
       ],
       "default": null,
-      "title": "Completed At"
+      "title": "Completed Timestamp Micro"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "idempotency_key": {
@@ -162,7 +162,7 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "idempotency-record.v1",
+      "const": "idempotency-record.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -178,9 +178,9 @@
     "request_fingerprint",
     "status",
     "capability_execution_id",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "IdempotencyRecord",
   "type": "object",
-  "x-contract-schema-version": "idempotency-record.v1"
+  "x-contract-schema-version": "idempotency-record.v2"
 }

@@ -1,14 +1,14 @@
 {
-  "created_at": "2026-10-21T14:00:00Z",
+  "created_timestamp_micro": 1792591200000000,
   "gate_id": "human_publication_gate_v1",
   "reason_codes": [
     "HUMAN.REVIEW_REQUIRED"
   ],
   "requested_action": "approve_publication",
-  "resolved_at": null,
+  "resolved_timestamp_micro": null,
   "review_id": "review_01",
   "run_id": "run_01",
-  "schema_version": "human-review.v1",
+  "schema_version": "human-review.v2",
   "stage_instance_id": "stage_final_review",
   "status": "OPEN",
   "target_artifact_ids": [

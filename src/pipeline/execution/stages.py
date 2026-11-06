@@ -141,7 +141,7 @@ class StageFactory:
             else AcceptanceStatus.NOT_REQUIRED
         )
         stage_instance = StageInstance(
-            schema_version="stage-instance.v1",
+            schema_version="stage-instance.v2",
             stage_instance_id=stage_instance_id,
             run_id=run.run_id,
             node_id=node.node_id,
@@ -150,8 +150,8 @@ class StageFactory:
             acceptance_status=acceptance_status,
             quality_gate_id=node.quality_gate_id,
             expected_input_manifest_id=expected_input_manifest_id,
-            created_at=now,
-            updated_at=now,
+            created_timestamp_micro=now,
+            updated_timestamp_micro=now,
         )
         try:
             repository.insert(stage_instance)

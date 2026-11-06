@@ -53,7 +53,7 @@ class GoldExample:
     expected_failure_codes: list[FailureCode] = field(default_factory=list)
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_timestamp_micro: datetime = field(default_factory=lambda: datetime.now(UTC))
     created_by: str = ""
     tags: list[str] = field(default_factory=list)
 
@@ -75,7 +75,7 @@ class GoldExample:
                 dim.model_dump(mode="json") for dim in self.expected_dimensions
             ],
             "expected_failure_codes": [fc.value for fc in self.expected_failure_codes],
-            "created_at": self.created_at.isoformat(),
+            "created_timestamp_micro": self.created_timestamp_micro.isoformat(),
             "created_by": self.created_by,
             "tags": self.tags,
         }
@@ -92,8 +92,8 @@ class GoldExample:
         data["expected_failure_codes"] = [
             FailureCode(fc) for fc in data["expected_failure_codes"]
         ]
-        data["created_at"] = datetime.fromisoformat(
-            data["created_at"].replace("Z", "+00:00")
+        data["created_timestamp_micro"] = datetime.fromisoformat(
+            data["created_timestamp_micro"].replace("Z", "+00:00")
         )
         return cls(**data)
 
@@ -155,7 +155,7 @@ class EvaluatorHarness:
 
         # Create manifest
         manifest = QualityInputManifest(
-            schema_version="quality-input-manifest.v1",
+            schema_version="quality-input-manifest.v2",
             manifest_id=f"manifest_{uuid.uuid4().hex[:12]}",
             gate_id="test_gate",
             check_id=check.check_id,
@@ -165,7 +165,7 @@ class EvaluatorHarness:
                 for aid, content in example.target_artifacts.items()
             },
             supporting_artifact_ids=list(example.supporting_artifacts.keys()),
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
         # Run evaluator
@@ -290,7 +290,7 @@ def create_gold_examples_dir(path: Path) -> int:
         description="All claims supported by evidence",
         target_artifacts={
             "artifact_script_v1": {
-                "schema_version": "script.v1",
+                "schema_version": "script.v2",
                 "claims": [
                     {
                         "claim_id": "claim_1",
@@ -350,7 +350,7 @@ def create_gold_examples_dir(path: Path) -> int:
         description="One claim lacks evidence",
         target_artifacts={
             "artifact_script_v1": {
-                "schema_version": "script.v1",
+                "schema_version": "script.v2",
                 "claims": [
                     {
                         "claim_id": "claim_1",

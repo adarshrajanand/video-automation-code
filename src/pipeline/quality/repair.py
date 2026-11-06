@@ -88,7 +88,7 @@ def create_repair_plan(request: RepairPlanRequest) -> RepairPlan | None:
             str(request.regeneration_count),
         )
         return RepairPlan(
-            schema_version="repair-plan.v1",
+            schema_version="repair-plan.v2",
             repair_plan_id=f"repair_{rid}",
             source_gate_result_id=request.gate_result.quality_gate_result_id,
             reason_codes=reason_codes,
@@ -96,7 +96,7 @@ def create_repair_plan(request: RepairPlanRequest) -> RepairPlan | None:
             target_stage_instance_ids=target_stage_instance_ids,
             invalidation_scope=invalidation_scope,
             max_attempts=max_attempts,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     return None

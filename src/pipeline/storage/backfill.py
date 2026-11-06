@@ -36,7 +36,7 @@ from pydantic import BaseModel, ValidationError
 from pipeline.contracts.base import Contract
 from pipeline.contracts.capabilities import IdempotencyRecord
 from pipeline.contracts.registry import CONTRACT_MODELS, contract_schema_version
-from pipeline.fingerprints import canonical_datetime, canonical_json
+from pipeline.fingerprints import canonical_json, unix_microseconds
 from pipeline.storage.errors import MigrationError, StorageError
 from pipeline.storage.timestamp_columns import registered_timestamp_columns
 
@@ -324,10 +324,12 @@ def _normalize_timestamp(
 ) -> Any:
     if value is None:
         return None
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value
     if not isinstance(value, str):
         raise MigrationError(
-            f"{table} row {key!r} column {column!r} must be a timestamp string "
-            f"or null, found {type(value).__name__}"
+            f"{table} row {key!r} column {column!r} must be a timestamp string, "
+            f"integer microseconds, or null, found {type(value).__name__}"
         )
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -337,7 +339,7 @@ def _normalize_timestamp(
             f"timestamp: {value!r}"
         ) from error
     try:
-        return canonical_datetime(parsed)
+        return unix_microseconds(parsed)
     except ValueError as error:
         raise MigrationError(
             f"{table} row {key!r} column {column!r} must include a timezone "

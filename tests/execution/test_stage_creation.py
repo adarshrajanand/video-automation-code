@@ -65,8 +65,8 @@ def test_created_stage_uses_node_gate_and_ready_status(records, clock) -> None:
     assert stage.execution_status is StageExecutionStatus.READY
     assert stage.acceptance_status is AcceptanceStatus.PENDING
     assert stage.quality_gate_id == "research_gate_v1"
-    assert stage.created_at == clock.now
-    assert stage.updated_at == clock.now
+    assert stage.created_timestamp_micro == clock.now
+    assert stage.updated_timestamp_micro == clock.now
 
 
 def test_gateless_node_starts_without_acceptance(records, clock) -> None:

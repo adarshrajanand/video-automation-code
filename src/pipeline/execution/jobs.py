@@ -64,7 +64,7 @@ class JobFactory:
         queue_name: str = "default",
         input_artifact_ids: Sequence[str] = (),
         attempt_number: int | None = None,
-        available_at: datetime | None = None,
+        available_timestamp_micro: datetime | None = None,
         allow_new_attempt: bool = False,
         connection: sqlite3.Connection | None = None,
     ) -> JobCreationResult:
@@ -82,7 +82,7 @@ class JobFactory:
                 queue_name=queue_name,
                 input_artifact_ids=input_artifact_ids,
                 attempt_number=attempt_number,
-                available_at=available_at,
+                available_timestamp_micro=available_timestamp_micro,
                 allow_new_attempt=allow_new_attempt,
             )
         with self.database.transaction(immediate=True) as transaction:
@@ -92,7 +92,7 @@ class JobFactory:
                 queue_name=queue_name,
                 input_artifact_ids=input_artifact_ids,
                 attempt_number=attempt_number,
-                available_at=available_at,
+                available_timestamp_micro=available_timestamp_micro,
                 allow_new_attempt=allow_new_attempt,
             )
 
@@ -104,7 +104,7 @@ class JobFactory:
         queue_name: str,
         input_artifact_ids: Sequence[str],
         attempt_number: int | None,
-        available_at: datetime | None,
+        available_timestamp_micro: datetime | None,
         allow_new_attempt: bool,
     ) -> JobCreationResult:
         stages = StageInstanceRepository(connection)
@@ -164,7 +164,7 @@ class JobFactory:
 
         attempt_id = deterministic_id("attempt", stage.stage_instance_id, number)
         attempt = StageAttempt(
-            schema_version="stage-attempt.v1",
+            schema_version="stage-attempt.v2",
             attempt_id=attempt_id,
             stage_instance_id=stage.stage_instance_id,
             attempt_number=number,
@@ -173,13 +173,13 @@ class JobFactory:
             input_artifact_ids=list(dict.fromkeys(input_artifact_ids)),
         )
         job = Job(
-            schema_version="job.v1",
+            schema_version="job.v2",
             job_id=deterministic_id("job", stage.stage_instance_id, number),
             attempt_id=attempt.attempt_id,
             queue_name=queue_name,
             status=JobStatus.READY,
             idempotency_key=key,
-            available_at=available_at or now,
+            available_timestamp_micro=available_timestamp_micro or now,
             delivery_count=0,
         )
         attempts.insert(attempt)

@@ -140,6 +140,12 @@ For canonical documentation, run this **from `docs/`**:
 uv run --project .. python scripts/validate_docs.py
 ```
 
+Write comments where the code carries non-obvious reasoning: invariants,
+authority boundaries, platform quirks, migration/revert rules, and the regression
+a test guards against. Explain “why”, not “what”; do not narrate each line. A
+correct change that later readers cannot safely modify is incomplete. See
+[AGENTS.md](AGENTS.md#code-comments-and-explainability).
+
 Run focused tests before the full suite, using isolated sample state. Add new
 migrations instead of editing applied ones. Update affected canonical docs,
 registries, ADRs, and generated references under their change protocol.

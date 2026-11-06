@@ -13,7 +13,7 @@ from pipeline.contracts.editorial import (
     Shot,
 )
 from pipeline.contracts.review import HumanReview, HumanReviewDecision
-from pipeline.fingerprints import canonical_datetime, canonical_json
+from pipeline.fingerprints import canonical_json, unix_microseconds
 from pipeline.storage.repositories.base import SqliteRepository
 
 
@@ -184,10 +184,10 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
         "gate_id",
         "status",
         "requested_action",
-        "created_at",
-        "resolved_at",
+        "created_timestamp_micro",
+        "resolved_timestamp_micro",
     )
-    order_by = ("-created_at",)
+    order_by = ("-created_timestamp_micro",)
 
     def list(
         self, run_id: str | None = None, status: str | None = None
@@ -203,7 +203,7 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
             params.append(status)
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
-        query += " ORDER BY created_at DESC"
+        query += " ORDER BY created_timestamp_micro DESC"
         rows = self.connection.execute(query, params).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
 
@@ -220,7 +220,7 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
     def insert_decision(self, decision: HumanReviewDecision) -> None:
         sql = (
             "INSERT INTO human_review_decisions "
-            "(review_id, decision, reviewer, created_at, schema_version, payload) "
+            "(review_id, decision, reviewer, created_timestamp_micro, schema_version, payload) "
             "VALUES (?, ?, ?, ?, ?, ?)"
         )
         self.connection.execute(
@@ -229,7 +229,7 @@ class HumanReviewRepository(SqliteRepository[HumanReview]):
                 decision.review_id,
                 decision.decision.value,
                 decision.reviewer,
-                canonical_datetime(decision.created_at),
+                unix_microseconds(decision.created_timestamp_micro),
                 decision.schema_version,
                 canonical_json(decision),
             ),
@@ -247,7 +247,7 @@ class HumanReviewDecisionRepository(SqliteRepository[HumanReviewDecision]):
         "reviewer",
         "comments",
         "target_hashes",
-        "created_at",
+        "created_timestamp_micro",
     )
     order_by = ("-decision_sequence",)
 

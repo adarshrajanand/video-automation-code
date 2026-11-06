@@ -87,7 +87,7 @@ def test_dispatcher_claims_and_acks_message(records, clock) -> None:
         message = OutboxMessageRepository(connection).get_by_event_id("event_ready_01")
         assert message is not None
         assert message.status is OutboxStatus.DELIVERED
-        assert message.delivered_at == clock.now
+        assert message.delivered_timestamp_micro == clock.now
         receipt = InboxReceiptRepository(connection).get_receipt(
             "local_consumer", "event_ready_01"
         )
@@ -168,7 +168,7 @@ def test_failed_delivery_retries_then_dead_letters(records, clock) -> None:
         message = OutboxMessageRepository(connection).get_by_event_id("event_ready_01")
         assert message is not None
         assert message.status is OutboxStatus.PENDING
-        assert message.available_at > clock.now
+        assert message.available_timestamp_micro > clock.now
         receipt = InboxReceiptRepository(connection).get_receipt(
             "local_consumer", "event_ready_01"
         )
@@ -195,7 +195,7 @@ def test_claim_lease_uses_explicit_expiry(records, clock) -> None:
 
     claimed = dispatcher.claim_pending()
     assert len(claimed) == 1
-    assert claimed[0].lease_expires_at == clock.now + timedelta(seconds=15)
+    assert claimed[0].lease_expires_timestamp_micro == clock.now + timedelta(seconds=15)
 
     assert dispatcher.expire_claims() == 0
     clock.advance(seconds=15)

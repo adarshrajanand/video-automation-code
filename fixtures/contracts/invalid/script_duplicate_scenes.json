@@ -1,5 +1,5 @@
 {
-  "schema_version": "script.v1",
+  "schema_version": "script.v2",
   "script_id": "script_01",
   "episode_id": "episode_01",
   "title": "Test Script",
@@ -36,5 +36,5 @@
   "total_estimated_duration_seconds": 20,
   "word_count": 10,
   "language": "en",
-  "created_at": "2024-01-16T14:00:00Z"
+  "created_timestamp_micro": 1705413600000000
 }

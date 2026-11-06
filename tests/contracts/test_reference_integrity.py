@@ -148,9 +148,9 @@ def test_outbox_message_event_id_must_match_nested_event() -> None:
 def test_processed_inbox_receipt_requires_processed_at() -> None:
     payload = _fixture("inbox_receipt")
     payload["status"] = "PROCESSED"
-    payload["processed_at"] = None
+    payload["processed_timestamp_micro"] = None
 
-    with pytest.raises(ValidationError, match="requires processed_at"):
+    with pytest.raises(ValidationError, match="requires processed_timestamp_micro"):
         InboxReceipt.model_validate(payload)
 
 

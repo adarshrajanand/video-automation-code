@@ -65,9 +65,9 @@
       "default": null,
       "title": "Active Attempt Id"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "execution_status": {
@@ -140,7 +140,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "stage-instance.v1",
+      "const": "stage-instance.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -151,7 +151,7 @@
       "title": "Stage Instance Id",
       "type": "string"
     },
-    "updated_at": {
+    "updated_timestamp_micro": {
       "anyOf": [
         {
           "format": "date-time",
@@ -162,12 +162,12 @@
         }
       ],
       "default": null,
-      "title": "Updated At"
+      "title": "Updated Timestamp Micro"
     }
   },
   "required": [
     "schema_version",
-    "created_at",
+    "created_timestamp_micro",
     "stage_instance_id",
     "run_id",
     "node_id",
@@ -177,5 +177,5 @@
   ],
   "title": "StageInstance",
   "type": "object",
-  "x-contract-schema-version": "stage-instance.v1"
+  "x-contract-schema-version": "stage-instance.v2"
 }

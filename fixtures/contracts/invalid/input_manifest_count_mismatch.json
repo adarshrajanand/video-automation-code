@@ -1,6 +1,6 @@
 {
   "complete": true,
-  "created_at": "2026-10-21T09:30:00Z",
+  "created_timestamp_micro": 1792575000000000,
   "expected_artifact_slots": [
     "topic"
   ],
@@ -9,6 +9,6 @@
   "resolved_artifact_ids": [
     "artifact_topic_v1"
   ],
-  "schema_version": "input-manifest.v1",
+  "schema_version": "input-manifest.v2",
   "stage_instance_id": "stage_script_episode"
 }

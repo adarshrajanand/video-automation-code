@@ -37,7 +37,7 @@ def _event(connection: sqlite3.Connection, event_id: str) -> None:
     connection.execute(
         "INSERT INTO workflow_events "
         "(event_id, event_type, correlation_id, payload_schema_version, "
-        "created_at, schema_version, payload) "
+        "created_timestamp_micro, schema_version, payload) "
         "VALUES (?, 'RUN_READY', 'corr_01', 'run-ready.v1', ?, "
         "'event-envelope.v1', '{}')",
         (event_id, "2026-10-21T09:00:00Z"),
@@ -181,7 +181,7 @@ def test_quality_evaluation_and_gate_result_ids_are_unique(database) -> None:
     with database.transaction() as connection:
         connection.execute(
             "INSERT INTO quality_evaluations "
-            "(evaluation_id, gate_id, check_id, outcome, created_at, "
+            "(evaluation_id, gate_id, check_id, outcome, created_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('eval_01', 'gate_01', 'check_01', 'PASS', ?, "
             "'quality-evaluation.v1', '{}')",
@@ -190,7 +190,7 @@ def test_quality_evaluation_and_gate_result_ids_are_unique(database) -> None:
         connection.execute(
             "INSERT INTO quality_gate_results "
             "(quality_gate_result_id, gate_id, gate_version, decision, "
-            "policy_version, created_at, schema_version, payload) VALUES "
+            "policy_version, created_timestamp_micro, schema_version, payload) VALUES "
             "('gate_result_01', 'gate_01', '1.0', 'PASS', '1.0', ?, "
             "'quality-gate-result.v1', '{}')",
             ("2026-10-21T09:00:00Z",),
@@ -202,7 +202,7 @@ def test_quality_evaluation_and_gate_result_ids_are_unique(database) -> None:
     ):
         connection.execute(
             "INSERT INTO quality_evaluations "
-            "(evaluation_id, gate_id, check_id, outcome, created_at, "
+            "(evaluation_id, gate_id, check_id, outcome, created_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('eval_01', 'gate_01', 'check_02', 'FAIL', ?, "
             "'quality-evaluation.v1', '{}')",
@@ -216,7 +216,7 @@ def test_quality_evaluation_and_gate_result_ids_are_unique(database) -> None:
         connection.execute(
             "INSERT INTO quality_gate_results "
             "(quality_gate_result_id, gate_id, gate_version, decision, "
-            "policy_version, created_at, schema_version, payload) VALUES "
+            "policy_version, created_timestamp_micro, schema_version, payload) VALUES "
             "('gate_result_01', 'gate_02', '1.0', 'PASS', '1.0', ?, "
             "'quality-gate-result.v1', '{}')",
             ("2026-10-21T09:00:00Z",),
@@ -229,7 +229,7 @@ def test_outbox_event_and_inbox_consumer_receipts_are_unique(database) -> None:
         _event(connection, "event_02")
         connection.execute(
             "INSERT INTO outbox_messages "
-            "(outbox_id, event_id, status, delivery_attempts, available_at, "
+            "(outbox_id, event_id, status, delivery_attempts, available_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('outbox_01', 'event_01', 'PENDING', 0, ?, "
             "'outbox-message.v1', '{}')",
@@ -247,7 +247,7 @@ def test_outbox_event_and_inbox_consumer_receipts_are_unique(database) -> None:
     ):
         connection.execute(
             "INSERT INTO outbox_messages "
-            "(outbox_id, event_id, status, delivery_attempts, available_at, "
+            "(outbox_id, event_id, status, delivery_attempts, available_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('outbox_02', 'event_01', 'PENDING', 0, ?, "
             "'outbox-message.v1', '{}')",
@@ -283,7 +283,7 @@ def test_invalidation_requests_and_results_are_unique_and_linked(database) -> No
         )
         connection.execute(
             "INSERT INTO artifact_invalidation_results "
-            "(request_id, invalidated_count, retained_count, created_at, "
+            "(request_id, invalidated_count, retained_count, created_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('invalidation_01', 1, 0, ?, 'invalidation-result.v1', '{}')",
             ("2026-10-21T09:00:00Z",),
@@ -306,7 +306,7 @@ def test_invalidation_requests_and_results_are_unique_and_linked(database) -> No
     ):
         connection.execute(
             "INSERT INTO artifact_invalidation_results "
-            "(request_id, invalidated_count, retained_count, created_at, "
+            "(request_id, invalidated_count, retained_count, created_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('invalidation_01', 1, 0, ?, 'invalidation-result.v1', '{}')",
             ("2026-10-21T09:00:00Z",),
@@ -318,7 +318,7 @@ def test_invalidation_requests_and_results_are_unique_and_linked(database) -> No
     ):
         connection.execute(
             "INSERT INTO artifact_invalidation_results "
-            "(request_id, invalidated_count, retained_count, created_at, "
+            "(request_id, invalidated_count, retained_count, created_timestamp_micro, "
             "schema_version, payload) VALUES "
             "('missing_request', 1, 0, ?, 'invalidation-result.v1', '{}')",
             ("2026-10-21T09:00:00Z",),
@@ -334,7 +334,7 @@ def test_raw_sqlite_constraint_is_visible_to_callers(database) -> None:
             "INSERT INTO workflow_runs "
             "(run_id, run_key, workflow_id, workflow_version, "
             "effective_config_id, effective_config_hash, status, "
-            "content_package_id, created_at, schema_version, payload) "
+            "content_package_id, created_timestamp_micro, schema_version, payload) "
             "VALUES ('run_x', 'key_x', 'wf', '1', 'missing', ?, 'RUNNING', "
             "'pkg', ?, 'workflow-run.v1', '{}')",
             ("0" * 64, "2026-10-21T09:00:00Z"),

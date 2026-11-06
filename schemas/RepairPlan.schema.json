@@ -16,9 +16,9 @@
   "additionalProperties": false,
   "description": "Policy-approved, targeted replacement of failed artifacts or stages.",
   "properties": {
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "invalidation_scope": {
@@ -48,7 +48,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "repair-plan.v1",
+      "const": "repair-plan.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -87,9 +87,9 @@
     "reason_codes",
     "invalidation_scope",
     "max_attempts",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "RepairPlan",
   "type": "object",
-  "x-contract-schema-version": "repair-plan.v1"
+  "x-contract-schema-version": "repair-plan.v2"
 }

@@ -144,12 +144,12 @@ class QualityReportGenerator:
 
             # Filter by period if specified
             if period_start:
-                gate_results = [g for g in gate_results if g.created_at >= period_start]
+                gate_results = [g for g in gate_results if g.created_timestamp_micro >= period_start]
             if period_end:
                 gate_results = [
                     g
                     for g in gate_results
-                    if g.completed_at and g.completed_at <= period_end
+                    if g.completed_timestamp_micro and g.completed_timestamp_micro <= period_end
                 ]
 
             # Query evaluations
@@ -166,9 +166,9 @@ class QualityReportGenerator:
 
             # Filter by period
             if period_start:
-                evaluations = [e for e in evaluations if e.created_at >= period_start]
+                evaluations = [e for e in evaluations if e.created_timestamp_micro >= period_start]
             if period_end:
-                evaluations = [e for e in evaluations if e.created_at <= period_end]
+                evaluations = [e for e in evaluations if e.created_timestamp_micro <= period_end]
 
         # Build report
         report = QualityReport(

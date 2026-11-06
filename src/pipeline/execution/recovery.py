@@ -142,8 +142,8 @@ class RecoveryManager:
             update={
                 "status": attempt_status,
                 "worker_id": None,
-                "lease_expires_at": None,
-                "finished_at": now,
+                "lease_expires_timestamp_micro": None,
+                "finished_timestamp_micro": now,
                 "failure_code": decision.failure_code,
                 "failure_message": failure_message or None,
             }
@@ -155,7 +155,7 @@ class RecoveryManager:
                 update={
                     "status": JobStatus.RETRY,
                     "claimed_by": None,
-                    "lease_expires_at": None,
+                    "lease_expires_timestamp_micro": None,
                 }
             )
             JobRepository(connection).update(retry_job)
@@ -163,7 +163,7 @@ class RecoveryManager:
                 update={
                     "execution_status": StageExecutionStatus.READY,
                     "active_attempt_id": None,
-                    "updated_at": now,
+                    "updated_timestamp_micro": now,
                 }
             )
             StageInstanceRepository(connection).update(ready_stage)
@@ -172,14 +172,14 @@ class RecoveryManager:
                 queue_name=job.queue_name,
                 input_artifact_ids=attempt.input_artifact_ids,
                 attempt_number=attempt.attempt_number + 1,
-                available_at=now + timedelta(seconds=decision.backoff_seconds),
+                available_timestamp_micro=now + timedelta(seconds=decision.backoff_seconds),
                 connection=connection,
             )
             waiting_stage = ready_stage.model_copy(
                 update={
                     "execution_status": StageExecutionStatus.WAITING_RETRY,
                     "active_attempt_id": None,
-                    "updated_at": now,
+                    "updated_timestamp_micro": now,
                 }
             )
             StageInstanceRepository(connection).update(waiting_stage)
@@ -206,7 +206,7 @@ class RecoveryManager:
             update={
                 "status": JobStatus.DEAD_LETTER,
                 "claimed_by": None,
-                "lease_expires_at": None,
+                "lease_expires_timestamp_micro": None,
             }
         )
         JobRepository(connection).update(terminal_job)
@@ -225,7 +225,7 @@ class RecoveryManager:
             update={
                 "execution_status": stage_status,
                 "active_attempt_id": None,
-                "updated_at": now,
+                "updated_timestamp_micro": now,
             }
         )
         StageInstanceRepository(connection).update(terminal_stage)
@@ -261,7 +261,7 @@ class RecoveryManager:
             dict.fromkeys([decision.failure_code.value, decision.reason])
         )
         recovery_decision = RecoveryDecision(
-            schema_version="recovery-decision.v1",
+            schema_version="recovery-decision.v2",
             recovery_decision_id=deterministic_id(
                 "recovery",
                 "failure",
@@ -274,7 +274,7 @@ class RecoveryManager:
             action=action,
             target_stage_instance_ids=[stage.stage_instance_id],
             reason_codes=reason_codes,
-            created_at=now,
+            created_timestamp_micro=now,
         )
         repository = RecoveryDecisionRepository(connection)
         existing = repository.get_optional(recovery_decision.recovery_decision_id)

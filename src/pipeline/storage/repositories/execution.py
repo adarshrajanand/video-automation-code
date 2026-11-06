@@ -52,10 +52,10 @@ class WorkflowRunRepository(SqliteRepository[WorkflowRun]):
         "effective_config_hash",
         "status",
         "content_package_id",
-        "created_at",
-        "updated_at",
+        "created_timestamp_micro",
+        "updated_timestamp_micro",
     )
-    order_by = ("created_at", "run_id")
+    order_by = ("created_timestamp_micro", "run_id")
 
     def get_by_run_key(self, run_key: str) -> WorkflowRun:
         row = self.connection.execute(
@@ -68,7 +68,7 @@ class WorkflowRunRepository(SqliteRepository[WorkflowRun]):
     def list_by_status(self, status: RunStatus) -> list[WorkflowRun]:
         rows = self.connection.execute(
             "SELECT payload FROM workflow_runs WHERE status = ? "
-            "ORDER BY created_at, run_id",
+            "ORDER BY created_timestamp_micro, run_id",
             (status.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -89,15 +89,15 @@ class StageInstanceRepository(SqliteRepository[StageInstance]):
         "quality_gate_result_id",
         "expected_input_manifest_id",
         "active_attempt_id",
-        "created_at",
-        "updated_at",
+        "created_timestamp_micro",
+        "updated_timestamp_micro",
     )
-    order_by = ("run_id", "created_at", "stage_instance_id")
+    order_by = ("run_id", "created_timestamp_micro", "stage_instance_id")
 
     def list_for_run(self, run_id: str) -> list[StageInstance]:
         rows = self.connection.execute(
             "SELECT payload FROM stage_instances WHERE run_id = ? "
-            "ORDER BY created_at, stage_instance_id",
+            "ORDER BY created_timestamp_micro, stage_instance_id",
             (run_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -107,7 +107,7 @@ class StageInstanceRepository(SqliteRepository[StageInstance]):
         query = (
             "SELECT payload FROM stage_instances "
             "WHERE execution_status = ? "
-            "ORDER BY created_at, stage_instance_id"
+            "ORDER BY created_timestamp_micro, stage_instance_id"
         )
         params: list[Any] = [StageExecutionStatus.READY.value]
         if limit is not None:
@@ -140,9 +140,9 @@ class StageAttemptRepository(SqliteRepository[StageAttempt]):
         "quality_regeneration_number",
         "status",
         "worker_id",
-        "lease_expires_at",
-        "started_at",
-        "finished_at",
+        "lease_expires_timestamp_micro",
+        "started_timestamp_micro",
+        "finished_timestamp_micro",
         "failure_code",
     )
     order_by = ("stage_instance_id", "attempt_number", "attempt_id")
@@ -166,12 +166,12 @@ class JobRepository(SqliteRepository[Job]):
         "queue_name",
         "status",
         "idempotency_key",
-        "available_at",
+        "available_timestamp_micro",
         "claimed_by",
-        "lease_expires_at",
+        "lease_expires_timestamp_micro",
         "delivery_count",
     )
-    order_by = ("available_at", "job_id")
+    order_by = ("available_timestamp_micro", "job_id")
 
     def get_by_idempotency_key(self, idempotency_key: str) -> Job:
         row = self.connection.execute(
@@ -193,7 +193,7 @@ class JobRepository(SqliteRepository[Job]):
     def list_for_attempt(self, attempt_id: str) -> list[Job]:
         rows = self.connection.execute(
             "SELECT payload FROM jobs WHERE attempt_id = ? "
-            "ORDER BY available_at, job_id",
+            "ORDER BY available_timestamp_micro, job_id",
             (attempt_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -201,14 +201,14 @@ class JobRepository(SqliteRepository[Job]):
     def list_for_queue(self, queue_name: str) -> list[Job]:
         rows = self.connection.execute(
             "SELECT payload FROM jobs WHERE queue_name = ? "
-            "ORDER BY available_at, job_id",
+            "ORDER BY available_timestamp_micro, job_id",
             (queue_name,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
 
     def list_by_status(self, status: JobStatus) -> list[Job]:
         rows = self.connection.execute(
-            "SELECT payload FROM jobs WHERE status = ? ORDER BY available_at, job_id",
+            "SELECT payload FROM jobs WHERE status = ? ORDER BY available_timestamp_micro, job_id",
             (status.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -222,16 +222,16 @@ class LeaseRepository(SqliteRepository[Lease]):
         "job_id",
         "owner_id",
         "fencing_token",
-        "acquired_at",
-        "expires_at",
-        "heartbeat_at",
+        "acquired_timestamp_micro",
+        "expires_timestamp_micro",
+        "heartbeat_timestamp_micro",
     )
     order_by = ("job_id", "fencing_token")
 
     def list_for_job(self, job_id: str) -> list[Lease]:
         rows = self.connection.execute(
             "SELECT payload FROM leases WHERE job_id = ? "
-            "ORDER BY acquired_at, fencing_token",
+            "ORDER BY acquired_timestamp_micro, fencing_token",
             (job_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]

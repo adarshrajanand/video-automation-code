@@ -35,9 +35,9 @@
       "title": "Capability",
       "type": "string"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "data_classification": {
@@ -130,7 +130,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "routing-decision.v1",
+      "const": "routing-decision.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -149,9 +149,9 @@
     "policy_version",
     "attempt",
     "data_classification",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "RoutingDecision",
   "type": "object",
-  "x-contract-schema-version": "routing-decision.v1"
+  "x-contract-schema-version": "routing-decision.v2"
 }

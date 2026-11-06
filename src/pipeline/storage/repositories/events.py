@@ -13,7 +13,7 @@ from datetime import datetime
 
 from pipeline.contracts.events import EventEnvelope, InboxReceipt, OutboxMessage
 from pipeline.contracts.vocabularies import EventType, InboxStatus, OutboxStatus
-from pipeline.fingerprints import canonical_datetime
+from pipeline.fingerprints import unix_microseconds
 from pipeline.ids import deterministic_id
 from pipeline.storage.repositories.base import SqliteRepository
 
@@ -33,14 +33,14 @@ class WorkflowEventRepository(SqliteRepository[EventEnvelope]):
         "correlation_id",
         "causation_id",
         "payload_schema_version",
-        "created_at",
+        "created_timestamp_micro",
     )
-    order_by = ("created_at", "event_id")
+    order_by = ("created_timestamp_micro", "event_id")
 
     def list_for_run(self, run_id: str) -> list[EventEnvelope]:
         rows = self.connection.execute(
             "SELECT payload FROM workflow_events WHERE run_id = ? "
-            "ORDER BY created_at, event_id",
+            "ORDER BY created_timestamp_micro, event_id",
             (run_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -48,7 +48,7 @@ class WorkflowEventRepository(SqliteRepository[EventEnvelope]):
     def list_by_type(self, event_type: EventType) -> list[EventEnvelope]:
         rows = self.connection.execute(
             "SELECT payload FROM workflow_events WHERE event_type = ? "
-            "ORDER BY created_at, event_id",
+            "ORDER BY created_timestamp_micro, event_id",
             (event_type.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -76,13 +76,13 @@ class OutboxMessageRepository(SqliteRepository[OutboxMessage]):
         "event_id",
         "status",
         "delivery_attempts",
-        "available_at",
+        "available_timestamp_micro",
         "claimed_by",
-        "claimed_at",
-        "lease_expires_at",
-        "delivered_at",
+        "claimed_timestamp_micro",
+        "lease_expires_timestamp_micro",
+        "delivered_timestamp_micro",
     )
-    order_by = ("available_at", "outbox_id")
+    order_by = ("available_timestamp_micro", "outbox_id")
 
     def get_by_event_id(self, event_id: str) -> OutboxMessage | None:
         row = self.connection.execute(
@@ -95,7 +95,7 @@ class OutboxMessageRepository(SqliteRepository[OutboxMessage]):
     def list_by_status(self, status: OutboxStatus) -> list[OutboxMessage]:
         rows = self.connection.execute(
             "SELECT payload FROM outbox_messages WHERE status = ? "
-            "ORDER BY available_at, outbox_id",
+            "ORDER BY available_timestamp_micro, outbox_id",
             (status.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -110,8 +110,8 @@ class OutboxMessageRepository(SqliteRepository[OutboxMessage]):
 
         sql = (
             "SELECT outbox_id FROM outbox_messages "
-            "WHERE status = ? AND julianday(available_at) <= julianday(?) "
-            "ORDER BY julianday(available_at), outbox_id"
+            "WHERE status = ? AND julianday(available_timestamp_micro) <= julianday(?) "
+            "ORDER BY julianday(available_timestamp_micro), outbox_id"
         )
         parameters: list[object] = [OutboxStatus.PENDING.value, _timestamp(now)]
         if limit is not None:
@@ -123,9 +123,9 @@ class OutboxMessageRepository(SqliteRepository[OutboxMessage]):
     def list_expired_claims(self, now: datetime) -> list[str]:
         rows = self.connection.execute(
             "SELECT outbox_id FROM outbox_messages "
-            "WHERE status = ? AND lease_expires_at IS NOT NULL "
-            "AND julianday(lease_expires_at) <= julianday(?) "
-            "ORDER BY julianday(lease_expires_at), outbox_id",
+            "WHERE status = ? AND lease_expires_timestamp_micro IS NOT NULL "
+            "AND julianday(lease_expires_timestamp_micro) <= julianday(?) "
+            "ORDER BY julianday(lease_expires_timestamp_micro), outbox_id",
             (OutboxStatus.CLAIMED.value, _timestamp(now)),
         ).fetchall()
         return [str(row[0]) for row in rows]
@@ -141,7 +141,7 @@ class InboxReceiptRepository(SqliteRepository[InboxReceipt]):
         "consumer_id",
         "event_id",
         "status",
-        "processed_at",
+        "processed_timestamp_micro",
         "error_code",
     )
     order_by = ("consumer_id", "event_id")
@@ -171,7 +171,7 @@ def insert_event_and_outbox(
     event: EventEnvelope,
     *,
     outbox_id: str | None = None,
-    available_at: datetime,
+    available_timestamp_micro: datetime,
     status: OutboxStatus = OutboxStatus.PENDING,
 ) -> OutboxMessage:
     """Insert one event envelope and its outbox row in the caller's transaction.
@@ -183,8 +183,8 @@ def insert_event_and_outbox(
 
     if status is not OutboxStatus.PENDING:
         raise ValueError("new outbox messages must start in PENDING state")
-    if available_at.tzinfo is None or available_at.utcoffset() is None:
-        raise ValueError("available_at must be timezone-aware")
+    if available_timestamp_micro.tzinfo is None or available_timestamp_micro.utcoffset() is None:
+        raise ValueError("available_timestamp_micro must be timezone-aware")
     if not connection.in_transaction:
         raise ValueError(
             "insert_event_and_outbox requires an explicit caller transaction"
@@ -192,20 +192,20 @@ def insert_event_and_outbox(
     outbox_id = outbox_id or deterministic_id("outbox", event.event_id)
     WorkflowEventRepository(connection).insert(event)
     message = OutboxMessage(
-        schema_version="outbox-message.v1",
+        schema_version="outbox-message.v2",
         outbox_id=outbox_id,
         event_id=event.event_id,
         event=event,
         status=status,
         delivery_attempts=0,
-        available_at=available_at,
+        available_timestamp_micro=available_timestamp_micro,
     )
     OutboxMessageRepository(connection).insert(message)
     return message
 
 
 def _timestamp(value: datetime) -> str:
-    return canonical_datetime(value)
+    return unix_microseconds(value)
 
 
 __all__ = [

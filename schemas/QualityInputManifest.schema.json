@@ -11,9 +11,9 @@
       "title": "Check Id",
       "type": "string"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "gate_id": {
@@ -46,7 +46,7 @@
       "title": "Policy Snapshot Artifact Id"
     },
     "schema_version": {
-      "const": "quality-input-manifest.v1",
+      "const": "quality-input-manifest.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -95,9 +95,9 @@
     "check_id",
     "target_artifact_ids",
     "target_hashes",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "QualityInputManifest",
   "type": "object",
-  "x-contract-schema-version": "quality-input-manifest.v1"
+  "x-contract-schema-version": "quality-input-manifest.v2"
 }

@@ -71,7 +71,7 @@
   "additionalProperties": false,
   "description": "Aggregate gate decision over exact targets and evaluation records.",
   "properties": {
-    "completed_at": {
+    "completed_timestamp_micro": {
       "anyOf": [
         {
           "format": "date-time",
@@ -82,11 +82,11 @@
         }
       ],
       "default": null,
-      "title": "Completed At"
+      "title": "Completed Timestamp Micro"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "decision": {
@@ -176,7 +176,7 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "quality-gate-result.v1",
+      "const": "quality-gate-result.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -234,9 +234,9 @@
     "evaluation_ids",
     "decision",
     "policy_version",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "QualityGateResult",
   "type": "object",
-  "x-contract-schema-version": "quality-gate-result.v1"
+  "x-contract-schema-version": "quality-gate-result.v2"
 }

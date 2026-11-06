@@ -115,7 +115,7 @@ class EvaluationContext:
     manifest: QualityInputManifest
     target_artifacts: dict[str, Any]
     supporting_artifacts: dict[str, Any]
-    started_at: datetime
+    started_timestamp_micro: datetime
 
 
 class DeterministicCheckEvaluator:
@@ -186,7 +186,7 @@ class DeterministicCheckEvaluator:
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
@@ -209,7 +209,7 @@ class DeterministicCheckEvaluator:
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     def _validate_schema(
@@ -326,7 +326,7 @@ class DeterministicCheckEvaluator:
         Returns (False, error_dict) for unknown schema versions.
         """
         schema_map = {
-            "script.v1": Script,
+            "script.v2": Script,
             "script-scene.v1": ScriptScene,
             "render-manifest.v1": CompositionSpec,
             "visual-planning-input.v1": VisualPlan,
@@ -608,15 +608,15 @@ class DeterministicCheckEvaluator:
         check: QualityCheck,
         manifest: QualityInputManifest,
         error: str,
-        started_at: datetime,
+        started_timestamp_micro: datetime,
     ) -> QualityEvaluation:
         """Create an error evaluation."""
-        latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        latency_ms = int((datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000)
         eval_id = deterministic_id(
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -646,7 +646,7 @@ class DeterministicCheckEvaluator:
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
 
@@ -723,7 +723,7 @@ class SpecializedCheckEvaluator:
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
@@ -746,7 +746,7 @@ class SpecializedCheckEvaluator:
             actual_cost_minor=result.actual_cost_minor,
             provider_invocation_id=None,
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     def _require_artifact(
@@ -1600,14 +1600,14 @@ class SpecializedCheckEvaluator:
         check: QualityCheck,
         manifest: QualityInputManifest,
         error: str,
-        started_at: datetime,
+        started_timestamp_micro: datetime,
     ) -> QualityEvaluation:
-        latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        latency_ms = int((datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000)
         eval_id = deterministic_id(
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -1637,7 +1637,7 @@ class SpecializedCheckEvaluator:
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
 
@@ -1689,7 +1689,7 @@ class SemanticCheckEvaluator:
             "inv", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
@@ -1712,7 +1712,7 @@ class SemanticCheckEvaluator:
             actual_cost_minor=result.actual_cost_minor,
             provider_invocation_id=f"inv_{inv_id}",
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
     def _evaluate_claim_evidence(
@@ -2004,14 +2004,14 @@ class SemanticCheckEvaluator:
         check: QualityCheck,
         manifest: QualityInputManifest,
         error: str,
-        started_at: datetime,
+        started_timestamp_micro: datetime,
     ) -> QualityEvaluation:
-        latency_ms = int((datetime.now(UTC) - started_at).total_seconds() * 1000)
+        latency_ms = int((datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000)
         eval_id = deterministic_id(
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             target_artifact_ids=manifest.target_artifact_ids,
             target_hashes=manifest.target_hashes,
@@ -2041,7 +2041,7 @@ class SemanticCheckEvaluator:
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
 
@@ -2093,7 +2093,7 @@ class HumanCheckEvaluator:
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
         return QualityEvaluation(
-            schema_version="quality-evaluation.v1",
+            schema_version="quality-evaluation.v2",
             evaluation_id=f"eval_{eval_id}",
             stage_instance_id=None,
             logical_item_key=None,
@@ -2116,7 +2116,7 @@ class HumanCheckEvaluator:
             actual_cost_minor=0,
             provider_invocation_id=None,
             latency_ms=latency_ms,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
 

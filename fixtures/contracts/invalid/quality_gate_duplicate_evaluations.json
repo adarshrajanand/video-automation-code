@@ -1,6 +1,6 @@
 {
-  "completed_at": "2026-10-21T11:06:00Z",
-  "created_at": "2026-10-21T11:05:00Z",
+  "completed_timestamp_micro": 1792580760000000,
+  "created_timestamp_micro": 1792580700000000,
   "decision": "PASS",
   "evaluation_ids": [
     "eval_script_01",
@@ -19,7 +19,7 @@
     "script_claim_evidence_v1",
     "script_editorial_clarity_v1"
   ],
-  "schema_version": "quality-gate-result.v1",
+  "schema_version": "quality-gate-result.v2",
   "stage_instance_id": "stage_script_episode",
   "target_artifact_ids": [
     "artifact_script_v1"

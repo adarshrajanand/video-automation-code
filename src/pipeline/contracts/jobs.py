@@ -20,15 +20,15 @@ from pipeline.contracts.vocabularies import JobStatus
 class Job(Contract):
     """One claimable delivery record associated with one stage attempt."""
 
-    schema_version: Literal["job.v1"]
+    schema_version: Literal["job.v2"]
     job_id: OpaqueId
     attempt_id: OpaqueId
     queue_name: NonEmptyStr
     status: JobStatus
     idempotency_key: NonEmptyStr
-    available_at: UTCDateTime
+    available_timestamp_micro: UTCDateTime
     claimed_by: NonEmptyStr | None = None
-    lease_expires_at: UTCDateTime | None = None
+    lease_expires_timestamp_micro: UTCDateTime | None = None
     delivery_count: NonNegativeInt = 0
     # Projection of the active lease term. The leases table remains the
     # authoritative ownership record; this copy lets a job be inspected without
@@ -45,22 +45,22 @@ class Job(Contract):
 class Lease(Contract):
     """Temporary ownership term for one job, fenced by a monotonic token."""
 
-    schema_version: Literal["lease.v1"]
+    schema_version: Literal["lease.v2"]
     job_id: OpaqueId
     owner_id: NonEmptyStr
     fencing_token: PositiveInt
-    acquired_at: UTCDateTime
-    expires_at: UTCDateTime
-    heartbeat_at: UTCDateTime | None = None
+    acquired_timestamp_micro: UTCDateTime
+    expires_timestamp_micro: UTCDateTime
+    heartbeat_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_lease_term(self) -> Lease:
-        if self.expires_at <= self.acquired_at:
-            raise ValueError("expires_at must be later than acquired_at")
-        if self.heartbeat_at is not None and not (
-            self.acquired_at <= self.heartbeat_at <= self.expires_at
+        if self.expires_timestamp_micro <= self.acquired_timestamp_micro:
+            raise ValueError("expires_timestamp_micro must be later than acquired_timestamp_micro")
+        if self.heartbeat_timestamp_micro is not None and not (
+            self.acquired_timestamp_micro <= self.heartbeat_timestamp_micro <= self.expires_timestamp_micro
         ):
-            raise ValueError("heartbeat_at must fall within the acquired/expires term")
+            raise ValueError("heartbeat_timestamp_micro must fall within the acquired/expires term")
         return self
 
 

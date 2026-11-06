@@ -1,9 +1,14 @@
 """Deterministic canonical JSON serialization and SHA-256 fingerprints.
 
-Canonicalization sorts mapping keys, normalizes UTC datetimes and decimals, and
-rejects non-JSON values. Fingerprints hash canonical bytes and exclude common
-secret-bearing keys by default so credentials cannot leak into persisted research
-identifiers.
+Canonicalization sorts mapping keys, converts UTC datetimes to integer
+microseconds, normalizes decimals, and rejects non-JSON values. Fingerprints hash
+canonical bytes and exclude common secret-bearing keys by default so credentials
+cannot leak into persisted research identifiers.
+
+Integer microseconds are the single persisted representation for both SQL
+timestamp columns and JSON payload timestamps (GEN-24 / #92). The conversion uses
+integer arithmetic, never floating-point seconds, so every Python ``datetime``
+round-trips exactly.
 """
 
 from __future__ import annotations
@@ -12,7 +17,7 @@ import hashlib
 import json
 import re
 from collections.abc import Mapping, Sequence, Set
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from enum import Enum
 from pathlib import Path
@@ -40,28 +45,28 @@ SECRET_FIELD_NAMES: Final[frozenset[str]] = frozenset(
 _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 
 
-def canonical_datetime(value: datetime) -> str:
-    """Return a fixed-precision ISO-8601 UTC representation with a ``Z`` suffix.
+UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
-    Every persisted SQL timestamp projection and JSON payload datetime uses
-    exactly six fractional digits so SQLite text ordering agrees with
-    chronological order even when one value has zero microseconds and another
-    has nonzero microseconds.
 
-    Display and export code may use ``isoformat()`` because it is not an
-    ordering or fingerprint input. GEN-24 (#92) may change SQL projections (and
-    payload datetime values) to integer microseconds; persistence, payload
-    serialization, and fingerprints must then move together.
+def unix_microseconds(value: datetime) -> int:
+    """Return exact integer microseconds since the Unix epoch in UTC.
+
+    Uses integer ``timedelta`` arithmetic instead of ``datetime.timestamp()``.
+    Float seconds lose microsecond precision for dates far from the epoch and
+    can round a value up or down; this conversion round-trips exactly, including
+    pre-1970 values, which remain signed.
     """
 
     if value.tzinfo is None or value.utcoffset() is None:
-        raise ValueError("canonical datetimes must be timezone-aware")
-    normalized = value.astimezone(UTC)
-    return (
-        f"{normalized.year:04d}-{normalized.month:02d}-{normalized.day:02d}T"
-        f"{normalized.hour:02d}:{normalized.minute:02d}:{normalized.second:02d}."
-        f"{normalized.microsecond:06d}Z"
-    )
+        raise ValueError("timestamps must be timezone-aware to convert to microseconds")
+    delta = value.astimezone(UTC) - UNIX_EPOCH
+    return (delta.days * 86_400 + delta.seconds) * 1_000_000 + delta.microseconds
+
+
+def datetime_from_unix_microseconds(value: int) -> datetime:
+    """Return the UTC ``datetime`` for exact integer microseconds since the epoch."""
+
+    return UNIX_EPOCH + timedelta(microseconds=value)
 
 
 def canonical_decimal(value: Decimal) -> str:
@@ -84,7 +89,7 @@ def _normalize(value: Any, *, exclude_keys: frozenset[str]) -> Any:
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, datetime):
-        return canonical_datetime(value)
+        return unix_microseconds(value)
     if isinstance(value, date):
         return value.isoformat()
     if isinstance(value, time):
@@ -200,7 +205,7 @@ def file_sha256(path: Path) -> str:
 __all__ = [
     "SECRET_FIELD_NAMES",
     "canonical_bytes",
-    "canonical_datetime",
+    "datetime_from_unix_microseconds",
     "canonical_decimal",
     "canonical_json",
     "file_sha256",
@@ -209,4 +214,5 @@ __all__ = [
     "model_fingerprint",
     "sha256_bytes",
     "sha256_text",
+    "unix_microseconds",
 ]

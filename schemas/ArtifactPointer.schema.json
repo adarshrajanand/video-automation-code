@@ -52,13 +52,13 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "artifact-pointer.v1",
+      "const": "artifact-pointer.v2",
       "title": "Schema Version",
       "type": "string"
     },
-    "updated_at": {
+    "updated_timestamp_micro": {
       "format": "date-time",
-      "title": "Updated At",
+      "title": "Updated Timestamp Micro",
       "type": "string"
     }
   },
@@ -69,9 +69,9 @@
     "logical_slot",
     "artifact_id",
     "pointer_type",
-    "updated_at"
+    "updated_timestamp_micro"
   ],
   "title": "ArtifactPointer",
   "type": "object",
-  "x-contract-schema-version": "artifact-pointer.v1"
+  "x-contract-schema-version": "artifact-pointer.v2"
 }

@@ -23,7 +23,7 @@
       "title": "Capability Execution Id",
       "type": "string"
     },
-    "finished_at": {
+    "finished_timestamp_micro": {
       "anyOf": [
         {
           "format": "date-time",
@@ -34,7 +34,7 @@
         }
       ],
       "default": null,
-      "title": "Finished At"
+      "title": "Finished Timestamp Micro"
     },
     "idempotency_key": {
       "maxLength": 512,
@@ -80,13 +80,13 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "provider-invocation.v1",
+      "const": "provider-invocation.v2",
       "title": "Schema Version",
       "type": "string"
     },
-    "started_at": {
+    "started_timestamp_micro": {
       "format": "date-time",
-      "title": "Started At",
+      "title": "Started Timestamp Micro",
       "type": "string"
     },
     "status": {
@@ -101,9 +101,9 @@
     "idempotency_key",
     "request_fingerprint",
     "status",
-    "started_at"
+    "started_timestamp_micro"
   ],
   "title": "ProviderInvocation",
   "type": "object",
-  "x-contract-schema-version": "provider-invocation.v1"
+  "x-contract-schema-version": "provider-invocation.v2"
 }

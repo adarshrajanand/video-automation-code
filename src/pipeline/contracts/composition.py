@@ -213,7 +213,7 @@ class RenderProfile(Contract):
 class RenderChunkManifest(Contract):
     """Manifest for one rendered chunk or complete cut."""
 
-    schema_version: Literal["render-chunk-manifest.v1"]
+    schema_version: Literal["render-chunk-manifest.v2"]
     chunk_id: OpaqueId
     composition_artifact_id: OpaqueId
     render_profile_id: OpaqueId
@@ -226,8 +226,8 @@ class RenderChunkManifest(Contract):
     duration_frames: PositiveInt
     frame_checksums: list[Sha256Hex] = Field(default_factory=list)
     renderer_version: NonEmptyStr
-    render_started_at: UTCDateTime
-    render_finished_at: UTCDateTime
+    render_started_timestamp_micro: UTCDateTime
+    render_finished_timestamp_micro: UTCDateTime
     metadata: ExtensionObject = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -244,7 +244,7 @@ class RenderChunkManifest(Contract):
 class AssemblyManifest(Contract):
     """Assembly manifest recording ordered chunks and continuity checks."""
 
-    schema_version: Literal["assembly-manifest.v1"]
+    schema_version: Literal["assembly-manifest.v2"]
     assembly_artifact_id: OpaqueId
     cut_id: OpaqueId
     composition_artifact_id: OpaqueId
@@ -259,7 +259,7 @@ class AssemblyManifest(Contract):
     output_sha256: Sha256Hex
     output_size_bytes: NonNegativeInt
     assembler_version: NonEmptyStr
-    assembled_at: UTCDateTime
+    assembled_timestamp_micro: UTCDateTime
     metadata: ExtensionObject = Field(default_factory=dict)
 
     @model_validator(mode="after")

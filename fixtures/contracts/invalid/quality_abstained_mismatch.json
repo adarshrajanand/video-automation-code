@@ -3,7 +3,7 @@
   "actual_cost_minor": 1,
   "check_id": "script_claim_evidence_v1",
   "confidence": "HIGH",
-  "created_at": "2026-10-21T11:05:00Z",
+  "created_timestamp_micro": 1792580700000000,
   "dimensions": [
     {
       "details": {
@@ -40,7 +40,7 @@
   "provider_invocation_id": "invocation_eval_script_01",
   "rubric_version": "fast-rubric-v1",
   "scene_id": "scene_01",
-  "schema_version": "quality-evaluation.v1",
+  "schema_version": "quality-evaluation.v2",
   "shot_id": null,
   "stage_instance_id": "stage_script_episode",
   "target_artifact_ids": [

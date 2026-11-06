@@ -24,7 +24,7 @@ from pipeline.contracts.vocabularies import (
 class HumanReview(Contract):
     """Durable reviewer request tied to exact artifact versions."""
 
-    schema_version: Literal["human-review.v1"]
+    schema_version: Literal["human-review.v2"]
     review_id: OpaqueId
     run_id: OpaqueId
     stage_instance_id: OpaqueId | None = None
@@ -34,8 +34,8 @@ class HumanReview(Contract):
     reason_codes: list[NonEmptyStr] = Field(default_factory=list)
     requested_action: NonEmptyStr
     status: ReviewStatus
-    created_at: UTCDateTime
-    resolved_at: UTCDateTime | None = None
+    created_timestamp_micro: UTCDateTime
+    resolved_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_review(self) -> HumanReview:
@@ -49,21 +49,21 @@ class HumanReview(Contract):
             raise ValueError(
                 "target_hashes keys must exactly match target_artifact_ids"
             )
-        if self.resolved_at is not None and self.resolved_at < self.created_at:
-            raise ValueError("resolved_at must not be earlier than created_at")
+        if self.resolved_timestamp_micro is not None and self.resolved_timestamp_micro < self.created_timestamp_micro:
+            raise ValueError("resolved_timestamp_micro must not be earlier than created_timestamp_micro")
         return self
 
 
 class HumanReviewDecision(Contract):
     """Recorded reviewer decision for one human review request."""
 
-    schema_version: Literal["human-review-decision.v1"]
+    schema_version: Literal["human-review-decision.v2"]
     review_id: OpaqueId
     decision: ReviewDecision
     comments: NonEmptyStr | None = None
     reviewer: NonEmptyStr
     target_hashes: dict[OpaqueId, Sha256Hex] = Field(default_factory=dict)
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
 
 class PublicationRequest(Contract):
@@ -91,24 +91,24 @@ class PublicationRequest(Contract):
 class PublicationAttempt(Contract):
     """One attempt to publish an approved publication request."""
 
-    schema_version: Literal["publication-attempt.v1"]
+    schema_version: Literal["publication-attempt.v2"]
     publication_attempt_id: OpaqueId
     publication_request_id: OpaqueId
     status: PublicationStatus
     external_publication_id: NonEmptyStr | None = None
     provider_operation_id: NonEmptyStr | None = None
     normalized_error: NormalizedError | None = None
-    started_at: UTCDateTime | None = None
-    finished_at: UTCDateTime | None = None
+    started_timestamp_micro: UTCDateTime | None = None
+    finished_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_publication_attempt(self) -> PublicationAttempt:
         if (
-            self.started_at is not None
-            and self.finished_at is not None
-            and self.finished_at < self.started_at
+            self.started_timestamp_micro is not None
+            and self.finished_timestamp_micro is not None
+            and self.finished_timestamp_micro < self.started_timestamp_micro
         ):
-            raise ValueError("finished_at must not be earlier than started_at")
+            raise ValueError("finished_timestamp_micro must not be earlier than started_timestamp_micro")
         if self.status is PublicationStatus.FAILED and self.normalized_error is None:
             raise ValueError("a failed publication attempt requires a normalized_error")
         if (

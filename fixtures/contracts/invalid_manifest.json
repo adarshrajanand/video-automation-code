@@ -91,7 +91,7 @@
       "model": "OutboxMessage"
     },
     {
-      "error_contains": "expires_at must be later",
+      "error_contains": "expires_timestamp_micro must be later",
       "fixture": "invalid/lease_time_order.json",
       "model": "Lease"
     },
@@ -181,7 +181,7 @@
       "model": "CapabilityRequest"
     },
     {
-      "error_contains": "completed_at must not be earlier",
+      "error_contains": "completed_timestamp_micro must not be earlier",
       "fixture": "invalid/idempotency_time_order.json",
       "model": "IdempotencyRecord"
     },

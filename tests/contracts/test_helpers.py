@@ -11,15 +11,16 @@ import pytest
 from pipeline.fingerprints import (
     SECRET_FIELD_NAMES,
     canonical_bytes,
-    canonical_datetime,
     canonical_decimal,
     canonical_json,
     file_sha256,
     fingerprint,
+    datetime_from_unix_microseconds,
     is_sha256_hex,
     model_fingerprint,
     sha256_bytes,
     sha256_text,
+    unix_microseconds,
 )
 from pipeline.ids import (
     PREFIX_PATTERN,
@@ -45,7 +46,7 @@ def test_canonical_json_sorts_keys_and_normalizes_values() -> None:
     }
 
     assert canonical_json(value) == (
-        '{"a":"2026-10-21T12:00:00.000000Z","flag":true,"n":"1.23",'
+        '{"a":1792584000000000,"flag":true,"n":"1.23",'
         '"none":null,"z":["blue","red"],"zero":0.0}'
     )
 
@@ -87,31 +88,39 @@ def test_canonical_json_rejects_unsupported_values(value: object) -> None:
         canonical_json(value)
 
 
-def test_canonical_datetime_requires_timezone() -> None:
+def test_unix_microseconds_requires_timezone() -> None:
     with pytest.raises(ValueError, match="timezone-aware"):
-        canonical_datetime(datetime(2026, 10, 21, 12, 0))
+        unix_microseconds(datetime(2026, 10, 21, 12, 0))
 
 
-def test_canonical_datetime_normalizes_offsets() -> None:
+def test_unix_microseconds_normalizes_offsets() -> None:
     value = datetime(
         2026, 10, 21, 14, 30, tzinfo=timezone(timedelta(hours=2, minutes=30))
     )
 
-    assert canonical_datetime(value) == "2026-10-21T12:00:00.000000Z"
+    assert unix_microseconds(value) == 1_792_584_000_000_000
 
 
-def test_canonical_datetime_uses_fixed_fractional_precision() -> None:
-    assert (
-        canonical_datetime(datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC))
-        == "2026-10-21T12:00:00.000001Z"
-    )
-    assert (
-        canonical_datetime(datetime(2026, 10, 21, 12, 0, 0, 999_999, tzinfo=UTC))
-        == "2026-10-21T12:00:00.999999Z"
-    )
+def test_unix_microseconds_round_trips_exactly() -> None:
+    for instant in (
+        datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC),
+        datetime(2026, 10, 21, 12, 0, 0, 999_999, tzinfo=UTC),
+        datetime(1969, 12, 31, 23, 59, 59, 999_999, tzinfo=UTC),
+        datetime(1970, 1, 1, tzinfo=UTC),
+    ):
+        encoded = unix_microseconds(instant)
+
+        assert datetime_from_unix_microseconds(encoded) == instant
 
 
-def test_canonical_datetime_text_order_matches_chronological_order() -> None:
+def test_unix_microseconds_are_signed_before_epoch() -> None:
+    before = datetime(1969, 12, 31, 23, 59, 59, 999_999, tzinfo=UTC)
+
+    assert unix_microseconds(before) == -1
+    assert unix_microseconds(datetime(1970, 1, 1, tzinfo=UTC)) == 0
+
+
+def test_unix_microseconds_numeric_order_matches_chronological_order() -> None:
     instants = [
         datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC),
         datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC),
@@ -121,7 +130,7 @@ def test_canonical_datetime_text_order_matches_chronological_order() -> None:
         datetime(2026, 10, 21, 12, 0, 2, tzinfo=UTC),
     ]
 
-    rendered = [canonical_datetime(instant) for instant in instants]
+    rendered = [unix_microseconds(instant) for instant in instants]
 
     assert rendered == sorted(rendered)
 
@@ -268,7 +277,7 @@ def test_canonical_payload_round_trips_through_json(valid_fixtures) -> None:
 def test_utc_fixture_datetimes_are_normalized(valid_fixtures) -> None:
     for payload in valid_fixtures.values():
         for key, value in payload.items():
-            if key.endswith("_at") and isinstance(value, str):
+            if key.endswith("_timestamp_micro") and isinstance(value, str):
                 parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
                 assert parsed.tzinfo is not None
                 assert parsed.utcoffset() == timedelta(0)

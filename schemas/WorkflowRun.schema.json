@@ -27,9 +27,9 @@
       "title": "Content Package Id",
       "type": "string"
     },
-    "created_at": {
+    "created_timestamp_micro": {
       "format": "date-time",
-      "title": "Created At",
+      "title": "Created Timestamp Micro",
       "type": "string"
     },
     "effective_config_hash": {
@@ -61,14 +61,14 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "workflow-run.v1",
+      "const": "workflow-run.v2",
       "title": "Schema Version",
       "type": "string"
     },
     "status": {
       "$ref": "#/$defs/RunStatus"
     },
-    "updated_at": {
+    "updated_timestamp_micro": {
       "anyOf": [
         {
           "format": "date-time",
@@ -79,7 +79,7 @@
         }
       ],
       "default": null,
-      "title": "Updated At"
+      "title": "Updated Timestamp Micro"
     },
     "workflow_id": {
       "maxLength": 256,
@@ -98,7 +98,7 @@
   },
   "required": [
     "schema_version",
-    "created_at",
+    "created_timestamp_micro",
     "run_id",
     "run_key",
     "workflow_id",
@@ -110,5 +110,5 @@
   ],
   "title": "WorkflowRun",
   "type": "object",
-  "x-contract-schema-version": "workflow-run.v1"
+  "x-contract-schema-version": "workflow-run.v2"
 }

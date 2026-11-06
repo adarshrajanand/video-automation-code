@@ -76,7 +76,7 @@ def test_transient_failure_schedules_new_attempt_with_backoff(records, clock) ->
     new_job = outcome.new_creation.job
     assert new_attempt.attempt_number == 2
     assert new_job.status is JobStatus.READY
-    assert new_job.available_at == clock.now + timedelta(seconds=6)
+    assert new_job.available_timestamp_micro == clock.now + timedelta(seconds=6)
     assert outcome.job is not None
     assert outcome.job.status is JobStatus.RETRY
     assert outcome.attempt is not None

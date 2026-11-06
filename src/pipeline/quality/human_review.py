@@ -78,7 +78,7 @@ class HumanReviewManager:
         )
 
         review = HumanReview(
-            schema_version="human-review.v1",
+            schema_version="human-review.v2",
             review_id=review_id,
             run_id=request.run_id,
             stage_instance_id=request.stage_instance_id,
@@ -88,8 +88,8 @@ class HumanReviewManager:
             reason_codes=request.reason_codes,
             requested_action=request.requested_action,
             status=ReviewStatus.OPEN,
-            created_at=datetime.now(UTC),
-            resolved_at=None,
+            created_timestamp_micro=datetime.now(UTC),
+            resolved_timestamp_micro=None,
         )
 
         with self.database.transaction() as conn:
@@ -188,19 +188,19 @@ class HumanReviewManager:
 
             # Create decision record
             review_decision = HumanReviewDecision(
-                schema_version="human-review-decision.v1",
+                schema_version="human-review-decision.v2",
                 review_id=review_id,
                 decision=decision,
                 comments=comments,
                 reviewer=reviewer,
                 target_hashes=review.target_hashes,
-                created_at=datetime.now(UTC),
+                created_timestamp_micro=datetime.now(UTC),
             )
 
             # Update review status
             review_data = review.model_dump()
             review_data["status"] = ReviewStatus.RESOLVED
-            review_data["resolved_at"] = datetime.now(UTC)
+            review_data["resolved_timestamp_micro"] = datetime.now(UTC)
             review = HumanReview(**review_data)
             repo.update(review)
             repo.insert_decision(review_decision)

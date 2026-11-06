@@ -131,7 +131,7 @@ class OutboxDispatcher:
         if limit is not None and limit < 1:
             raise ValueError("limit must be at least 1")
         now = self._clock()
-        expires_at = now + timedelta(seconds=self.lease_seconds)
+        expires_timestamp_micro = now + timedelta(seconds=self.lease_seconds)
         with self.database.transaction(immediate=True) as connection:
             self._expire_claims_locked(connection, now)
             repository = OutboxMessageRepository(connection)
@@ -146,8 +146,8 @@ class OutboxDispatcher:
                         "status": OutboxStatus.CLAIMED,
                         "delivery_attempts": message.delivery_attempts + 1,
                         "claimed_by": self.dispatcher_id,
-                        "claimed_at": now,
-                        "lease_expires_at": expires_at,
+                        "claimed_timestamp_micro": now,
+                        "lease_expires_timestamp_micro": expires_timestamp_micro,
                     }
                 )
                 repository.update(claimed_message)
@@ -166,8 +166,8 @@ class OutboxDispatcher:
                 current.status is not OutboxStatus.CLAIMED
                 or current.claimed_by != self.dispatcher_id
                 or (
-                    current.lease_expires_at is not None
-                    and current.lease_expires_at <= now
+                    current.lease_expires_timestamp_micro is not None
+                    and current.lease_expires_timestamp_micro <= now
                 )
             ):
                 return False
@@ -175,9 +175,9 @@ class OutboxDispatcher:
                 update={
                     "status": OutboxStatus.DELIVERED,
                     "claimed_by": None,
-                    "claimed_at": None,
-                    "lease_expires_at": None,
-                    "delivered_at": now,
+                    "claimed_timestamp_micro": None,
+                    "lease_expires_timestamp_micro": None,
+                    "delivered_timestamp_micro": now,
                 }
             )
             repository.update(delivered)
@@ -196,7 +196,7 @@ class OutboxDispatcher:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
         if message.claimed_by != self.dispatcher_id:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
-        if message.lease_expires_at is not None and message.lease_expires_at <= now:
+        if message.lease_expires_timestamp_micro is not None and message.lease_expires_timestamp_micro <= now:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
         try:
             processed = self._inbox.process(
@@ -278,10 +278,10 @@ class OutboxDispatcher:
                 message.model_copy(
                     update={
                         "status": OutboxStatus.PENDING,
-                        "available_at": now,
+                        "available_timestamp_micro": now,
                         "claimed_by": None,
-                        "claimed_at": None,
-                        "lease_expires_at": None,
+                        "claimed_timestamp_micro": None,
+                        "lease_expires_timestamp_micro": None,
                     }
                 )
             )
@@ -303,8 +303,8 @@ class OutboxDispatcher:
                         update={
                             "status": OutboxStatus.FAILED,
                             "claimed_by": None,
-                            "claimed_at": None,
-                            "lease_expires_at": None,
+                            "claimed_timestamp_micro": None,
+                            "lease_expires_timestamp_micro": None,
                         }
                     )
                 )
@@ -322,10 +322,10 @@ class OutboxDispatcher:
                 current.model_copy(
                     update={
                         "status": OutboxStatus.PENDING,
-                        "available_at": now + timedelta(seconds=delay),
+                        "available_timestamp_micro": now + timedelta(seconds=delay),
                         "claimed_by": None,
-                        "claimed_at": None,
-                        "lease_expires_at": None,
+                        "claimed_timestamp_micro": None,
+                        "lease_expires_timestamp_micro": None,
                     }
                 )
             )
@@ -372,7 +372,7 @@ class JobDispatcher:
                     result = self._job_factory.create_job(
                         si,
                         queue_name=self.queue_name,
-                        available_at=now,
+                        available_timestamp_micro=now,
                         connection=conn,
                     )
                     if result.created:
