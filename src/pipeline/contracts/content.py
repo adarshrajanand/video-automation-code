@@ -42,8 +42,14 @@ class SourceRef(Contract):
 
     @model_validator(mode="after")
     def _validate_source_ref(self) -> SourceRef:
-        if self.published_timestamp_micro is not None and self.published_timestamp_micro > self.retrieved_timestamp_micro:
-            raise ValueError("published_timestamp_micro must not be later than retrieved_timestamp_micro")
+        if (
+            self.published_timestamp_micro is not None
+            and self.published_timestamp_micro > self.retrieved_timestamp_micro
+        ):
+            raise ValueError(
+                "published_timestamp_micro must not be later than "
+                "retrieved_timestamp_micro"
+            )
         return self
 
 

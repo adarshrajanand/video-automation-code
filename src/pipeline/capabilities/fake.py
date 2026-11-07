@@ -105,8 +105,12 @@ class FakeCapabilityProvider:
 
         # Create capability execution record
         execution_id = request.capability_execution_id
-        started_timestamp_micro = __import__("datetime").datetime.now(__import__("datetime").UTC)
-        finished_timestamp_micro = __import__("datetime").datetime.now(__import__("datetime").UTC)
+        started_timestamp_micro = __import__("datetime").datetime.now(
+            __import__("datetime").UTC
+        )
+        finished_timestamp_micro = __import__("datetime").datetime.now(
+            __import__("datetime").UTC
+        )
 
         # Handle exception-raising outcomes
         if outcome.raise_exception:
@@ -185,7 +189,9 @@ class FakeCapabilityProvider:
             request_fingerprint=fingerprint,
             status=ProviderInvocationStatus(outcome.status),
             started_timestamp_micro=started_timestamp_micro,
-            finished_timestamp_micro=finished_timestamp_micro if outcome.status != "UNKNOWN" else None,
+            finished_timestamp_micro=finished_timestamp_micro
+            if outcome.status != "UNKNOWN"
+            else None,
         )
 
         # Build CapabilityResult

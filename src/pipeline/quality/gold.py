@@ -20,6 +20,7 @@ from pipeline.contracts.vocabularies import (
     FailureCode,
     Severity,
 )
+from pipeline.fingerprints import datetime_from_unix_microseconds, unix_microseconds
 
 if TYPE_CHECKING:
     from pipeline.quality.registry import QualityCheckRegistry
@@ -75,7 +76,7 @@ class GoldExample:
                 dim.model_dump(mode="json") for dim in self.expected_dimensions
             ],
             "expected_failure_codes": [fc.value for fc in self.expected_failure_codes],
-            "created_timestamp_micro": self.created_timestamp_micro.isoformat(),
+            "created_timestamp_micro": unix_microseconds(self.created_timestamp_micro),
             "created_by": self.created_by,
             "tags": self.tags,
         }
@@ -92,8 +93,8 @@ class GoldExample:
         data["expected_failure_codes"] = [
             FailureCode(fc) for fc in data["expected_failure_codes"]
         ]
-        data["created_timestamp_micro"] = datetime.fromisoformat(
-            data["created_timestamp_micro"].replace("Z", "+00:00")
+        data["created_timestamp_micro"] = datetime_from_unix_microseconds(
+            data["created_timestamp_micro"]
         )
         return cls(**data)
 

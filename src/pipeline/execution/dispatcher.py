@@ -196,7 +196,10 @@ class OutboxDispatcher:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
         if message.claimed_by != self.dispatcher_id:
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
-        if message.lease_expires_timestamp_micro is not None and message.lease_expires_timestamp_micro <= now:
+        if (
+            message.lease_expires_timestamp_micro is not None
+            and message.lease_expires_timestamp_micro <= now
+        ):
             return DeliveryResult(status=DeliveryStatus.STALE, message=message)
         try:
             processed = self._inbox.process(

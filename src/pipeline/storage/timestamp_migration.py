@@ -75,7 +75,7 @@ def _column_exists(connection: sqlite3.Connection, table: str, column: str) -> b
     return any(str(row[1]) == column for row in rows)
 
 
-def _require_reset_only_database(connection: sqlite3.Connection) -> None:
+def require_reset_only_database(connection: sqlite3.Connection) -> None:
     """Refuse automatic conversion when durable rows exist.
 
     ``schema_migrations`` is intentionally excluded: it is migration history and
@@ -101,33 +101,69 @@ def _require_reset_only_database(connection: sqlite3.Connection) -> None:
         )
 
 
-def _rename_migration_history_column(connection: sqlite3.Connection) -> None:
-    """Rename and convert ``schema_migrations.applied_at`` once.
+_SCHEMA_MIGRATIONS_DDL = """
+CREATE TABLE schema_migrations (
+    version INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    checksum TEXT NOT NULL,
+    applied_timestamp_micro INTEGER NOT NULL
+)
+"""
 
-    New databases create the column with its final name and integer type, so the
-    old column is absent and this is a no-op. Existing databases still store the
-    ISO-8601 text written by the previous runner.
+
+def _rename_migration_history_column(connection: sqlite3.Connection) -> None:
+    """Rebuild ``schema_migrations`` with the integer timestamp column.
+
+    A plain ``ALTER TABLE ... RENAME COLUMN`` would keep the old ``TEXT``
+    affinity, and the timestamp registry requires ``INTEGER``. Rebuilding this
+    table inside the migration transaction preserves every applied migration
+    row while giving the column the correct declared type.
     """
 
     if not _table_exists(connection, "schema_migrations"):
         return
-    if not _column_exists(connection, "schema_migrations", "applied_at"):
+    columns = {
+        str(row[1]): str(row[2])
+        for row in connection.execute(
+            f"PRAGMA table_info({_quote('schema_migrations')})"
+        ).fetchall()
+    }
+    if (
+        columns.get("applied_timestamp_micro", "").upper() == "INTEGER"
+        and "applied_at" not in columns
+    ):
         return
-    connection.execute(
-        "ALTER TABLE schema_migrations "
-        "RENAME COLUMN applied_at TO applied_timestamp_micro"
+    source = (
+        "applied_timestamp_micro"
+        if "applied_timestamp_micro" in columns
+        else "applied_at"
+        if "applied_at" in columns
+        else None
     )
+    if source is None:
+        return
     rows = connection.execute(
-        "SELECT version, applied_timestamp_micro FROM schema_migrations"
+        f"SELECT version, name, checksum, {source} "
+        "FROM schema_migrations ORDER BY version"
     ).fetchall()
-    for version, value in rows:
-        if isinstance(value, int):
-            continue
-        connection.execute(
-            "UPDATE schema_migrations SET applied_timestamp_micro = ? "
-            "WHERE version = ?",
-            (_parse_iso_microseconds(value, table="schema_migrations"), version),
+    converted = [
+        (
+            int(version),
+            str(name),
+            str(checksum),
+            value
+            if isinstance(value, int)
+            else _parse_iso_microseconds(value, table="schema_migrations"),
         )
+        for version, name, checksum, value in rows
+    ]
+    connection.execute(f"DROP TABLE {_quote('schema_migrations')}")
+    connection.execute(_SCHEMA_MIGRATIONS_DDL)
+    connection.executemany(
+        "INSERT INTO schema_migrations "
+        "(version, name, checksum, applied_timestamp_micro) VALUES (?, ?, ?, ?)",
+        converted,
+    )
 
 
 def _parse_iso_microseconds(value: object, *, table: str) -> int:
@@ -200,58 +236,22 @@ def _execute_script(connection: sqlite3.Connection, script: str) -> None:
 
 
 def convert_timestamp_columns_to_microseconds(connection: sqlite3.Connection) -> None:
-    """Rename timestamp columns to ``*_timestamp_micro`` and convert values to integer microseconds.
+    """Recreate the durable schema with integer microsecond columns.
 
-    The caller owns the transaction. This migration updates the schema in‑place and rewrites existing
-    rows to the new integer representation, preserving all durable data. It also renames and converts
-    ``schema_migrations.applied_at`` to ``applied_timestamp_micro``.
+    The caller owns the transaction. The database must be empty apart from
+    migration history; otherwise this raises :class:`MigrationError` with the
+    documented reset procedure. Tables are dropped children-first (reverse of
+    their declaration order) so foreign keys cannot block the rebuild.
     """
 
+    require_reset_only_database(connection)
     _rename_migration_history_column(connection)
 
-    for table, columns in TIMESTAMP_COLUMNS.items():
-        if not _table_exists(connection, table):
-            continue
-        for column in columns:
-            legacy = _legacy_name(column)
-            # If legacy column exists, rename it to the new name.
-            if _column_exists(connection, table, legacy):
-                # Rename column (SQLite 3.25+ supports this).
-                connection.execute(
-                    f"ALTER TABLE {_quote(table)} RENAME COLUMN {_quote(legacy)} TO {_quote(column)}"
-                )
-                # Convert any existing ISO‑8601 text values to integer microseconds.
-                rows = connection.execute(
-                    f"SELECT rowid, {column} FROM {_quote(table)} WHERE typeof({column}) = 'text'"
-                ).fetchall()
-                for rowid, value in rows:
-                    if isinstance(value, str):
-                        try:
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
-                            us = unix_microseconds(dt)
-                            connection.execute(
-                                f"UPDATE {_quote(table)} SET {column} = ? WHERE rowid = ?",
-                                (us, rowid),
-                            )
-                        except ValueError:
-                            # If parsing fails, let the later validation catch it.
-                            pass
-            # If the new column already exists (post‑migration) ensure values are integers.
-            elif _column_exists(connection, table, column):
-                rows = connection.execute(
-                    f"SELECT rowid, {column} FROM {_quote(table)} WHERE typeof({column}) = 'text'"
-                ).fetchall()
-                for rowid, value in rows:
-                    if isinstance(value, str):
-                        try:
-                            dt = datetime.fromisoformat(value.replace('Z', '+00:00'))
-                            us = unix_microseconds(dt)
-                            connection.execute(
-                                f"UPDATE {_quote(table)} SET {column} = ? WHERE rowid = ?",
-                                (us, rowid),
-                            )
-                        except ValueError:
-                            pass
+    schema_sql = timestamp_micros_schema_sql()
+    created = _created_tables(schema_sql)
+    for table in reversed(created):
+        connection.execute(f"DROP TABLE IF EXISTS {_quote(table)}")
+    _execute_script(connection, schema_sql)
 
 
 def _legacy_name(column: str) -> str:
@@ -262,5 +262,6 @@ def _legacy_name(column: str) -> str:
 
 __all__ = [
     "convert_timestamp_columns_to_microseconds",
+    "require_reset_only_database",
     "timestamp_micros_schema_sql",
 ]

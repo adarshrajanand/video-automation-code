@@ -72,12 +72,16 @@ class EventOutbox:
         available = available_timestamp_micro or self._clock()
         if connection is not None:
             return [
-                self.append(event, available_timestamp_micro=available, connection=connection)
+                self.append(
+                    event, available_timestamp_micro=available, connection=connection
+                )
                 for event in events
             ]
         with self.database.transaction(immediate=True) as transaction:
             return [
-                self.append(event, available_timestamp_micro=available, connection=transaction)
+                self.append(
+                    event, available_timestamp_micro=available, connection=transaction
+                )
                 for event in events
             ]
 

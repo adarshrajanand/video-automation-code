@@ -117,7 +117,9 @@ def test_updated_at_cannot_precede_created_at(valid_fixtures) -> None:
     payload["created_timestamp_micro"] = "2026-10-21T11:00:00Z"
     payload["updated_timestamp_micro"] = "2026-10-21T10:00:00Z"
 
-    with pytest.raises(ValidationError, match="updated_timestamp_micro must not be earlier"):
+    with pytest.raises(
+        ValidationError, match="updated_timestamp_micro must not be earlier"
+    ):
         WorkflowRun.model_validate(payload)
 
 

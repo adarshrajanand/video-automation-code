@@ -49,8 +49,14 @@ class HumanReview(Contract):
             raise ValueError(
                 "target_hashes keys must exactly match target_artifact_ids"
             )
-        if self.resolved_timestamp_micro is not None and self.resolved_timestamp_micro < self.created_timestamp_micro:
-            raise ValueError("resolved_timestamp_micro must not be earlier than created_timestamp_micro")
+        if (
+            self.resolved_timestamp_micro is not None
+            and self.resolved_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "resolved_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         return self
 
 
@@ -108,7 +114,10 @@ class PublicationAttempt(Contract):
             and self.finished_timestamp_micro is not None
             and self.finished_timestamp_micro < self.started_timestamp_micro
         ):
-            raise ValueError("finished_timestamp_micro must not be earlier than started_timestamp_micro")
+            raise ValueError(
+                "finished_timestamp_micro must not be earlier than "
+                "started_timestamp_micro"
+            )
         if self.status is PublicationStatus.FAILED and self.normalized_error is None:
             raise ValueError("a failed publication attempt requires a normalized_error")
         if (

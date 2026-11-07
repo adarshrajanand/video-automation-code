@@ -208,7 +208,8 @@ class JobRepository(SqliteRepository[Job]):
 
     def list_by_status(self, status: JobStatus) -> list[Job]:
         rows = self.connection.execute(
-            "SELECT payload FROM jobs WHERE status = ? ORDER BY available_timestamp_micro, job_id",
+            "SELECT payload FROM jobs WHERE status = ? "
+            "ORDER BY available_timestamp_micro, job_id",
             (status.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]

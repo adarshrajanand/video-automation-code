@@ -103,15 +103,15 @@ class OutboxMessageRepository(SqliteRepository[OutboxMessage]):
     def list_available(self, now: datetime, *, limit: int | None = None) -> list[str]:
         """Return PENDING outbox IDs that are available at ``now``.
 
-        SQLite's ``julianday`` keeps ISO-8601 timestamps with or without
-        fractional seconds correctly ordered; comparing canonical strings
-        directly would not.
+        Timestamps are stored as integer microseconds, so ordering and
+        comparison are numeric. Wrapping the column in ``julianday`` would
+        reinterpret the integer as Julian days and make comparisons meaningless.
         """
 
         sql = (
             "SELECT outbox_id FROM outbox_messages "
-            "WHERE status = ? AND julianday(available_timestamp_micro) <= julianday(?) "
-            "ORDER BY julianday(available_timestamp_micro), outbox_id"
+            "WHERE status = ? AND available_timestamp_micro <= ? "
+            "ORDER BY available_timestamp_micro, outbox_id"
         )
         parameters: list[object] = [OutboxStatus.PENDING.value, _timestamp(now)]
         if limit is not None:
@@ -124,8 +124,8 @@ class OutboxMessageRepository(SqliteRepository[OutboxMessage]):
         rows = self.connection.execute(
             "SELECT outbox_id FROM outbox_messages "
             "WHERE status = ? AND lease_expires_timestamp_micro IS NOT NULL "
-            "AND julianday(lease_expires_timestamp_micro) <= julianday(?) "
-            "ORDER BY julianday(lease_expires_timestamp_micro), outbox_id",
+            "AND lease_expires_timestamp_micro <= ? "
+            "ORDER BY lease_expires_timestamp_micro, outbox_id",
             (OutboxStatus.CLAIMED.value, _timestamp(now)),
         ).fetchall()
         return [str(row[0]) for row in rows]
@@ -183,7 +183,10 @@ def insert_event_and_outbox(
 
     if status is not OutboxStatus.PENDING:
         raise ValueError("new outbox messages must start in PENDING state")
-    if available_timestamp_micro.tzinfo is None or available_timestamp_micro.utcoffset() is None:
+    if (
+        available_timestamp_micro.tzinfo is None
+        or available_timestamp_micro.utcoffset() is None
+    ):
         raise ValueError("available_timestamp_micro must be timezone-aware")
     if not connection.in_transaction:
         raise ValueError(
@@ -204,7 +207,7 @@ def insert_event_and_outbox(
     return message
 
 
-def _timestamp(value: datetime) -> str:
+def _timestamp(value: datetime) -> int:
     return unix_microseconds(value)
 
 

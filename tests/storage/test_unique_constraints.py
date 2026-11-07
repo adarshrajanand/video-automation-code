@@ -229,8 +229,8 @@ def test_outbox_event_and_inbox_consumer_receipts_are_unique(database) -> None:
         _event(connection, "event_02")
         connection.execute(
             "INSERT INTO outbox_messages "
-            "(outbox_id, event_id, status, delivery_attempts, available_timestamp_micro, "
-            "schema_version, payload) VALUES "
+            "(outbox_id, event_id, status, delivery_attempts, "
+            "available_timestamp_micro, schema_version, payload) VALUES "
             "('outbox_01', 'event_01', 'PENDING', 0, ?, "
             "'outbox-message.v1', '{}')",
             ("2026-10-21T09:00:00Z",),
@@ -247,8 +247,8 @@ def test_outbox_event_and_inbox_consumer_receipts_are_unique(database) -> None:
     ):
         connection.execute(
             "INSERT INTO outbox_messages "
-            "(outbox_id, event_id, status, delivery_attempts, available_timestamp_micro, "
-            "schema_version, payload) VALUES "
+            "(outbox_id, event_id, status, delivery_attempts, "
+            "available_timestamp_micro, schema_version, payload) VALUES "
             "('outbox_02', 'event_01', 'PENDING', 0, ?, "
             "'outbox-message.v1', '{}')",
             ("2026-10-21T09:00:00Z",),

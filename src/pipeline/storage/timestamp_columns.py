@@ -9,8 +9,9 @@ full serialized Pydantic contract and the source of truth for the record.
 A **projection column** is a SQL column that duplicates one payload field for
 querying: filtering, ordering, uniqueness, and ``NOT NULL`` enforcement. For
 example ``workflow_runs.created_timestamp_micro`` is the SQL projection of the
-``WorkflowRun.created_timestamp_micro`` field that also appears in the row's payload. The
-write path writes both copies; they can drift if a direct SQL writer or an old
+``WorkflowRun.created_timestamp_micro`` field that also appears in the row's
+payload. The write path writes both copies; they can drift if a direct SQL
+writer or an old
 migration touches only one. Backfill and validation exist because of that
 duplication.
 

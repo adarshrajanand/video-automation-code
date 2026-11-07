@@ -178,7 +178,10 @@ class ArtifactPointerRepository(SqliteRepository[ArtifactPointer]):
                     "activate() requires a new pointer record, not the active one"
                 )
             deactivated = active_pointer.model_copy(
-                update={"active": False, "updated_timestamp_micro": pointer.updated_timestamp_micro}
+                update={
+                    "active": False,
+                    "updated_timestamp_micro": pointer.updated_timestamp_micro,
+                }
             )
             self.update(deactivated)
         return self.insert(pointer)

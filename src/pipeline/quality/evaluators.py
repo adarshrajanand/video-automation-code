@@ -611,7 +611,9 @@ class DeterministicCheckEvaluator:
         started_timestamp_micro: datetime,
     ) -> QualityEvaluation:
         """Create an error evaluation."""
-        latency_ms = int((datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000)
+        latency_ms = int(
+            (datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000
+        )
         eval_id = deterministic_id(
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
@@ -1602,7 +1604,9 @@ class SpecializedCheckEvaluator:
         error: str,
         started_timestamp_micro: datetime,
     ) -> QualityEvaluation:
-        latency_ms = int((datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000)
+        latency_ms = int(
+            (datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000
+        )
         eval_id = deterministic_id(
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )
@@ -2006,7 +2010,9 @@ class SemanticCheckEvaluator:
         error: str,
         started_timestamp_micro: datetime,
     ) -> QualityEvaluation:
-        latency_ms = int((datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000)
+        latency_ms = int(
+            (datetime.now(UTC) - started_timestamp_micro).total_seconds() * 1000
+        )
         eval_id = deterministic_id(
             "eval", manifest.manifest_id, check.check_id, check.evaluator_version
         )

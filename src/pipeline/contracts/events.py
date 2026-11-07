@@ -145,11 +145,25 @@ class OutboxMessage(Contract):
             and self.lease_expires_timestamp_micro is not None
             and self.lease_expires_timestamp_micro <= self.claimed_timestamp_micro
         ):
-            raise ValueError("lease_expires_timestamp_micro must be later than claimed_timestamp_micro")
-        if self.status is OutboxStatus.DELIVERED and self.delivered_timestamp_micro is None:
-            raise ValueError("a delivered outbox message requires delivered_timestamp_micro")
-        if self.delivered_timestamp_micro is not None and self.delivered_timestamp_micro < self.available_timestamp_micro:
-            raise ValueError("delivered_timestamp_micro must not be earlier than available_timestamp_micro")
+            raise ValueError(
+                "lease_expires_timestamp_micro must be later than "
+                "claimed_timestamp_micro"
+            )
+        if (
+            self.status is OutboxStatus.DELIVERED
+            and self.delivered_timestamp_micro is None
+        ):
+            raise ValueError(
+                "a delivered outbox message requires delivered_timestamp_micro"
+            )
+        if (
+            self.delivered_timestamp_micro is not None
+            and self.delivered_timestamp_micro < self.available_timestamp_micro
+        ):
+            raise ValueError(
+                "delivered_timestamp_micro must not be earlier than "
+                "available_timestamp_micro"
+            )
         return self
 
 
@@ -166,14 +180,18 @@ class InboxReceipt(Contract):
     @model_validator(mode="after")
     def _validate_receipt(self) -> InboxReceipt:
         if self.status is InboxStatus.RECEIVED:
-            if self.processed_timestamp_micro is not None or self.error_code is not None:
+            if (
+                self.processed_timestamp_micro is not None
+                or self.error_code is not None
+            ):
                 raise ValueError(
                     "a received inbox entry must not be processed or failed"
                 )
         elif self.status in (InboxStatus.PROCESSED, InboxStatus.IGNORED):
             if self.processed_timestamp_micro is None:
                 raise ValueError(
-                    f"a {self.status.value.lower()} receipt requires processed_timestamp_micro"
+                    f"a {self.status.value.lower()} receipt requires "
+                    "processed_timestamp_micro"
                 )
             if self.error_code is not None:
                 raise ValueError("a processed receipt must not carry error_code")

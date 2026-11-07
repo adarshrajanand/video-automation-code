@@ -5,12 +5,14 @@ from datetime import UTC, datetime, timedelta, timezone
 
 from pipeline.contracts.review import HumanReview, HumanReviewDecision
 from pipeline.contracts.vocabularies import ReviewDecision, ReviewStatus
-from pipeline.storage.backfill import canonicalize_persisted_timestamps
 from pipeline.fingerprints import unix_microseconds
+from pipeline.storage.backfill import canonicalize_persisted_timestamps
 from pipeline.storage.repositories.editorial import HumanReviewRepository
 
 
-def _insert_legacy_review(connection, review_id: str, created_timestamp_micro: str) -> None:
+def _insert_legacy_review(
+    connection, review_id: str, created_timestamp_micro: str
+) -> None:
     payload = {
         "schema_version": "human-review.v2",
         "review_id": review_id,
@@ -75,16 +77,17 @@ def test_persisted_text_order_matches_chronological_order(database) -> None:
 
     with database.connection() as connection:
         rows = connection.execute(
-            "SELECT review_id, created_timestamp_micro FROM human_reviews ORDER BY created_timestamp_micro"
+            "SELECT review_id, created_timestamp_micro FROM human_reviews "
+            "ORDER BY created_timestamp_micro"
         ).fetchall()
 
-    stored = [str(row["created_timestamp_micro"]) for row in rows]
+    stored = [row["created_timestamp_micro"] for row in rows]
     assert stored == sorted(stored)
     assert [row["review_id"] for row in rows] == [
         review.review_id for review in reviews
     ]
+    # The projection column must return ints; TEXT affinity would hand back str.
     assert all(isinstance(value, int) for value in stored)
-    # assert all(len(value) == 27 for value in stored)  # removed, values are integers
 
 
 def test_mixed_legacy_serializers_order_chronologically_after_backfill(
@@ -112,7 +115,8 @@ def test_mixed_legacy_serializers_order_chronologically_after_backfill(
 
     with database.connection() as connection:
         after = connection.execute(
-            "SELECT review_id, created_timestamp_micro FROM human_reviews ORDER BY created_timestamp_micro"
+            "SELECT review_id, created_timestamp_micro FROM human_reviews "
+            "ORDER BY created_timestamp_micro"
         ).fetchall()
 
     assert [row[0] for row in after] == [
@@ -123,7 +127,7 @@ def test_mixed_legacy_serializers_order_chronologically_after_backfill(
     assert [row[1] for row in after] == [
         unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)),
         unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC)),
-        unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, tzinfo=UTC)),
+        unix_microseconds(datetime(2026, 10, 21, 12, 0, 0, 2, tzinfo=UTC)),
     ]
 
 
@@ -162,5 +166,9 @@ def test_direct_decision_write_uses_canonical_timestamp(database) -> None:
         ).fetchone()
 
     assert row is not None
-    assert row["created_timestamp_micro"] == unix_microseconds(datetime(2026, 10, 21, 12, 5, 0, 123456, tzinfo=UTC))
-    assert json.loads(row["payload"])["created_timestamp_micro"] == unix_microseconds(datetime(2026, 10, 21, 12, 5, 0, 123456, tzinfo=UTC))
+    assert row["created_timestamp_micro"] == unix_microseconds(
+        datetime(2026, 10, 21, 12, 5, 0, 123456, tzinfo=UTC)
+    )
+    assert json.loads(row["payload"])["created_timestamp_micro"] == unix_microseconds(
+        datetime(2026, 10, 21, 12, 5, 0, 123456, tzinfo=UTC)
+    )

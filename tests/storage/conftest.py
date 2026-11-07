@@ -140,7 +140,9 @@ class RecordFactory:
             worker_id="worker_local_01",
             lease_expires_timestamp_micro=at(30),
             started_timestamp_micro=at(5),
-            finished_timestamp_micro=at(10) if status is AttemptStatus.SUCCEEDED else None,
+            finished_timestamp_micro=at(10)
+            if status is AttemptStatus.SUCCEEDED
+            else None,
         )
 
     def job(
@@ -194,7 +196,9 @@ class RecordFactory:
             capability_execution_id=f"capexec_{suffix}",
             result_artifact_ids=[],
             created_timestamp_micro=at(20),
-            completed_timestamp_micro=at(25) if status is IdempotencyStatus.SUCCEEDED else None,
+            completed_timestamp_micro=at(25)
+            if status is IdempotencyStatus.SUCCEEDED
+            else None,
         )
 
     def budget_reservation(

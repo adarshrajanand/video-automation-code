@@ -100,7 +100,7 @@ def _coerce_timestamp(value: object) -> object:
     is being reset, but every validation path writes back an integer.
     """
 
-    if isinstance(value, bool) or isinstance(value, float):
+    if isinstance(value, (bool, float)):
         raise ValueError(
             "timestamps must be integer microseconds since the Unix epoch, "
             "ISO-8601 strings, or datetime objects"
@@ -169,8 +169,14 @@ class UTCRecord(Contract):
 
     @model_validator(mode="after")
     def _validate_timestamp_order(self) -> UTCRecord:
-        if self.updated_timestamp_micro is not None and self.updated_timestamp_micro < self.created_timestamp_micro:
-            raise ValueError("updated_timestamp_micro must not be earlier than created_timestamp_micro")
+        if (
+            self.updated_timestamp_micro is not None
+            and self.updated_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "updated_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         return self
 
 

@@ -172,7 +172,8 @@ class RecoveryManager:
                 queue_name=job.queue_name,
                 input_artifact_ids=attempt.input_artifact_ids,
                 attempt_number=attempt.attempt_number + 1,
-                available_timestamp_micro=now + timedelta(seconds=decision.backoff_seconds),
+                available_timestamp_micro=now
+                + timedelta(seconds=decision.backoff_seconds),
                 connection=connection,
             )
             waiting_stage = ready_stage.model_copy(

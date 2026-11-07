@@ -48,7 +48,8 @@ class IdempotencyRecordRepository(SqliteRepository[IdempotencyRecord]):
     ) -> list[IdempotencyRecord]:
         rows = self.connection.execute(
             "SELECT payload FROM idempotency_records "
-            "WHERE capability_execution_id = ? ORDER BY created_timestamp_micro, idempotency_key",
+            "WHERE capability_execution_id = ? "
+            "ORDER BY created_timestamp_micro, idempotency_key",
             (capability_execution_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]

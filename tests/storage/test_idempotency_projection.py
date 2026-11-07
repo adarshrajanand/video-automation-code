@@ -52,8 +52,12 @@ def _changed_record(records, suffix: str) -> IdempotencyRecord:
             "provider_invocation_id": f"inv_{suffix}",
             "provider_operation_id": f"op_{suffix}",
             "result_artifact_ids": [f"artifact_out_{suffix}"],
-            "created_timestamp_micro": datetime(2026, 10, 21, 9, 0, 0, 123456, tzinfo=UTC),
-            "completed_timestamp_micro": datetime(2026, 10, 21, 9, 0, 1, 654321, tzinfo=UTC),
+            "created_timestamp_micro": datetime(
+                2026, 10, 21, 9, 0, 0, 123456, tzinfo=UTC
+            ),
+            "completed_timestamp_micro": datetime(
+                2026, 10, 21, 9, 0, 1, 654321, tzinfo=UTC
+            ),
         }
     )
 

@@ -1374,7 +1374,8 @@ def _run_db_command(arguments: argparse.Namespace) -> int:
                 for applied in status.applied:
                     print(
                         f"  {applied.version:04d}_{applied.name} "
-                        f"({applied.checksum}) applied at {applied.applied_timestamp_micro}"
+                        f"({applied.checksum}) applied at "
+                        f"{applied.applied_timestamp_micro}"
                     )
             else:
                 print("  (none)")

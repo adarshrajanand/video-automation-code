@@ -56,11 +56,17 @@ class Lease(Contract):
     @model_validator(mode="after")
     def _validate_lease_term(self) -> Lease:
         if self.expires_timestamp_micro <= self.acquired_timestamp_micro:
-            raise ValueError("expires_timestamp_micro must be later than acquired_timestamp_micro")
+            raise ValueError(
+                "expires_timestamp_micro must be later than acquired_timestamp_micro"
+            )
         if self.heartbeat_timestamp_micro is not None and not (
-            self.acquired_timestamp_micro <= self.heartbeat_timestamp_micro <= self.expires_timestamp_micro
+            self.acquired_timestamp_micro
+            <= self.heartbeat_timestamp_micro
+            <= self.expires_timestamp_micro
         ):
-            raise ValueError("heartbeat_timestamp_micro must fall within the acquired/expires term")
+            raise ValueError(
+                "heartbeat_timestamp_micro must fall within the acquired/expires term"
+            )
         return self
 
 

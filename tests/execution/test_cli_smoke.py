@@ -37,7 +37,9 @@ def test_outbox_dispatch_cli_smoke(records, clock, capsys) -> None:
 
 def test_worker_run_cli_smoke(records, clock, capsys) -> None:
     old = datetime(2020, 1, 1, tzinfo=UTC)
-    stage = records.stage.model_copy(update={"created_timestamp_micro": old, "updated_timestamp_micro": old})
+    stage = records.stage.model_copy(
+        update={"created_timestamp_micro": old, "updated_timestamp_micro": old}
+    )
     with records.database.transaction() as connection:
         StageInstanceRepository(connection).update(stage)
     job = JobFactory(records.database, clock=clock).create_job(stage).job

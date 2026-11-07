@@ -116,7 +116,10 @@ class StageAttempt(Contract):
             and self.finished_timestamp_micro is not None
             and self.finished_timestamp_micro < self.started_timestamp_micro
         ):
-            raise ValueError("finished_timestamp_micro must not be earlier than started_timestamp_micro")
+            raise ValueError(
+                "finished_timestamp_micro must not be earlier than "
+                "started_timestamp_micro"
+            )
         if self.status is AttemptStatus.SUCCEEDED and self.failure_code is not None:
             raise ValueError("a succeeded attempt must not carry a failure_code")
         return self

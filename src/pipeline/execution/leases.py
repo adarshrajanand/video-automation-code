@@ -128,7 +128,10 @@ def verify_live_claim(
         return LeaseCheck(job=job, lease=latest, reason="LEASE_OWNER_MISMATCH")
     if now >= latest.expires_timestamp_micro:
         return LeaseCheck(job=job, lease=latest, reason="LEASE_EXPIRED")
-    if job.lease_expires_timestamp_micro is None or now >= job.lease_expires_timestamp_micro:
+    if (
+        job.lease_expires_timestamp_micro is None
+        or now >= job.lease_expires_timestamp_micro
+    ):
         return LeaseCheck(job=job, lease=latest, reason="LEASE_EXPIRED")
 
     attempt = StageAttemptRepository(connection).get(job.attempt_id)
@@ -199,7 +202,9 @@ class LeaseManager:
         with self.database.transaction(immediate=True) as connection:
             self._recover_expired_locked(connection, now)
             job = JobRepository(connection).get(job_id)
-            eligible = job.status is JobStatus.READY and job.available_timestamp_micro <= now
+            eligible = (
+                job.status is JobStatus.READY and job.available_timestamp_micro <= now
+            )
             if not eligible:
                 return None
             return self._claim_locked(connection, job, owner_id, now, duration)
@@ -220,14 +225,21 @@ class LeaseManager:
                 return None
             expires_timestamp_micro = now + timedelta(seconds=duration)
             lease = check.lease.model_copy(
-                update={"expires_timestamp_micro": expires_timestamp_micro, "heartbeat_timestamp_micro": now}
+                update={
+                    "expires_timestamp_micro": expires_timestamp_micro,
+                    "heartbeat_timestamp_micro": now,
+                }
             )
             LeaseRepository(connection).update(lease)
-            job = check.job.model_copy(update={"lease_expires_timestamp_micro": expires_timestamp_micro})
+            job = check.job.model_copy(
+                update={"lease_expires_timestamp_micro": expires_timestamp_micro}
+            )
             JobRepository(connection).update(job)
             attempt = check.attempt
             assert attempt is not None
-            attempt = attempt.model_copy(update={"lease_expires_timestamp_micro": expires_timestamp_micro})
+            attempt = attempt.model_copy(
+                update={"lease_expires_timestamp_micro": expires_timestamp_micro}
+            )
             StageAttemptRepository(connection).update(attempt)
             stage = check.stage_instance
             assert stage is not None
@@ -439,8 +451,8 @@ class LeaseManager:
         rows = connection.execute(
             "SELECT job_id FROM jobs WHERE status = ? "
             "AND lease_expires_timestamp_micro IS NOT NULL "
-            "AND julianday(lease_expires_timestamp_micro) <= julianday(?) "
-            "ORDER BY julianday(lease_expires_timestamp_micro), job_id",
+            "AND lease_expires_timestamp_micro <= ? "
+            "ORDER BY lease_expires_timestamp_micro, job_id",
             (JobStatus.CLAIMED.value, unix_microseconds(now)),
         ).fetchall()
         recovered: list[ExpiredLeaseRecovery] = []
@@ -528,15 +540,15 @@ class LeaseManager:
         if queue_name is None:
             row = connection.execute(
                 "SELECT job_id FROM jobs WHERE status = ? "
-                "AND julianday(available_timestamp_micro) <= julianday(?) "
-                "ORDER BY julianday(available_timestamp_micro), job_id LIMIT 1",
+                "AND available_timestamp_micro <= ? "
+                "ORDER BY available_timestamp_micro, job_id LIMIT 1",
                 (JobStatus.READY.value, unix_microseconds(now)),
             ).fetchone()
         else:
             row = connection.execute(
                 "SELECT job_id FROM jobs WHERE status = ? AND queue_name = ? "
-                "AND julianday(available_timestamp_micro) <= julianday(?) "
-                "ORDER BY julianday(available_timestamp_micro), job_id LIMIT 1",
+                "AND available_timestamp_micro <= ? "
+                "ORDER BY available_timestamp_micro, job_id LIMIT 1",
                 (
                     JobStatus.READY.value,
                     queue_name,

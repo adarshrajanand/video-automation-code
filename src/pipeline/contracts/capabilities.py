@@ -162,7 +162,10 @@ class CapabilityExecution(Contract):
             and self.finished_timestamp_micro is not None
             and self.finished_timestamp_micro < self.started_timestamp_micro
         ):
-            raise ValueError("finished_timestamp_micro must not be earlier than started_timestamp_micro")
+            raise ValueError(
+                "finished_timestamp_micro must not be earlier than "
+                "started_timestamp_micro"
+            )
         if (
             self.status is CapabilityExecutionStatus.SUCCEEDED
             and self.normalized_error is not None
@@ -208,8 +211,14 @@ class IdempotencyRecord(Contract):
             raise ValueError("input_artifact_ids must not contain duplicates")
         if len(set(self.required_features)) != len(self.required_features):
             raise ValueError("required_features must not contain duplicates")
-        if self.completed_timestamp_micro is not None and self.completed_timestamp_micro < self.created_timestamp_micro:
-            raise ValueError("completed_timestamp_micro must not be earlier than created_timestamp_micro")
+        if (
+            self.completed_timestamp_micro is not None
+            and self.completed_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "completed_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         return self
 
 
@@ -230,8 +239,14 @@ class BudgetReservation(Contract):
 
     @model_validator(mode="after")
     def _validate_reservation(self) -> BudgetReservation:
-        if self.settled_timestamp_micro is not None and self.settled_timestamp_micro < self.created_timestamp_micro:
-            raise ValueError("settled_timestamp_micro must not be earlier than created_timestamp_micro")
+        if (
+            self.settled_timestamp_micro is not None
+            and self.settled_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "settled_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         if (
             self.status is BudgetReservationStatus.SETTLED
             and self.actual_cost_minor is None

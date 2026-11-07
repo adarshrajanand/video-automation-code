@@ -197,7 +197,10 @@ def _gate_verdict(
 
     chosen = sorted(
         candidates,
-        key=lambda result: (result.created_timestamp_micro, result.quality_gate_result_id),
+        key=lambda result: (
+            result.created_timestamp_micro,
+            result.quality_gate_result_id,
+        ),
     )[-1]
     targets_usable = all(
         artifact_id in usable_artifacts for artifact_id in chosen.target_artifact_ids

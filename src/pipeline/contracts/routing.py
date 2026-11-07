@@ -129,13 +129,21 @@ class ProviderInvocation(Contract):
 
     @model_validator(mode="after")
     def _validate_invocation(self) -> ProviderInvocation:
-        if self.finished_timestamp_micro is not None and self.finished_timestamp_micro < self.started_timestamp_micro:
-            raise ValueError("finished_timestamp_micro must not be earlier than started_timestamp_micro")
+        if (
+            self.finished_timestamp_micro is not None
+            and self.finished_timestamp_micro < self.started_timestamp_micro
+        ):
+            raise ValueError(
+                "finished_timestamp_micro must not be earlier than "
+                "started_timestamp_micro"
+            )
         if (
             self.status is ProviderInvocationStatus.STARTED
             and self.finished_timestamp_micro is not None
         ):
-            raise ValueError("a started invocation must not have finished_timestamp_micro")
+            raise ValueError(
+                "a started invocation must not have finished_timestamp_micro"
+            )
         return self
 
 

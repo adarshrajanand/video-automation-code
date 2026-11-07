@@ -225,8 +225,14 @@ class QualityGateResult(Contract):
             values = getattr(self, field_name)
             if len(set(values)) != len(values):
                 raise ValueError(f"{field_name} must not contain duplicates")
-        if self.completed_timestamp_micro is not None and self.completed_timestamp_micro < self.created_timestamp_micro:
-            raise ValueError("completed_timestamp_micro must not be earlier than created_timestamp_micro")
+        if (
+            self.completed_timestamp_micro is not None
+            and self.completed_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "completed_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         return self
 
 

@@ -15,6 +15,7 @@ from pipeline.contracts.base import (
     UTCDateTime,
 )
 from pipeline.contracts.vocabularies import EvaluationKind
+from pipeline.fingerprints import datetime_from_unix_microseconds, unix_microseconds
 
 if TYPE_CHECKING:
     pass
@@ -59,8 +60,12 @@ class ThresholdRecord:
     # Version tracking
     rubric_version: NonEmptyStr | None = None
     estimator_version: NonEmptyStr = "1.0.0"
-    created_timestamp_micro: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
-    updated_timestamp_micro: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
+    created_timestamp_micro: UTCDateTime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
+    updated_timestamp_micro: UTCDateTime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
 
     def __post_init__(self) -> None:
         if not (0.0 <= self.review_threshold <= self.pass_threshold <= 1.0):
@@ -108,8 +113,8 @@ class ThresholdRecord:
             "min_samples_for_recalibration": self.min_samples_for_recalibration,
             "rubric_version": self.rubric_version,
             "estimator_version": self.estimator_version,
-            "created_timestamp_micro": self.created_timestamp_micro.isoformat(),
-            "updated_timestamp_micro": self.updated_timestamp_micro.isoformat(),
+            "created_timestamp_micro": unix_microseconds(self.created_timestamp_micro),
+            "updated_timestamp_micro": unix_microseconds(self.updated_timestamp_micro),
         }
 
     @classmethod
@@ -118,11 +123,11 @@ class ThresholdRecord:
         data = data.copy()
         data["evaluation_kind"] = EvaluationKind(data["evaluation_kind"])
         data["confidence_interval"] = tuple(data["confidence_interval"])
-        data["created_timestamp_micro"] = datetime.fromisoformat(
-            data["created_timestamp_micro"].replace("Z", "+00:00")
+        data["created_timestamp_micro"] = datetime_from_unix_microseconds(
+            data["created_timestamp_micro"]
         )
-        data["updated_timestamp_micro"] = datetime.fromisoformat(
-            data["updated_timestamp_micro"].replace("Z", "+00:00")
+        data["updated_timestamp_micro"] = datetime_from_unix_microseconds(
+            data["updated_timestamp_micro"]
         )
         return cls(**data)
 

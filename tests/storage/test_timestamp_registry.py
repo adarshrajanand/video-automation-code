@@ -104,12 +104,15 @@ def test_unregistered_generated_timestamp_column_fails_validation(
         problems = timestamp_column_problems(connection)
         with pytest.raises(
             TimestampSchemaError,
-            match=re.escape("unregistered timestamp column workflow_runs.archived_timestamp_micro"),
+            match=re.escape(
+                "unregistered timestamp column workflow_runs.archived_timestamp_micro"
+            ),
         ):
             validate_timestamp_columns(connection)
 
     assert (
-        "unregistered timestamp column workflow_runs.archived_timestamp_micro; add it to "
+        "unregistered timestamp column "
+        "workflow_runs.archived_timestamp_micro; add it to "
         "pipeline.storage.timestamp_columns.TIMESTAMP_COLUMNS"
     ) in problems
 
@@ -143,9 +146,9 @@ def test_registered_generated_timestamp_column_is_rejected(
         problems = timestamp_column_problems(connection)
 
     assert (
-        "timestamp column workflow_runs.archived_timestamp_micro is generated or hidden; "
-        "generated timestamp columns are not supported because the backfill "
-        "cannot write them"
+        "timestamp column workflow_runs.archived_timestamp_micro is "
+        "generated or hidden; generated timestamp columns are not supported "
+        "because the backfill cannot write them"
     ) in problems
 
 
@@ -154,15 +157,16 @@ def test_missing_registered_column_fails_validation(database: Database) -> None:
     # does not have.
     with database.transaction() as connection:
         connection.execute(
-            "ALTER TABLE workflow_runs RENAME COLUMN updated_timestamp_micro TO updated_on"
+            "ALTER TABLE workflow_runs RENAME COLUMN updated_timestamp_micro "
+            "TO updated_on"
         )
 
     with database.connection() as connection:
         problems = timestamp_column_problems(connection)
 
     assert (
-        "registered timestamp column workflow_runs.updated_timestamp_micro does not exist"
-        in problems
+        "registered timestamp column "
+        "workflow_runs.updated_timestamp_micro does not exist" in problems
     )
 
 
@@ -172,35 +176,43 @@ def test_wrong_declared_type_fails_validation() -> None:
     connection = sqlite3.connect(":memory:")
     try:
         connection.execute(
-            "CREATE TABLE workflow_runs (created_timestamp_micro TEXT NOT NULL, updated_timestamp_micro INTEGER)"
+            "CREATE TABLE workflow_runs ("
+            "created_timestamp_micro TEXT NOT NULL, "
+            "updated_timestamp_micro INTEGER)"
         )
         problems = timestamp_column_problems(connection)
     finally:
         connection.close()
 
     assert (
-        "timestamp column workflow_runs.created_timestamp_micro has declared type 'TEXT', "
-        "expected 'INTEGER'"
+        "timestamp column workflow_runs.created_timestamp_micro has "
+        "declared type 'TEXT', expected 'INTEGER'"
     ) in problems
 
 
 def test_wrong_nullability_fails_validation() -> None:
-    # Nullability is part of the persisted contract: created_timestamp_micro is NOT NULL,
-    # updated_timestamp_micro/resolved_timestamp_micro etc. may be NULL until the first transition.
+    # Nullability is part of the persisted contract:
+    # created_timestamp_micro is NOT NULL, while
+    # updated_timestamp_micro/resolved_timestamp_micro etc. may be NULL until the
+    # first transition.
     connection = sqlite3.connect(":memory:")
     try:
         connection.execute(
-            "CREATE TABLE workflow_runs (created_timestamp_micro INTEGER, updated_timestamp_micro INTEGER NOT NULL)"
+            "CREATE TABLE workflow_runs ("
+            "created_timestamp_micro INTEGER, "
+            "updated_timestamp_micro INTEGER NOT NULL)"
         )
         problems = timestamp_column_problems(connection)
     finally:
         connection.close()
 
     assert (
-        "timestamp column workflow_runs.created_timestamp_micro is nullable, expected NOT NULL"
+        "timestamp column workflow_runs.created_timestamp_micro is nullable, "
+        "expected NOT NULL"
     ) in problems
     assert (
-        "timestamp column workflow_runs.updated_timestamp_micro is NOT NULL, expected nullable"
+        "timestamp column workflow_runs.updated_timestamp_micro is NOT NULL, "
+        "expected nullable"
     ) in problems
 
 
@@ -226,8 +238,8 @@ def test_backfill_ignores_unregistered_timestamp_suffix(database: Database) -> N
 
 def test_validation_ignores_payload_timestamp_keys(database: Database, records) -> None:
     # A payload is not a projection. `resolved_values` is an extension object,
-    # so its `created_timestamp_micro`/`updated_timestamp_micro` keys are opaque provider data and must
-    # not be validated as SQL timestamp columns.
+    # so its `created_timestamp_micro`/`updated_timestamp_micro` keys are opaque
+    # provider data and must not be validated as SQL timestamp columns.
     config = records.effective_config().model_copy(
         update={
             "resolved_values": {

@@ -281,8 +281,16 @@ class ValidationReport:
         )
         for sa in self.stage_attempts:
             worker = sa.worker_id or "N/A"
-            started = sa.started_timestamp_micro.isoformat() if sa.started_timestamp_micro else "N/A"
-            finished = sa.finished_timestamp_micro.isoformat() if sa.finished_timestamp_micro else "N/A"
+            started = (
+                sa.started_timestamp_micro.isoformat()
+                if sa.started_timestamp_micro
+                else "N/A"
+            )
+            finished = (
+                sa.finished_timestamp_micro.isoformat()
+                if sa.finished_timestamp_micro
+                else "N/A"
+            )
             failure = sa.failure_code.value if sa.failure_code else "N/A"
             lines.append(
                 f"| {sa.attempt_id} | {sa.stage_instance_id} | {sa.attempt_number} | "
@@ -677,10 +685,20 @@ class ValidationReportGenerator:
             ]
             if attempts:
                 started = min(
-                    (a.started_timestamp_micro for a in attempts if a.started_timestamp_micro), default=None
+                    (
+                        a.started_timestamp_micro
+                        for a in attempts
+                        if a.started_timestamp_micro
+                    ),
+                    default=None,
                 )
                 finished = max(
-                    (a.finished_timestamp_micro for a in attempts if a.finished_timestamp_micro), default=None
+                    (
+                        a.finished_timestamp_micro
+                        for a in attempts
+                        if a.finished_timestamp_micro
+                    ),
+                    default=None,
                 )
                 duration = None
                 if started and finished:
@@ -688,7 +706,9 @@ class ValidationReportGenerator:
                 report.stage_timings[si.stage_instance_id] = {
                     "node_id": si.node_id,
                     "started_timestamp_micro": started.isoformat() if started else None,
-                    "finished_timestamp_micro": finished.isoformat() if finished else None,
+                    "finished_timestamp_micro": finished.isoformat()
+                    if finished
+                    else None,
                     "duration_seconds": duration,
                 }
 

@@ -205,9 +205,9 @@ def file_sha256(path: Path) -> str:
 __all__ = [
     "SECRET_FIELD_NAMES",
     "canonical_bytes",
-    "datetime_from_unix_microseconds",
     "canonical_decimal",
     "canonical_json",
+    "datetime_from_unix_microseconds",
     "file_sha256",
     "fingerprint",
     "is_sha256_hex",
