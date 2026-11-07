@@ -15,6 +15,7 @@ from pipeline.contracts.quality import QualityGateResult
 from pipeline.contracts.vocabularies import (
     AttemptStatus,
 )
+from pipeline.fingerprints import unix_microseconds
 from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
@@ -144,14 +145,18 @@ def _redact_command_argv(argv: list[str]) -> str:
 class ValidationReport:
     """Complete validation report for a workflow run."""
 
-    schema_version: str = "validation-report.v1"
+    schema_version: str = "validation-report.v2"
     report_id: str = field(
         default_factory=lambda: (
             f"vrpt_{deterministic_id('vrpt', str(datetime.now(UTC).timestamp()))}"
         )
     )
     run_id: str = ""
-    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # Internal state stays a datetime; the JSON boundary emits integer
+    # microseconds under ``generated_timestamp_micro`` (see ``to_dict``).
+    generated_timestamp_micro: datetime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
 
     # Environment and command info
     command: str = ""
@@ -197,7 +202,7 @@ class ValidationReport:
             f"# Validation Report: {self.run_id}",
             "",
             f"**Report ID:** {self.report_id}",
-            f"**Generated:** {self.generated_at.isoformat()}",
+            f"**Generated:** {self.generated_timestamp_micro.isoformat()}",
             "",
             "---",
             "",
@@ -546,7 +551,9 @@ class ValidationReport:
             "schema_version": self.schema_version,
             "report_id": self.report_id,
             "run_id": self.run_id,
-            "generated_at": self.generated_at.isoformat(),
+            "generated_timestamp_micro": unix_microseconds(
+                self.generated_timestamp_micro
+            ),
             "command": self.command,
             "environment": self.environment,
             "python_version": self.python_version,
@@ -705,8 +712,10 @@ class ValidationReportGenerator:
                     duration = (finished - started).total_seconds()
                 report.stage_timings[si.stage_instance_id] = {
                     "node_id": si.node_id,
-                    "started_timestamp_micro": started.isoformat() if started else None,
-                    "finished_timestamp_micro": finished.isoformat()
+                    "started_timestamp_micro": unix_microseconds(started)
+                    if started
+                    else None,
+                    "finished_timestamp_micro": unix_microseconds(finished)
                     if finished
                     else None,
                     "duration_seconds": duration,
@@ -876,8 +885,10 @@ class QualityReportGenerator:
                 "report_id": f"qrpt_{rid}",
                 "run_ids": run_ids or [],
                 "gate_ids": gate_ids or [],
-                "period_start": period_start.isoformat() if period_start else None,
-                "period_end": period_end.isoformat() if period_end else None,
+                "period_start": unix_microseconds(period_start)
+                if period_start
+                else None,
+                "period_end": unix_microseconds(period_end) if period_end else None,
                 "total_gates": len(gate_results),
                 "pass_count": sum(
                     1 for g in gate_results if g.decision.value == "PASS"
