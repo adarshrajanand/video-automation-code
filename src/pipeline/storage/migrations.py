@@ -22,6 +22,7 @@ from pipeline.storage.errors import MigrationChecksumError, MigrationError
 from pipeline.storage.timestamp_migration import (
     _parse_iso_microseconds,
     convert_timestamp_columns_to_microseconds,
+    normalize_migration_history,
     require_reset_only_database,
 )
 
@@ -269,6 +270,13 @@ class MigrationRunner:
             # can only run empty. See timestamp_migration.py for the reset policy.
             with self.database.connection() as connection:
                 require_reset_only_database(connection)
+        # A genuine pre-#92 database records history as ``applied_at TEXT``.
+        # Normalize it before applying anything so every history write below
+        # targets ``applied_timestamp_micro``, including the 0002 row that is
+        # recorded before 0003 rebuilds this table. This runs only after the
+        # reset preflight, so a refused populated database is left untouched.
+        with self.database.transaction() as connection:
+            normalize_migration_history(connection)
         applied_now: list[Migration] = []
         for migration in status.pending:
             try:

@@ -881,7 +881,7 @@ class QualityReportGenerator:
 
             rid = deterministic_id("qrpt", str(run_ids), str(gate_ids))
             return {
-                "schema_version": "quality-report.v1",
+                "schema_version": "quality-report.v2",
                 "report_id": f"qrpt_{rid}",
                 "run_ids": run_ids or [],
                 "gate_ids": gate_ids or [],

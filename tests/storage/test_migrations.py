@@ -20,7 +20,7 @@ from pipeline.storage import (
     discover_migrations,
 )
 from pipeline.storage.backfill import canonicalize_persisted_timestamps
-from pipeline.storage.migrations import DEFAULT_MIGRATIONS_DIR
+from pipeline.storage.migrations import _execute_sql_script
 
 HASH_A = "a" * 64
 
@@ -33,21 +33,32 @@ def _copy_migrations(target: Path) -> Path:
 
 
 def _legacy_v1_database(target: Path) -> Database:
-    """Create a pre-#92 database by applying only ``0001_initial.sql``.
+    """Create a genuine pre-#92 database as the old runner left it.
 
-    The reset policy, not automatic conversion, governs databases like this. The
-    helper exists to prove that ``migrate()`` refuses them with guidance.
+    Version 1 was applied by the base-branch runner, so history stores
+    ``applied_at`` as ISO-8601 TEXT. Using today's runner to create the fixture
+    would already create ``applied_timestamp_micro`` and hide the upgrade
+    defect reported in review 4501750595.
     """
 
-    migrations_dir = target / "legacy-migrations"
-    migrations_dir.mkdir()
-    shutil.copy(
-        DEFAULT_MIGRATIONS_DIR / "0001_initial.sql",
-        migrations_dir / "0001_initial.sql",
-    )
     database = Database(target / "state" / "pipeline.sqlite3")
-    result = MigrationRunner(database, migrations_dir=migrations_dir).migrate()
-    assert result.current_version == 1
+    initial = next(
+        migration for migration in discover_migrations() if migration.version == 1
+    )
+    with database.transaction() as connection:
+        _execute_sql_script(connection, initial.path.read_text(encoding="utf-8"))
+        connection.execute(
+            "CREATE TABLE schema_migrations ("
+            "version INTEGER PRIMARY KEY, "
+            "name TEXT NOT NULL, "
+            "checksum TEXT NOT NULL, "
+            "applied_at TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT INTO schema_migrations (version, name, checksum, applied_at) "
+            "VALUES (?, ?, ?, ?)",
+            (1, initial.name, initial.checksum, "2026-10-21T09:00:00+00:00"),
+        )
     return database
 
 
@@ -355,12 +366,26 @@ def test_empty_legacy_database_upgrades_to_integer_schema(tmp_path: Path) -> Non
             ).fetchall()
         }
         history = connection.execute(
-            "SELECT applied_timestamp_micro FROM schema_migrations ORDER BY version"
+            "SELECT version, applied_timestamp_micro "
+            "FROM schema_migrations ORDER BY version"
         ).fetchall()
+        history_columns = {
+            row[1]
+            for row in connection.execute(
+                "PRAGMA table_info(schema_migrations)"
+            ).fetchall()
+        }
     assert columns["created_timestamp_micro"] == "INTEGER"
     assert columns["completed_timestamp_micro"] == "INTEGER"
     assert "created_at" not in columns
-    assert all(isinstance(row[0], int) for row in history)
+    assert all(isinstance(row[1], int) for row in history)
+    assert "applied_at" not in history_columns
+    # The genuine legacy ISO-8601 value is preserved through normalization, not
+    # replaced with the time the upgrade happened.
+    assert tuple(history[0]) == (
+        1,
+        unix_microseconds(datetime(2026, 10, 21, 9, 0, tzinfo=UTC)),
+    )
 
 
 def test_backfill_rebuilds_idempotency_projection_from_payload(

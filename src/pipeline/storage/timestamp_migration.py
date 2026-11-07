@@ -111,13 +111,19 @@ CREATE TABLE schema_migrations (
 """
 
 
-def _rename_migration_history_column(connection: sqlite3.Connection) -> None:
+def normalize_migration_history(connection: sqlite3.Connection) -> None:
     """Rebuild ``schema_migrations`` with the integer timestamp column.
 
     A plain ``ALTER TABLE ... RENAME COLUMN`` would keep the old ``TEXT``
     affinity, and the timestamp registry requires ``INTEGER``. Rebuilding this
     table inside the migration transaction preserves every applied migration
     row while giving the column the correct declared type.
+
+    The runner calls this before applying pending migrations. A genuine
+    pre-#92 database stores history as ``applied_at TEXT``; without this
+    normalization the runner's own insert of the migration-0002 history row
+    would target a column that does not exist yet because 0003 rebuilds the
+    table only afterwards (review 4501750595).
     """
 
     if not _table_exists(connection, "schema_migrations"):
@@ -245,7 +251,7 @@ def convert_timestamp_columns_to_microseconds(connection: sqlite3.Connection) ->
     """
 
     require_reset_only_database(connection)
-    _rename_migration_history_column(connection)
+    normalize_migration_history(connection)
 
     schema_sql = timestamp_micros_schema_sql()
     created = _created_tables(schema_sql)
@@ -262,6 +268,7 @@ def _legacy_name(column: str) -> str:
 
 __all__ = [
     "convert_timestamp_columns_to_microseconds",
+    "normalize_migration_history",
     "require_reset_only_database",
     "timestamp_micros_schema_sql",
 ]

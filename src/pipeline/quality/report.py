@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class QualityReport:
     """Aggregate quality report for a time period or run set."""
 
-    schema_version: str = "quality-report.v1"
+    schema_version: str = "quality-report.v2"
     report_id: str = field(
         default_factory=lambda: (
             f"rpt_{deterministic_id('qrpt', str(datetime.now(UTC).timestamp()))}"
@@ -105,7 +105,9 @@ class QualityReport:
             "dimension_metrics": self.dimension_metrics,
             "failure_code_distribution": self.failure_code_distribution,
             "thresholds_needing_recalibration": self.thresholds_needing_recalibration,
-            "generated_at": unix_microseconds(self.generated_at),
+            # v1 wrote ISO text under ``generated_at``; v2 names the unit and
+            # carries the same integer microseconds as every other timestamp.
+            "generated_timestamp_micro": unix_microseconds(self.generated_at),
         }
 
 

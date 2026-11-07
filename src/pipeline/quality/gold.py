@@ -21,9 +21,16 @@ from pipeline.contracts.vocabularies import (
     Severity,
 )
 from pipeline.fingerprints import datetime_from_unix_microseconds, unix_microseconds
+from pipeline.quality.legacy import microseconds_from_legacy_iso
 
 if TYPE_CHECKING:
     from pipeline.quality.registry import QualityCheckRegistry
+
+# Wire-format versions. The timestamp keys changed from ISO ``created_at`` to
+# integer-microsecond ``created_timestamp_micro``; files written by v1 are
+# converted on load rather than silently rejected (review 4501750689).
+GOLD_EXAMPLE_SCHEMA_VERSION = "gold-example.v2"
+GOLD_EXAMPLE_LEGACY_VERSIONS = frozenset({"gold-example.v1"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +42,7 @@ class GoldExample:
     produce consistent, correct results.
     """
 
-    schema_version: str = "gold-example.v1"
+    schema_version: str = GOLD_EXAMPLE_SCHEMA_VERSION
     example_id: str = field(default_factory=lambda: f"gold_{uuid.uuid4().hex[:12]}")
     check_id: str = ""
     evaluator: str = ""
@@ -83,8 +90,24 @@ class GoldExample:
 
     @classmethod
     def from_dict(cls, data: dict) -> GoldExample:
-        """Deserialize from dictionary."""
+        """Deserialize from dictionary, upgrading a v1 file if needed."""
+
         data = data.copy()
+        version = str(data.get("schema_version", "gold-example.v1"))
+        if version in GOLD_EXAMPLE_LEGACY_VERSIONS:
+            # v1 stored an ISO-8601 ``created_at``. Convert it in place so old
+            # saved examples keep loading after the wire-format change.
+            if "created_timestamp_micro" not in data and "created_at" in data:
+                data["created_timestamp_micro"] = microseconds_from_legacy_iso(
+                    data.pop("created_at"), field_name="created_at"
+                )
+            data["schema_version"] = GOLD_EXAMPLE_SCHEMA_VERSION
+        elif version != GOLD_EXAMPLE_SCHEMA_VERSION:
+            raise ValueError(
+                f"unsupported gold example schema_version {version!r}; "
+                f"expected {GOLD_EXAMPLE_SCHEMA_VERSION}. Regenerate the file "
+                "with the current release instead of editing it by hand."
+            )
         data["expected_outcome"] = CheckOutcome(data["expected_outcome"])
         data["expected_confidence"] = Confidence(data["expected_confidence"])
         data["expected_dimensions"] = [
