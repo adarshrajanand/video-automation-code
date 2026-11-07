@@ -70,39 +70,56 @@ def test_strict_ids_reject_blank_values(valid_fixtures) -> None:
 
 def test_naive_datetimes_are_rejected(valid_fixtures) -> None:
     payload = _copy(valid_fixtures["workflow_run"])
-    payload["created_at"] = "2026-10-21T12:00:00"
-    payload["updated_at"] = None
+    payload["created_timestamp_micro"] = "2026-10-21T12:00:00"
+    payload["updated_timestamp_micro"] = None
 
     with pytest.raises(ValidationError, match="timezone-aware"):
         WorkflowRun.model_validate(payload)
 
 
-def test_numeric_datetime_timestamps_are_rejected(valid_fixtures) -> None:
+def test_integer_microseconds_are_accepted(valid_fixtures) -> None:
     payload = _copy(valid_fixtures["workflow_run"])
-    payload["created_at"] = 1761076800
-    payload["updated_at"] = None
+    payload["created_timestamp_micro"] = 1_792_584_000_000_001
+    payload["updated_timestamp_micro"] = None
 
-    with pytest.raises(ValidationError, match="not numeric timestamps"):
+    run = WorkflowRun.model_validate(payload)
+
+    assert run.created_timestamp_micro == datetime(
+        2026, 10, 21, 12, 0, 0, 1, tzinfo=UTC
+    )
+    assert run.model_dump(mode="json")["created_timestamp_micro"] == (
+        1_792_584_000_000_001
+    )
+
+
+def test_float_timestamps_are_rejected(valid_fixtures) -> None:
+    payload = _copy(valid_fixtures["workflow_run"])
+    payload["created_timestamp_micro"] = 1761076800.5
+    payload["updated_timestamp_micro"] = None
+
+    with pytest.raises(ValidationError, match="integer microseconds"):
         WorkflowRun.model_validate(payload)
 
 
 def test_datetimes_are_normalized_to_utc(valid_fixtures) -> None:
     payload = _copy(valid_fixtures["workflow_run"])
-    payload["created_at"] = "2026-10-21T14:00:00+02:00"
-    payload["updated_at"] = "2026-10-21T12:10:00Z"
+    payload["created_timestamp_micro"] = "2026-10-21T14:00:00+02:00"
+    payload["updated_timestamp_micro"] = "2026-10-21T12:10:00Z"
 
     run = WorkflowRun.model_validate(payload)
 
-    assert run.created_at == datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
-    assert run.created_at.utcoffset() == timedelta(0)
+    assert run.created_timestamp_micro == datetime(2026, 10, 21, 12, 0, tzinfo=UTC)
+    assert run.created_timestamp_micro.utcoffset() == timedelta(0)
 
 
 def test_updated_at_cannot_precede_created_at(valid_fixtures) -> None:
     payload = _copy(valid_fixtures["workflow_run"])
-    payload["created_at"] = "2026-10-21T11:00:00Z"
-    payload["updated_at"] = "2026-10-21T10:00:00Z"
+    payload["created_timestamp_micro"] = "2026-10-21T11:00:00Z"
+    payload["updated_timestamp_micro"] = "2026-10-21T10:00:00Z"
 
-    with pytest.raises(ValidationError, match="updated_at must not be earlier"):
+    with pytest.raises(
+        ValidationError, match="updated_timestamp_micro must not be earlier"
+    ):
         WorkflowRun.model_validate(payload)
 
 

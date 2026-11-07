@@ -52,26 +52,24 @@
     "metadata": {
       "$ref": "#/$defs/ExtensionObject"
     },
-    "published_at": {
+    "published_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Published At"
+      "title": "Published Timestamp Micro"
     },
-    "retrieved_at": {
-      "format": "date-time",
-      "title": "Retrieved At",
-      "type": "string"
+    "retrieved_timestamp_micro": {
+      "title": "Retrieved Timestamp Micro",
+      "type": "integer"
     },
     "schema_version": {
-      "const": "source-ref.v1",
+      "const": "source-ref.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -103,10 +101,10 @@
     "kind",
     "uri",
     "title",
-    "retrieved_at",
+    "retrieved_timestamp_micro",
     "content_hash"
   ],
   "title": "SourceRef",
   "type": "object",
-  "x-contract-schema-version": "source-ref.v1"
+  "x-contract-schema-version": "source-ref.v2"
 }

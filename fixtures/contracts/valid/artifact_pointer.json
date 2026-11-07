@@ -5,6 +5,6 @@
   "pointer_id": "pointer_audio_scene_01_current",
   "pointer_type": "CURRENT",
   "run_id": "run_01",
-  "schema_version": "artifact-pointer.v1",
-  "updated_at": "2026-10-21T12:02:00Z"
+  "schema_version": "artifact-pointer.v2",
+  "updated_timestamp_micro": 1792584120000000
 }

@@ -29,35 +29,41 @@ from pipeline.contracts.vocabularies import SourceKind, SpeechStrategy
 class SourceRef(Contract):
     """Reference to an external or internal source document."""
 
-    schema_version: Literal["source-ref.v1"]
+    schema_version: Literal["source-ref.v2"]
     source_id: OpaqueId
     kind: SourceKind
     uri: NonEmptyStr
     title: NonEmptyStr
     author: NonEmptyStr | None = None
-    published_at: UTCDateTime | None = None
-    retrieved_at: UTCDateTime
+    published_timestamp_micro: UTCDateTime | None = None
+    retrieved_timestamp_micro: UTCDateTime
     content_hash: Sha256Hex
     metadata: ExtensionObject = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_source_ref(self) -> SourceRef:
-        if self.published_at is not None and self.published_at > self.retrieved_at:
-            raise ValueError("published_at must not be later than retrieved_at")
+        if (
+            self.published_timestamp_micro is not None
+            and self.published_timestamp_micro > self.retrieved_timestamp_micro
+        ):
+            raise ValueError(
+                "published_timestamp_micro must not be later than "
+                "retrieved_timestamp_micro"
+            )
         return self
 
 
 class SourceSnapshot(Contract):
     """Immutable snapshot of source content at retrieval time."""
 
-    schema_version: Literal["source-snapshot.v1"]
+    schema_version: Literal["source-snapshot.v2"]
     snapshot_id: OpaqueId
     source_ref_id: OpaqueId
     content: NonEmptyStr
     content_hash: Sha256Hex
     token_count: PositiveInt
     language: NonEmptyStr = "en"
-    extracted_at: UTCDateTime
+    extracted_timestamp_micro: UTCDateTime
     metadata: ExtensionObject = Field(default_factory=dict)
 
 
@@ -179,7 +185,7 @@ class ScriptScene(Contract):
 class Script(Contract):
     """Complete script with scenes, claims, evidence, and visual intents."""
 
-    schema_version: Literal["script.v1"]
+    schema_version: Literal["script.v2"]
     script_id: OpaqueId
     episode_id: OpaqueId
     title: NonEmptyStr
@@ -193,7 +199,7 @@ class Script(Contract):
     total_estimated_duration_seconds: PositiveInt
     word_count: PositiveInt
     language: NonEmptyStr = "en"
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
     metadata: ExtensionObject = Field(default_factory=dict)
 
     @model_validator(mode="after")

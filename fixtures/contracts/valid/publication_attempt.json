@@ -1,11 +1,11 @@
 {
   "external_publication_id": "local-export-001",
-  "finished_at": "2026-10-21T15:06:00Z",
+  "finished_timestamp_micro": 1792595160000000,
   "normalized_error": null,
   "provider_operation_id": "local-export-op-001",
   "publication_attempt_id": "publication_attempt_01",
   "publication_request_id": "publication_request_01",
-  "schema_version": "publication-attempt.v1",
-  "started_at": "2026-10-21T15:05:00Z",
+  "schema_version": "publication-attempt.v2",
+  "started_timestamp_micro": 1792595100000000,
   "status": "SUCCEEDED"
 }

@@ -31,10 +31,9 @@
       "default": null,
       "title": "Comments"
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "decision": {
       "$ref": "#/$defs/ReviewDecision"
@@ -54,7 +53,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "human-review-decision.v1",
+      "const": "human-review-decision.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -80,9 +79,9 @@
     "review_id",
     "decision",
     "reviewer",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "HumanReviewDecision",
   "type": "object",
-  "x-contract-schema-version": "human-review-decision.v1"
+  "x-contract-schema-version": "human-review-decision.v2"
 }

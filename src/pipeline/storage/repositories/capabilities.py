@@ -12,7 +12,7 @@ from pipeline.contracts.routing import (
     ProviderInvocation,
     RoutingDecision,
 )
-from pipeline.fingerprints import canonical_datetime, canonical_json
+from pipeline.fingerprints import canonical_json, unix_microseconds
 from pipeline.ids import deterministic_id
 from pipeline.storage.repositories.base import SqliteRepository
 from pipeline.storage.repositories.control import (
@@ -37,9 +37,9 @@ class RoutingDecisionRepository(SqliteRepository[RoutingDecision]):
         "policy_version",
         "attempt",
         "data_classification",
-        "created_at",
+        "created_timestamp_micro",
     )
-    order_by = ("created_at", "routing_decision_id")
+    order_by = ("created_timestamp_micro", "routing_decision_id")
 
 
 class CapabilityExecutionRepository(SqliteRepository["CapabilityExecution"]):
@@ -55,15 +55,15 @@ class CapabilityExecutionRepository(SqliteRepository["CapabilityExecution"]):
         "status",
         "idempotency_key",
         "request_fingerprint",
-        "started_at",
-        "finished_at",
+        "started_timestamp_micro",
+        "finished_timestamp_micro",
     )
     order_by = ("attempt_id", "capability_execution_id")
 
     def list_for_attempt(self, attempt_id: str) -> list[CapabilityExecution]:
         rows = self.connection.execute(
             "SELECT payload FROM capability_executions WHERE attempt_id = ? "
-            "ORDER BY started_at, capability_execution_id",
+            "ORDER BY started_timestamp_micro, capability_execution_id",
             (attempt_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -94,8 +94,8 @@ class ProviderInvocationRepository(SqliteRepository[ProviderInvocation]):
         "idempotency_key",
         "request_fingerprint",
         "status",
-        "started_at",
-        "finished_at",
+        "started_timestamp_micro",
+        "finished_timestamp_micro",
     )
     order_by = ("capability_execution_id", "invocation_id")
 
@@ -105,7 +105,7 @@ class ProviderInvocationRepository(SqliteRepository[ProviderInvocation]):
         rows = self.connection.execute(
             "SELECT payload FROM provider_invocations "
             "WHERE capability_execution_id = ? "
-            "ORDER BY started_at, invocation_id",
+            "ORDER BY started_timestamp_micro, invocation_id",
             (capability_execution_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -128,7 +128,7 @@ class UsageRecordRepository(SqliteRepository["UsageRecord"]):
         "model",
         "estimated_cost_minor",
         "actual_cost_minor",
-        "created_at",
+        "created_timestamp_micro",
         "schema_version",
         "payload",
     )
@@ -137,7 +137,7 @@ class UsageRecordRepository(SqliteRepository["UsageRecord"]):
     def insert(self, record: UsageRecord, capability_execution_id: str) -> UsageRecord:
         """Insert a usage record with a generated deterministic usage_id."""
         usage_id = deterministic_id("usage", capability_execution_id, record.provider)
-        now = canonical_datetime(datetime.now(UTC))
+        now = unix_microseconds(datetime.now(UTC))
         placeholders = ", ".join(["?"] * len(self.columns))
         columns_str = ", ".join(self.columns)
         self.connection.execute(
@@ -180,7 +180,7 @@ class UsageRecordRepository(SqliteRepository["UsageRecord"]):
         rows = self.connection.execute(
             f"SELECT payload FROM {self.table} "
             "WHERE capability_execution_id = ? "
-            "ORDER BY created_at, usage_id",
+            "ORDER BY created_timestamp_micro, usage_id",
             (capability_execution_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]

@@ -1,13 +1,13 @@
 {
   "attempt_id": "attempt_speech_01",
-  "available_at": "2026-10-21T12:00:00Z",
+  "available_timestamp_micro": 1792584000000000,
   "claimed_by": null,
   "delivery_count": 0,
   "fencing_token": null,
   "idempotency_key": "idem_speech_generation_scene_01",
   "job_id": "job_speech_scene_01",
-  "lease_expires_at": null,
+  "lease_expires_timestamp_micro": null,
   "queue_name": "capability_default",
-  "schema_version": "job.v1",
+  "schema_version": "job.v2",
   "status": "READY"
 }

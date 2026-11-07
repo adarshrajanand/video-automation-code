@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 from pipeline.contracts.vocabularies import CheckOutcome
+from pipeline.fingerprints import unix_microseconds
 from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 class QualityReport:
     """Aggregate quality report for a time period or run set."""
 
-    schema_version: str = "quality-report.v1"
+    schema_version: str = "quality-report.v2"
     report_id: str = field(
         default_factory=lambda: (
             f"rpt_{deterministic_id('qrpt', str(datetime.now(UTC).timestamp()))}"
@@ -75,10 +76,12 @@ class QualityReport:
             "report_id": self.report_id,
             "run_ids": self.run_ids,
             "gate_ids": self.gate_ids,
-            "period_start": self.period_start.isoformat()
+            "period_start": unix_microseconds(self.period_start)
             if self.period_start
             else None,
-            "period_end": self.period_end.isoformat() if self.period_end else None,
+            "period_end": unix_microseconds(self.period_end)
+            if self.period_end
+            else None,
             "total_gates": self.total_gates,
             "pass_count": self.pass_count,
             "regenerate_count": self.regenerate_count,
@@ -102,7 +105,9 @@ class QualityReport:
             "dimension_metrics": self.dimension_metrics,
             "failure_code_distribution": self.failure_code_distribution,
             "thresholds_needing_recalibration": self.thresholds_needing_recalibration,
-            "generated_at": self.generated_at.isoformat(),
+            # v1 wrote ISO text under ``generated_at``; v2 names the unit and
+            # carries the same integer microseconds as every other timestamp.
+            "generated_timestamp_micro": unix_microseconds(self.generated_at),
         }
 
 
@@ -144,12 +149,15 @@ class QualityReportGenerator:
 
             # Filter by period if specified
             if period_start:
-                gate_results = [g for g in gate_results if g.created_at >= period_start]
+                gate_results = [
+                    g for g in gate_results if g.created_timestamp_micro >= period_start
+                ]
             if period_end:
                 gate_results = [
                     g
                     for g in gate_results
-                    if g.completed_at and g.completed_at <= period_end
+                    if g.completed_timestamp_micro
+                    and g.completed_timestamp_micro <= period_end
                 ]
 
             # Query evaluations
@@ -166,9 +174,13 @@ class QualityReportGenerator:
 
             # Filter by period
             if period_start:
-                evaluations = [e for e in evaluations if e.created_at >= period_start]
+                evaluations = [
+                    e for e in evaluations if e.created_timestamp_micro >= period_start
+                ]
             if period_end:
-                evaluations = [e for e in evaluations if e.created_at <= period_end]
+                evaluations = [
+                    e for e in evaluations if e.created_timestamp_micro <= period_end
+                ]
 
         # Build report
         report = QualityReport(

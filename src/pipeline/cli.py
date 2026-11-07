@@ -861,7 +861,7 @@ _CLI_CONTEXT_KEYS = frozenset(
 
 def _synthetic_run(workflow: WorkflowDefinition, status: RunStatus) -> WorkflowRun:
     return WorkflowRun(
-        schema_version="workflow-run.v1",
+        schema_version="workflow-run.v2",
         run_id="run_cli",
         run_key=f"cli:{workflow.workflow_id}:{workflow.version}",
         workflow_id=workflow.workflow_id,
@@ -870,8 +870,8 @@ def _synthetic_run(workflow: WorkflowDefinition, status: RunStatus) -> WorkflowR
         effective_config_hash="0" * 64,
         status=status,
         content_package_id="package_cli",
-        created_at=_CLI_RUN_TIME,
-        updated_at=_CLI_RUN_TIME,
+        created_timestamp_micro=_CLI_RUN_TIME,
+        updated_timestamp_micro=_CLI_RUN_TIME,
     )
 
 
@@ -1192,7 +1192,7 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
 
         # Create routing decision
         routing_decision = RoutingDecision(
-            schema_version="routing-decision.v1",
+            schema_version="routing-decision.v2",
             routing_decision_id=routing_decision_id,
             capability=arguments.capability,
             implementation="fake",
@@ -1209,7 +1209,7 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
             attempt=1,
             data_classification="PUBLIC",
             paid_fallback_authorized=False,
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
         # Create required database records for the fake attempt
@@ -1252,7 +1252,7 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
 
             # Create workflow run
             workflow_run = WorkflowRun(
-                schema_version="workflow-run.v1",
+                schema_version="workflow-run.v2",
                 run_id=run_id,
                 run_key=f"cli_test:{run_id}",
                 workflow_id="test_workflow",
@@ -1261,33 +1261,33 @@ def _run_capabilities_invoke(arguments: argparse.Namespace) -> int:
                 effective_config_hash="0" * 64,
                 status=RunStatus.RUNNING,
                 content_package_id=deterministic_id("package", run_id),
-                created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
+                created_timestamp_micro=datetime.now(UTC),
+                updated_timestamp_micro=datetime.now(UTC),
             )
             WorkflowRunRepository(conn).insert(workflow_run)
 
             # Create stage instance
             stage_instance = StageInstance(
-                schema_version="stage-instance.v1",
+                schema_version="stage-instance.v2",
                 stage_instance_id=stage_instance_id,
                 run_id=run_id,
                 node_id="test_node",
                 logical_item_key="test_item",
                 execution_status=StageExecutionStatus.RUNNING,
                 acceptance_status="NOT_REQUIRED",
-                created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
+                created_timestamp_micro=datetime.now(UTC),
+                updated_timestamp_micro=datetime.now(UTC),
             )
             StageInstanceRepository(conn).insert(stage_instance)
 
             # Create stage attempt
             stage_attempt = StageAttempt(
-                schema_version="stage-attempt.v1",
+                schema_version="stage-attempt.v2",
                 attempt_id=attempt_id,
                 stage_instance_id=stage_instance_id,
                 attempt_number=1,
                 status=AttemptStatus.RUNNING,
-                started_at=datetime.now(UTC),
+                started_timestamp_micro=datetime.now(UTC),
             )
             StageAttemptRepository(conn).insert(stage_attempt)
 
@@ -1374,7 +1374,8 @@ def _run_db_command(arguments: argparse.Namespace) -> int:
                 for applied in status.applied:
                     print(
                         f"  {applied.version:04d}_{applied.name} "
-                        f"({applied.checksum}) applied at {applied.applied_at}"
+                        f"({applied.checksum}) applied at "
+                        f"{applied.applied_timestamp_micro}"
                     )
             else:
                 print("  (none)")
@@ -1637,7 +1638,7 @@ def _run_human_review_command(arguments: argparse.Namespace) -> int:
                 print(f"  Artifacts: {', '.join(review.target_artifact_ids)}")
                 print(f"  Reasons: {', '.join(review.reason_codes)}")
                 print(f"  Action: {review.requested_action}")
-                print(f"  Created: {review.created_at}")
+                print(f"  Created: {review.created_timestamp_micro}")
                 print()
 
             return 0
@@ -1655,8 +1656,8 @@ def _run_human_review_command(arguments: argparse.Namespace) -> int:
             print(f"Target Hashes: {review.target_hashes}")
             print(f"Reason Codes: {', '.join(review.reason_codes)}")
             print(f"Requested Action: {review.requested_action}")
-            print(f"Created: {review.created_at}")
-            print(f"Resolved: {review.resolved_at}")
+            print(f"Created: {review.created_timestamp_micro}")
+            print(f"Resolved: {review.resolved_timestamp_micro}")
             return 0
 
         if arguments.human_review_command == "decide":
@@ -1673,7 +1674,7 @@ def _run_human_review_command(arguments: argparse.Namespace) -> int:
             print(f"  Decision: {decision.decision.value}")
             print(f"  Reviewer: {decision.reviewer}")
             print(f"  Comments: {decision.comments or '(none)'}")
-            print(f"  Created: {decision.created_at}")
+            print(f"  Created: {decision.created_timestamp_micro}")
             return 0
 
         print(
@@ -1860,8 +1861,8 @@ def _run_run_command(arguments: argparse.Namespace) -> int:
         config_short = run.effective_config_hash[:16]
         print(f"  Config: {run.effective_config_id} ({config_short}...)")
         print(f"  Package: {run.content_package_id}")
-        print(f"  Created: {run.created_at.isoformat()}")
-        print(f"  Updated: {run.updated_at.isoformat()}")
+        print(f"  Created: {run.created_timestamp_micro.isoformat()}")
+        print(f"  Updated: {run.updated_timestamp_micro.isoformat()}")
         print()
         print(f"Stage Instances ({len(stage_instances)}):")
         for si in stage_instances:

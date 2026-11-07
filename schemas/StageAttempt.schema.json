@@ -110,18 +110,17 @@
       "default": null,
       "title": "Fencing Token"
     },
-    "finished_at": {
+    "finished_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Finished At"
+      "title": "Finished Timestamp Micro"
     },
     "input_artifact_ids": {
       "items": {
@@ -133,18 +132,17 @@
       "title": "Input Artifact Ids",
       "type": "array"
     },
-    "lease_expires_at": {
+    "lease_expires_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Lease Expires At"
+      "title": "Lease Expires Timestamp Micro"
     },
     "output_artifact_ids": {
       "items": {
@@ -163,7 +161,7 @@
       "type": "integer"
     },
     "schema_version": {
-      "const": "stage-attempt.v1",
+      "const": "stage-attempt.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -174,18 +172,17 @@
       "title": "Stage Instance Id",
       "type": "string"
     },
-    "started_at": {
+    "started_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Started At"
+      "title": "Started Timestamp Micro"
     },
     "status": {
       "$ref": "#/$defs/AttemptStatus"
@@ -215,5 +212,5 @@
   ],
   "title": "StageAttempt",
   "type": "object",
-  "x-contract-schema-version": "stage-attempt.v1"
+  "x-contract-schema-version": "stage-attempt.v2"
 }

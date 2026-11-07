@@ -9,10 +9,9 @@
       "title": "Complete",
       "type": "boolean"
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "expected_artifact_slots": {
       "items": {
@@ -55,7 +54,7 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "input-manifest.v1",
+      "const": "input-manifest.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -71,9 +70,9 @@
     "schema_version",
     "manifest_id",
     "stage_instance_id",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "InputManifest",
   "type": "object",
-  "x-contract-schema-version": "input-manifest.v1"
+  "x-contract-schema-version": "input-manifest.v2"
 }

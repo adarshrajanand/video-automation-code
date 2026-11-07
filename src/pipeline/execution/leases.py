@@ -23,7 +23,7 @@ from pipeline.contracts.vocabularies import (
     RecoveryAction,
     StageExecutionStatus,
 )
-from pipeline.fingerprints import canonical_datetime
+from pipeline.fingerprints import unix_microseconds
 from pipeline.ids import deterministic_id
 from pipeline.storage.database import Database
 from pipeline.storage.repositories.control import RecoveryDecisionRepository
@@ -126,9 +126,12 @@ def verify_live_claim(
         return LeaseCheck(job=job, lease=latest, reason="FENCING_TOKEN_MISMATCH")
     if latest.owner_id != claim.owner_id or job.claimed_by != claim.owner_id:
         return LeaseCheck(job=job, lease=latest, reason="LEASE_OWNER_MISMATCH")
-    if now >= latest.expires_at:
+    if now >= latest.expires_timestamp_micro:
         return LeaseCheck(job=job, lease=latest, reason="LEASE_EXPIRED")
-    if job.lease_expires_at is None or now >= job.lease_expires_at:
+    if (
+        job.lease_expires_timestamp_micro is None
+        or now >= job.lease_expires_timestamp_micro
+    ):
         return LeaseCheck(job=job, lease=latest, reason="LEASE_EXPIRED")
 
     attempt = StageAttemptRepository(connection).get(job.attempt_id)
@@ -199,7 +202,9 @@ class LeaseManager:
         with self.database.transaction(immediate=True) as connection:
             self._recover_expired_locked(connection, now)
             job = JobRepository(connection).get(job_id)
-            eligible = job.status is JobStatus.READY and job.available_at <= now
+            eligible = (
+                job.status is JobStatus.READY and job.available_timestamp_micro <= now
+            )
             if not eligible:
                 return None
             return self._claim_locked(connection, job, owner_id, now, duration)
@@ -218,16 +223,23 @@ class LeaseManager:
             check = verify_live_claim(connection, claim, now)
             if not check.live or check.job is None or check.lease is None:
                 return None
-            expires_at = now + timedelta(seconds=duration)
+            expires_timestamp_micro = now + timedelta(seconds=duration)
             lease = check.lease.model_copy(
-                update={"expires_at": expires_at, "heartbeat_at": now}
+                update={
+                    "expires_timestamp_micro": expires_timestamp_micro,
+                    "heartbeat_timestamp_micro": now,
+                }
             )
             LeaseRepository(connection).update(lease)
-            job = check.job.model_copy(update={"lease_expires_at": expires_at})
+            job = check.job.model_copy(
+                update={"lease_expires_timestamp_micro": expires_timestamp_micro}
+            )
             JobRepository(connection).update(job)
             attempt = check.attempt
             assert attempt is not None
-            attempt = attempt.model_copy(update={"lease_expires_at": expires_at})
+            attempt = attempt.model_copy(
+                update={"lease_expires_timestamp_micro": expires_timestamp_micro}
+            )
             StageAttemptRepository(connection).update(attempt)
             stage = check.stage_instance
             assert stage is not None
@@ -251,7 +263,7 @@ class LeaseManager:
             stage = check.stage_instance.model_copy(
                 update={
                     "execution_status": StageExecutionStatus.RUNNING,
-                    "updated_at": now,
+                    "updated_timestamp_micro": now,
                 }
             )
             StageInstanceRepository(connection).update(stage)
@@ -321,9 +333,9 @@ class LeaseManager:
                     "status": AttemptStatus.SUCCEEDED,
                     "output_artifact_ids": list(dict.fromkeys(output_artifact_ids)),
                     "worker_id": claim.owner_id,
-                    "lease_expires_at": None,
+                    "lease_expires_timestamp_micro": None,
                     "fencing_token": claim.fencing_token,
-                    "finished_at": now,
+                    "finished_timestamp_micro": now,
                     "failure_code": None,
                     "failure_message": None,
                 }
@@ -338,7 +350,7 @@ class LeaseManager:
                         else AcceptanceStatus.NOT_REQUIRED
                     ),
                     "active_attempt_id": attempt.attempt_id,
-                    "updated_at": now,
+                    "updated_timestamp_micro": now,
                 }
             )
             StageInstanceRepository(connection).update(stage)
@@ -346,7 +358,7 @@ class LeaseManager:
                 update={
                     "status": JobStatus.ACKED,
                     "claimed_by": None,
-                    "lease_expires_at": None,
+                    "lease_expires_timestamp_micro": None,
                 }
             )
             jobs.update(job)
@@ -382,16 +394,16 @@ class LeaseManager:
         stage = stages.get(attempt.stage_instance_id)
         latest = leases.latest_for_job(job.job_id)
         token = (latest.fencing_token if latest is not None else 0) + 1
-        expires_at = now + timedelta(seconds=duration)
+        expires_timestamp_micro = now + timedelta(seconds=duration)
 
         lease = Lease(
-            schema_version="lease.v1",
+            schema_version="lease.v2",
             job_id=job.job_id,
             owner_id=owner_id,
             fencing_token=token,
-            acquired_at=now,
-            expires_at=expires_at,
-            heartbeat_at=now,
+            acquired_timestamp_micro=now,
+            expires_timestamp_micro=expires_timestamp_micro,
+            heartbeat_timestamp_micro=now,
         )
         leases.insert(lease)
 
@@ -399,9 +411,9 @@ class LeaseManager:
             update={
                 "status": AttemptStatus.CLAIMED,
                 "worker_id": owner_id,
-                "lease_expires_at": expires_at,
+                "lease_expires_timestamp_micro": expires_timestamp_micro,
                 "fencing_token": token,
-                "started_at": attempt.started_at or now,
+                "started_timestamp_micro": attempt.started_timestamp_micro or now,
             }
         )
         attempts.update(attempt)
@@ -409,7 +421,7 @@ class LeaseManager:
             update={
                 "execution_status": StageExecutionStatus.CLAIMED,
                 "active_attempt_id": attempt.attempt_id,
-                "updated_at": now,
+                "updated_timestamp_micro": now,
             }
         )
         stages.update(stage)
@@ -417,7 +429,7 @@ class LeaseManager:
             update={
                 "status": JobStatus.CLAIMED,
                 "claimed_by": owner_id,
-                "lease_expires_at": expires_at,
+                "lease_expires_timestamp_micro": expires_timestamp_micro,
                 "delivery_count": job.delivery_count + 1,
                 "fencing_token": token,
             }
@@ -438,10 +450,10 @@ class LeaseManager:
         jobs = JobRepository(connection)
         rows = connection.execute(
             "SELECT job_id FROM jobs WHERE status = ? "
-            "AND lease_expires_at IS NOT NULL "
-            "AND julianday(lease_expires_at) <= julianday(?) "
-            "ORDER BY julianday(lease_expires_at), job_id",
-            (JobStatus.CLAIMED.value, canonical_datetime(now)),
+            "AND lease_expires_timestamp_micro IS NOT NULL "
+            "AND lease_expires_timestamp_micro <= ? "
+            "ORDER BY lease_expires_timestamp_micro, job_id",
+            (JobStatus.CLAIMED.value, unix_microseconds(now)),
         ).fetchall()
         recovered: list[ExpiredLeaseRecovery] = []
         for row in rows:
@@ -459,14 +471,14 @@ class LeaseManager:
             if decisions.get_optional(decision_id) is None:
                 decisions.insert(
                     RecoveryDecision(
-                        schema_version="recovery-decision.v1",
+                        schema_version="recovery-decision.v2",
                         recovery_decision_id=decision_id,
                         run_id=stage.run_id,
                         failed_attempt_id=attempt.attempt_id,
                         action=RecoveryAction.RETRY,
                         target_stage_instance_ids=[stage.stage_instance_id],
                         reason_codes=["LEASE_EXPIRED"],
-                        created_at=now,
+                        created_timestamp_micro=now,
                     )
                 )
             self._return_to_ready(connection, job, attempt, stage, now)
@@ -495,7 +507,7 @@ class LeaseManager:
                 update={
                     "execution_status": StageExecutionStatus.READY,
                     "active_attempt_id": None,
-                    "updated_at": now,
+                    "updated_timestamp_micro": now,
                 }
             )
         )
@@ -504,7 +516,7 @@ class LeaseManager:
                 update={
                     "status": AttemptStatus.CREATED,
                     "worker_id": None,
-                    "lease_expires_at": None,
+                    "lease_expires_timestamp_micro": None,
                 }
             )
         )
@@ -512,9 +524,9 @@ class LeaseManager:
             job.model_copy(
                 update={
                     "status": JobStatus.READY,
-                    "available_at": now,
+                    "available_timestamp_micro": now,
                     "claimed_by": None,
-                    "lease_expires_at": None,
+                    "lease_expires_timestamp_micro": None,
                 }
             )
         )
@@ -528,19 +540,19 @@ class LeaseManager:
         if queue_name is None:
             row = connection.execute(
                 "SELECT job_id FROM jobs WHERE status = ? "
-                "AND julianday(available_at) <= julianday(?) "
-                "ORDER BY julianday(available_at), job_id LIMIT 1",
-                (JobStatus.READY.value, canonical_datetime(now)),
+                "AND available_timestamp_micro <= ? "
+                "ORDER BY available_timestamp_micro, job_id LIMIT 1",
+                (JobStatus.READY.value, unix_microseconds(now)),
             ).fetchone()
         else:
             row = connection.execute(
                 "SELECT job_id FROM jobs WHERE status = ? AND queue_name = ? "
-                "AND julianday(available_at) <= julianday(?) "
-                "ORDER BY julianday(available_at), job_id LIMIT 1",
+                "AND available_timestamp_micro <= ? "
+                "ORDER BY available_timestamp_micro, job_id LIMIT 1",
                 (
                     JobStatus.READY.value,
                     queue_name,
-                    canonical_datetime(now),
+                    unix_microseconds(now),
                 ),
             ).fetchone()
         return None if row is None else str(row[0])

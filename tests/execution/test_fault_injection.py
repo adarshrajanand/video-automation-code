@@ -111,7 +111,7 @@ def _setup_scenario(test_db: Database, scenario_name: str) -> dict:
 
         run_id = deterministic_id("run", f"matrix_{scenario_name}")
         run = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id,
             run_key=f"matrix_{scenario_name}:test_workflow:1.0",
             workflow_id="test_workflow",
@@ -120,8 +120,8 @@ def _setup_scenario(test_db: Database, scenario_name: str) -> dict:
             effective_config_hash="a" * 64,
             status=RunStatus.RUNNING,
             content_package_id=deterministic_id("package", f"matrix_{scenario_name}"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         WorkflowRunRepository(conn).insert(run)
 
@@ -129,7 +129,7 @@ def _setup_scenario(test_db: Database, scenario_name: str) -> dict:
         for i, node in enumerate(["script", "speech", "visual"]):
             si_id = deterministic_id("stage", run_id, node)
             si = StageInstance(
-                schema_version="stage-instance.v1",
+                schema_version="stage-instance.v2",
                 stage_instance_id=si_id,
                 run_id=run_id,
                 node_id=node,
@@ -140,8 +140,8 @@ def _setup_scenario(test_db: Database, scenario_name: str) -> dict:
                 quality_gate_result_id=None,
                 expected_input_manifest_id=None,
                 active_attempt_id=None,
-                created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
+                created_timestamp_micro=datetime.now(UTC),
+                updated_timestamp_micro=datetime.now(UTC),
             )
             StageInstanceRepository(conn).insert(si)
             stage_instances.append(si)
@@ -192,7 +192,7 @@ def _test_duplicate_trigger_same_key(test_db: Database) -> None:
         # Create first run
         run_id_1 = deterministic_id("run", "dup_test")
         run_1 = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id_1,
             run_key="duplicate:test_workflow:1.0",
             workflow_id="test_workflow",
@@ -201,15 +201,15 @@ def _test_duplicate_trigger_same_key(test_db: Database) -> None:
             effective_config_hash="a" * 64,
             status=RunStatus.RUNNING,
             content_package_id=deterministic_id("package", "run1"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         run_repo.insert(run_1)
 
         # Try to create second run with same run_key
         run_id_2 = deterministic_id("run", "dup_test_2")
         run_2 = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id_2,
             run_key="duplicate:test_workflow:1.0",  # Same run_key!
             workflow_id="test_workflow",
@@ -218,8 +218,8 @@ def _test_duplicate_trigger_same_key(test_db: Database) -> None:
             effective_config_hash="a" * 64,
             status=RunStatus.CREATED,
             content_package_id=deterministic_id("package", "run2"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
 
         # This should raise a conflict error due to unique constraint on run_key
@@ -254,7 +254,7 @@ def _test_duplicate_trigger_new_policy(test_db: Database, test_run_setup: dict) 
         # Create new run with different ID but same workflow (allowed)
         new_run_id = deterministic_id("run", "new_run")
         new_run = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=new_run_id,
             run_key=f"new_run:{run_id}:test_workflow:1.0",  # Different run_key
             workflow_id="test_workflow",
@@ -263,8 +263,8 @@ def _test_duplicate_trigger_new_policy(test_db: Database, test_run_setup: dict) 
             effective_config_hash="a" * 64,
             status=RunStatus.CREATED,
             content_package_id=deterministic_id("package", "new_run"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         run_repo.insert(new_run)
 
@@ -307,7 +307,7 @@ def _test_crash_before_job_claim(test_db: Database) -> None:
 
         run_id = deterministic_id("run", "crash_test")
         run = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id,
             run_key="crash:test_workflow:1.0",
             workflow_id="test_workflow",
@@ -316,8 +316,8 @@ def _test_crash_before_job_claim(test_db: Database) -> None:
             effective_config_hash="a" * 64,
             status=RunStatus.RUNNING,
             content_package_id=deterministic_id("package", "crash_test"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         WorkflowRunRepository(conn).insert(run)
 
@@ -325,7 +325,7 @@ def _test_crash_before_job_claim(test_db: Database) -> None:
         for i, node in enumerate(["script", "speech", "visual"]):
             si_id = deterministic_id("stage", run_id, node)
             si = StageInstance(
-                schema_version="stage-instance.v1",
+                schema_version="stage-instance.v2",
                 stage_instance_id=si_id,
                 run_id=run_id,
                 node_id=node,
@@ -336,8 +336,8 @@ def _test_crash_before_job_claim(test_db: Database) -> None:
                 quality_gate_result_id=None,
                 expected_input_manifest_id=None,
                 active_attempt_id=None,
-                created_at=datetime.now(UTC),
-                updated_at=datetime.now(UTC),
+                created_timestamp_micro=datetime.now(UTC),
+                updated_timestamp_micro=datetime.now(UTC),
             )
             StageInstanceRepository(conn).insert(si)
             stage_instances.append(si)
@@ -451,7 +451,7 @@ def _test_provider_succeeds_worker_crashes(
         leases = lease_repo.list_for_job(job.job_id)
         # Lease should be released/expired after completion
         for lease in leases:
-            assert lease.expires_at is not None
+            assert lease.expires_timestamp_micro is not None
 
 
 def _test_artifact_upload_db_fails(test_db: Database, test_run_setup: dict) -> None:
@@ -483,7 +483,7 @@ def _test_artifact_upload_db_fails(test_db: Database, test_run_setup: dict) -> N
 
         run_id = deterministic_id("run", "artifact_test")
         run = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id,
             run_key="artifact:test_workflow:1.0",
             workflow_id="test_workflow",
@@ -492,8 +492,8 @@ def _test_artifact_upload_db_fails(test_db: Database, test_run_setup: dict) -> N
             effective_config_hash="a" * 64,
             status=RunStatus.RUNNING,
             content_package_id=deterministic_id("package", "artifact_test"),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         WorkflowRunRepository(conn).insert(run)
 
@@ -537,7 +537,7 @@ def _test_db_commit_ack_fails(test_db: Database) -> None:
 
         # Create an event envelope with valid payload schema
         event = EventEnvelope(
-            schema_version="event-envelope.v1",
+            schema_version="event-envelope.v2",
             event_id=event_id,
             event_type=EventType.STAGE_SUCCEEDED,
             run_id=run_id,
@@ -552,7 +552,7 @@ def _test_db_commit_ack_fails(test_db: Database) -> None:
             payload_schema_version="stage-succeeded.v1",
             correlation_id=deterministic_id("corr", "test"),
             causation_id=None,
-            created_at=now,
+            created_timestamp_micro=now,
         )
 
         # Insert both event and outbox message atomically
@@ -560,7 +560,7 @@ def _test_db_commit_ack_fails(test_db: Database) -> None:
             conn,
             event,
             outbox_id=outbox_id,
-            available_at=now,
+            available_timestamp_micro=now,
             status=OutboxStatus.PENDING,
         )
 
@@ -769,7 +769,7 @@ def _test_paid_fallback_disabled(test_db: Database, test_run_setup: dict) -> Non
 
     # Create a routing decision without paid fallback
     routing = RoutingDecision(
-        schema_version="routing-decision.v1",
+        schema_version="routing-decision.v2",
         routing_decision_id=deterministic_id("route", "test"),
         capability="speech_generation",
         implementation="fake",
@@ -786,7 +786,7 @@ def _test_paid_fallback_disabled(test_db: Database, test_run_setup: dict) -> Non
         attempt=1,
         data_classification="PUBLIC",
         paid_fallback_authorized=False,  # Explicitly disabled
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
     assert routing.paid_fallback_authorized is False
@@ -815,7 +815,7 @@ def _test_pending_human_review(test_db: Database, test_run_setup: dict) -> None:
 
     # Create a human review (commit the transaction)
     review = HumanReview(
-        schema_version="human-review.v1",
+        schema_version="human-review.v2",
         review_id=deterministic_id("review", run_id),
         run_id=run_id,
         stage_instance_id=test_run_setup["stage_instances"][0].stage_instance_id,
@@ -825,8 +825,8 @@ def _test_pending_human_review(test_db: Database, test_run_setup: dict) -> None:
         reason_codes=["QUALITY.CLAIM_SUPPORT_LOW"],
         requested_action="Review claim evidence for scene 0",
         status=ReviewStatus.OPEN,
-        created_at=datetime.now(UTC),
-        resolved_at=None,
+        created_timestamp_micro=datetime.now(UTC),
+        resolved_timestamp_micro=None,
     )
     with test_db.transaction() as conn:
         hr_repo = HumanReviewRepository(conn)
@@ -855,7 +855,7 @@ def _test_pending_human_review(test_db: Database, test_run_setup: dict) -> None:
         hr_repo = HumanReviewRepository(conn)
         updated_review = hr_repo.get(review.review_id)
         assert updated_review.status == ReviewStatus.RESOLVED
-        assert updated_review.resolved_at is not None
+        assert updated_review.resolved_timestamp_micro is not None
 
 
 def _test_model_prompt_version_changes(test_db: Database) -> None:

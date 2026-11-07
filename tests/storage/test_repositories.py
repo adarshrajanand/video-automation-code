@@ -183,7 +183,7 @@ def test_update_persists_projection_and_payload(database, records) -> None:
     updated = run.model_copy(
         update={
             "status": RunStatus.COMPLETED,
-            "updated_at": datetime(2026, 10, 21, 11, 0, tzinfo=UTC),
+            "updated_timestamp_micro": datetime(2026, 10, 21, 11, 0, tzinfo=UTC),
         }
     )
     with database.transaction() as connection:

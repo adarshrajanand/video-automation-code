@@ -35,7 +35,7 @@ _SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 class EventEnvelope(Contract):
     """Canonical serialized event fact, notification, or command."""
 
-    schema_version: Literal["event-envelope.v1"]
+    schema_version: Literal["event-envelope.v2"]
     event_id: OpaqueId
     event_type: EventType
     run_id: OpaqueId | None = None
@@ -45,7 +45,7 @@ class EventEnvelope(Contract):
     causation_id: OpaqueId | None = None
     payload_schema_version: NonEmptyStr
     payload: ExtensionObject = Field(default_factory=dict)
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_payload_references(self) -> EventEnvelope:
@@ -116,17 +116,17 @@ class EventEnvelope(Contract):
 class OutboxMessage(Contract):
     """Delivery state for one committed event, claimed with a lease."""
 
-    schema_version: Literal["outbox-message.v1"]
+    schema_version: Literal["outbox-message.v2"]
     outbox_id: OpaqueId
     event_id: OpaqueId
     event: EventEnvelope
     status: OutboxStatus
     delivery_attempts: NonNegativeInt = 0
-    available_at: UTCDateTime
+    available_timestamp_micro: UTCDateTime
     claimed_by: NonEmptyStr | None = None
-    claimed_at: UTCDateTime | None = None
-    lease_expires_at: UTCDateTime | None = None
-    delivered_at: UTCDateTime | None = None
+    claimed_timestamp_micro: UTCDateTime | None = None
+    lease_expires_timestamp_micro: UTCDateTime | None = None
+    delivered_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_outbox_message(self) -> OutboxMessage:
@@ -134,46 +134,64 @@ class OutboxMessage(Contract):
             raise ValueError("event_id must match the nested event.event_id")
         if self.status is OutboxStatus.CLAIMED and (
             self.claimed_by is None
-            or self.claimed_at is None
-            or self.lease_expires_at is None
+            or self.claimed_timestamp_micro is None
+            or self.lease_expires_timestamp_micro is None
         ):
             raise ValueError(
                 "a claimed outbox message requires claimant and lease fields"
             )
         if (
-            self.claimed_at is not None
-            and self.lease_expires_at is not None
-            and self.lease_expires_at <= self.claimed_at
+            self.claimed_timestamp_micro is not None
+            and self.lease_expires_timestamp_micro is not None
+            and self.lease_expires_timestamp_micro <= self.claimed_timestamp_micro
         ):
-            raise ValueError("lease_expires_at must be later than claimed_at")
-        if self.status is OutboxStatus.DELIVERED and self.delivered_at is None:
-            raise ValueError("a delivered outbox message requires delivered_at")
-        if self.delivered_at is not None and self.delivered_at < self.available_at:
-            raise ValueError("delivered_at must not be earlier than available_at")
+            raise ValueError(
+                "lease_expires_timestamp_micro must be later than "
+                "claimed_timestamp_micro"
+            )
+        if (
+            self.status is OutboxStatus.DELIVERED
+            and self.delivered_timestamp_micro is None
+        ):
+            raise ValueError(
+                "a delivered outbox message requires delivered_timestamp_micro"
+            )
+        if (
+            self.delivered_timestamp_micro is not None
+            and self.delivered_timestamp_micro < self.available_timestamp_micro
+        ):
+            raise ValueError(
+                "delivered_timestamp_micro must not be earlier than "
+                "available_timestamp_micro"
+            )
         return self
 
 
 class InboxReceipt(Contract):
     """One consumer's durable deduplication and processing receipt."""
 
-    schema_version: Literal["inbox-receipt.v1"]
+    schema_version: Literal["inbox-receipt.v2"]
     consumer_id: OpaqueId
     event_id: OpaqueId
     status: InboxStatus
-    processed_at: UTCDateTime | None = None
+    processed_timestamp_micro: UTCDateTime | None = None
     error_code: FailureCode | None = None
 
     @model_validator(mode="after")
     def _validate_receipt(self) -> InboxReceipt:
         if self.status is InboxStatus.RECEIVED:
-            if self.processed_at is not None or self.error_code is not None:
+            if (
+                self.processed_timestamp_micro is not None
+                or self.error_code is not None
+            ):
                 raise ValueError(
                     "a received inbox entry must not be processed or failed"
                 )
         elif self.status in (InboxStatus.PROCESSED, InboxStatus.IGNORED):
-            if self.processed_at is None:
+            if self.processed_timestamp_micro is None:
                 raise ValueError(
-                    f"a {self.status.value.lower()} receipt requires processed_at"
+                    f"a {self.status.value.lower()} receipt requires "
+                    "processed_timestamp_micro"
                 )
             if self.error_code is not None:
                 raise ValueError("a processed receipt must not carry error_code")

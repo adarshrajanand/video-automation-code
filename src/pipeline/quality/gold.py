@@ -20,9 +20,17 @@ from pipeline.contracts.vocabularies import (
     FailureCode,
     Severity,
 )
+from pipeline.fingerprints import datetime_from_unix_microseconds, unix_microseconds
+from pipeline.quality.legacy import microseconds_from_legacy_iso
 
 if TYPE_CHECKING:
     from pipeline.quality.registry import QualityCheckRegistry
+
+# Wire-format versions. The timestamp keys changed from ISO ``created_at`` to
+# integer-microsecond ``created_timestamp_micro``; files written by v1 are
+# converted on load rather than silently rejected (review 4501750689).
+GOLD_EXAMPLE_SCHEMA_VERSION = "gold-example.v2"
+GOLD_EXAMPLE_LEGACY_VERSIONS = frozenset({"gold-example.v1"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,7 +42,7 @@ class GoldExample:
     produce consistent, correct results.
     """
 
-    schema_version: str = "gold-example.v1"
+    schema_version: str = GOLD_EXAMPLE_SCHEMA_VERSION
     example_id: str = field(default_factory=lambda: f"gold_{uuid.uuid4().hex[:12]}")
     check_id: str = ""
     evaluator: str = ""
@@ -53,7 +61,7 @@ class GoldExample:
     expected_failure_codes: list[FailureCode] = field(default_factory=list)
 
     # Metadata
-    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    created_timestamp_micro: datetime = field(default_factory=lambda: datetime.now(UTC))
     created_by: str = ""
     tags: list[str] = field(default_factory=list)
 
@@ -75,15 +83,31 @@ class GoldExample:
                 dim.model_dump(mode="json") for dim in self.expected_dimensions
             ],
             "expected_failure_codes": [fc.value for fc in self.expected_failure_codes],
-            "created_at": self.created_at.isoformat(),
+            "created_timestamp_micro": unix_microseconds(self.created_timestamp_micro),
             "created_by": self.created_by,
             "tags": self.tags,
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> GoldExample:
-        """Deserialize from dictionary."""
+        """Deserialize from dictionary, upgrading a v1 file if needed."""
+
         data = data.copy()
+        version = str(data.get("schema_version", "gold-example.v1"))
+        if version in GOLD_EXAMPLE_LEGACY_VERSIONS:
+            # v1 stored an ISO-8601 ``created_at``. Convert it in place so old
+            # saved examples keep loading after the wire-format change.
+            if "created_timestamp_micro" not in data and "created_at" in data:
+                data["created_timestamp_micro"] = microseconds_from_legacy_iso(
+                    data.pop("created_at"), field_name="created_at"
+                )
+            data["schema_version"] = GOLD_EXAMPLE_SCHEMA_VERSION
+        elif version != GOLD_EXAMPLE_SCHEMA_VERSION:
+            raise ValueError(
+                f"unsupported gold example schema_version {version!r}; "
+                f"expected {GOLD_EXAMPLE_SCHEMA_VERSION}. Regenerate the file "
+                "with the current release instead of editing it by hand."
+            )
         data["expected_outcome"] = CheckOutcome(data["expected_outcome"])
         data["expected_confidence"] = Confidence(data["expected_confidence"])
         data["expected_dimensions"] = [
@@ -92,8 +116,8 @@ class GoldExample:
         data["expected_failure_codes"] = [
             FailureCode(fc) for fc in data["expected_failure_codes"]
         ]
-        data["created_at"] = datetime.fromisoformat(
-            data["created_at"].replace("Z", "+00:00")
+        data["created_timestamp_micro"] = datetime_from_unix_microseconds(
+            data["created_timestamp_micro"]
         )
         return cls(**data)
 
@@ -155,7 +179,7 @@ class EvaluatorHarness:
 
         # Create manifest
         manifest = QualityInputManifest(
-            schema_version="quality-input-manifest.v1",
+            schema_version="quality-input-manifest.v2",
             manifest_id=f"manifest_{uuid.uuid4().hex[:12]}",
             gate_id="test_gate",
             check_id=check.check_id,
@@ -165,7 +189,7 @@ class EvaluatorHarness:
                 for aid, content in example.target_artifacts.items()
             },
             supporting_artifact_ids=list(example.supporting_artifacts.keys()),
-            created_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
         )
 
         # Run evaluator
@@ -290,7 +314,7 @@ def create_gold_examples_dir(path: Path) -> int:
         description="All claims supported by evidence",
         target_artifacts={
             "artifact_script_v1": {
-                "schema_version": "script.v1",
+                "schema_version": "script.v2",
                 "claims": [
                     {
                         "claim_id": "claim_1",
@@ -350,7 +374,7 @@ def create_gold_examples_dir(path: Path) -> int:
         description="One claim lacks evidence",
         target_artifacts={
             "artifact_script_v1": {
-                "schema_version": "script.v1",
+                "schema_version": "script.v2",
                 "claims": [
                     {
                         "claim_id": "claim_1",

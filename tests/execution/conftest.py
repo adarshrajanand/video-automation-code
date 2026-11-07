@@ -80,12 +80,12 @@ class ExecutionRecords:
         event_id: str = "event_ready_01",
         job_id: str = "job_pending",
         event_type: EventType = EventType.STAGE_READY,
-        created_at: datetime | None = None,
+        created_timestamp_micro: datetime | None = None,
     ) -> EventEnvelope:
         if event_type is not EventType.STAGE_READY:
             raise ValueError("the test fixture only builds stage.ready events")
         return EventEnvelope(
-            schema_version="event-envelope.v1",
+            schema_version="event-envelope.v2",
             event_id=event_id,
             event_type=event_type,
             run_id=self.run.run_id,
@@ -97,7 +97,7 @@ class ExecutionRecords:
                 "stage_instance_id": self.stage.stage_instance_id,
                 "job_id": job_id,
             },
-            created_at=created_at or at(),
+            created_timestamp_micro=created_timestamp_micro or at(),
         )
 
 
@@ -132,7 +132,7 @@ def records(database: Database) -> ExecutionRecords:
         snapshot_artifact_id=None,
     )
     run = WorkflowRun(
-        schema_version="workflow-run.v1",
+        schema_version="workflow-run.v2",
         run_id="run_fv05",
         run_key="run-key:fv05",
         workflow_id=config.workflow_id,
@@ -141,11 +141,11 @@ def records(database: Database) -> ExecutionRecords:
         effective_config_hash=config.config_hash,
         status=RunStatus.RUNNING,
         content_package_id="package_fv05",
-        created_at=at(0),
-        updated_at=at(0),
+        created_timestamp_micro=at(0),
+        updated_timestamp_micro=at(0),
     )
     stage = StageInstance(
-        schema_version="stage-instance.v1",
+        schema_version="stage-instance.v2",
         stage_instance_id="stage_fv05_research",
         run_id=run.run_id,
         node_id="research",
@@ -156,8 +156,8 @@ def records(database: Database) -> ExecutionRecords:
         expected_input_manifest_id=None,
         active_attempt_id=None,
         accepted_output_artifact_ids=[],
-        created_at=at(1),
-        updated_at=at(1),
+        created_timestamp_micro=at(1),
+        updated_timestamp_micro=at(1),
     )
     with database.transaction() as connection:
         EffectiveConfigRepository(connection).insert(config)

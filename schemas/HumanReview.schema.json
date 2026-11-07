@@ -17,10 +17,9 @@
   "additionalProperties": false,
   "description": "Durable reviewer request tied to exact artifact versions.",
   "properties": {
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "gate_id": {
       "anyOf": [
@@ -54,18 +53,17 @@
       "title": "Requested Action",
       "type": "string"
     },
-    "resolved_at": {
+    "resolved_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Resolved At"
+      "title": "Resolved Timestamp Micro"
     },
     "review_id": {
       "maxLength": 256,
@@ -82,7 +80,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "human-review.v1",
+      "const": "human-review.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -139,9 +137,9 @@
     "target_artifact_ids",
     "requested_action",
     "status",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "HumanReview",
   "type": "object",
-  "x-contract-schema-version": "human-review.v1"
+  "x-contract-schema-version": "human-review.v2"
 }

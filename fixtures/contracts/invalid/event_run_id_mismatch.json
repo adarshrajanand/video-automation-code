@@ -2,7 +2,7 @@
   "attempt_id": "attempt_speech_01",
   "causation_id": "event_00",
   "correlation_id": "corr_run_01",
-  "created_at": "2026-10-21T12:02:00Z",
+  "created_timestamp_micro": 1792584120000000,
   "event_id": "event_01",
   "event_type": "stage.succeeded",
   "payload": {
@@ -15,6 +15,6 @@
   },
   "payload_schema_version": "stage-succeeded.v1",
   "run_id": "run_01",
-  "schema_version": "event-envelope.v1",
+  "schema_version": "event-envelope.v2",
   "stage_instance_id": "stage_speech_scene_01"
 }

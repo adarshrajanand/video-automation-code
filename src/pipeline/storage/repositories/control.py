@@ -30,15 +30,15 @@ class IdempotencyRecordRepository(SqliteRepository[IdempotencyRecord]):
         "provider_invocation_id",
         "provider_operation_id",
         "result_artifact_ids",
-        "created_at",
-        "completed_at",
+        "created_timestamp_micro",
+        "completed_timestamp_micro",
     )
-    order_by = ("created_at", "idempotency_key")
+    order_by = ("created_timestamp_micro", "idempotency_key")
 
     def list_by_status(self, status: IdempotencyStatus) -> list[IdempotencyRecord]:
         rows = self.connection.execute(
             "SELECT payload FROM idempotency_records WHERE status = ? "
-            "ORDER BY created_at, idempotency_key",
+            "ORDER BY created_timestamp_micro, idempotency_key",
             (status.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -48,7 +48,8 @@ class IdempotencyRecordRepository(SqliteRepository[IdempotencyRecord]):
     ) -> list[IdempotencyRecord]:
         rows = self.connection.execute(
             "SELECT payload FROM idempotency_records "
-            "WHERE capability_execution_id = ? ORDER BY created_at, idempotency_key",
+            "WHERE capability_execution_id = ? "
+            "ORDER BY created_timestamp_micro, idempotency_key",
             (capability_execution_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -67,10 +68,10 @@ class BudgetReservationRepository(SqliteRepository[BudgetReservation]):
         "reserved_cost_minor",
         "actual_cost_minor",
         "status",
-        "created_at",
-        "settled_at",
+        "created_timestamp_micro",
+        "settled_timestamp_micro",
     )
-    order_by = ("created_at", "reservation_id")
+    order_by = ("created_timestamp_micro", "reservation_id")
 
     def get_by_scope(
         self, idempotency_key: str, scope_type: str, scope_id: str
@@ -95,14 +96,14 @@ class BudgetReservationRepository(SqliteRepository[BudgetReservation]):
             rows = self.connection.execute(
                 "SELECT payload FROM budget_reservations "
                 "WHERE scope_type = ? AND scope_id = ? "
-                "ORDER BY created_at, reservation_id",
+                "ORDER BY created_timestamp_micro, reservation_id",
                 (scope_type, scope_id),
             ).fetchall()
         else:
             rows = self.connection.execute(
                 "SELECT payload FROM budget_reservations "
                 "WHERE scope_type = ? AND scope_id = ? AND status = ? "
-                "ORDER BY created_at, reservation_id",
+                "ORDER BY created_timestamp_micro, reservation_id",
                 (scope_type, scope_id, status.value),
             ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -119,14 +120,14 @@ class RecoveryDecisionRepository(SqliteRepository[RecoveryDecision]):
         "run_id",
         "failed_attempt_id",
         "action",
-        "created_at",
+        "created_timestamp_micro",
     )
-    order_by = ("created_at", "recovery_decision_id")
+    order_by = ("created_timestamp_micro", "recovery_decision_id")
 
     def list_for_run(self, run_id: str) -> list[RecoveryDecision]:
         rows = self.connection.execute(
             "SELECT payload FROM recovery_decisions WHERE run_id = ? "
-            "ORDER BY created_at, recovery_decision_id",
+            "ORDER BY created_timestamp_micro, recovery_decision_id",
             (run_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -134,7 +135,7 @@ class RecoveryDecisionRepository(SqliteRepository[RecoveryDecision]):
     def list_by_action(self, action: RecoveryAction) -> list[RecoveryDecision]:
         rows = self.connection.execute(
             "SELECT payload FROM recovery_decisions WHERE action = ? "
-            "ORDER BY created_at, recovery_decision_id",
+            "ORDER BY created_timestamp_micro, recovery_decision_id",
             (action.value,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]

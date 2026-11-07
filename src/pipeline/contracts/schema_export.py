@@ -43,10 +43,16 @@ class SchemaExportResult:
 
 
 def build_schema(model_name: str) -> dict[str, Any]:
-    """Build one deterministic JSON Schema document."""
+    """Build one deterministic JSON Schema document.
+
+    Export in **serialization** mode: these schemas describe the persisted wire
+    form. ``UTCDateTime`` validates strings/datetimes but its ``PlainSerializer``
+    emits integer microseconds, so a validation-mode schema would wrongly claim
+    ``type: string`` for every timestamp field (review 4496385962).
+    """
 
     model = PUBLIC_CONTRACTS[model_name]
-    schema = model.model_json_schema(mode="validation")
+    schema = model.model_json_schema(mode="serialization")
     schema["$id"] = f"urn:pipeline:contract:{model_name}"
     schema["$schema"] = SCHEMA_DIALECT
     schema["x-contract-schema-version"] = contract_schema_version(model)

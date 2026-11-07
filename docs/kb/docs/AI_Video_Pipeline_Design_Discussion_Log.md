@@ -264,3 +264,26 @@ The requested documentation migration has two commits:
 The first commit has been made before the second documentation commit. This preserves the original discussion exactly in Git history while making the working documentation easier to navigate.
 
 Plan mode is read-only in this coding environment. It was used to inspect and discuss the architecture, but no commit could be created until build mode was restored. This is an execution-mode restriction, not an architectural decision.
+
+## 15. Integer-microsecond timestamps (2026-11-07)
+
+Implementation exposed two problems with the original ISO-8601 timestamp rule:
+string ordering and SQLite date functions made availability and expiry queries
+depend on implicit parsing, and conversion through floating-point seconds could
+lose the two microsecond digits the contracts promised. A single integer unit
+also makes the persisted JSON, SQLite columns, and exported JSON Schema agree.
+
+The accepted resolution is ADR-025: persisted timestamps are signed 64-bit
+integer microseconds since the Unix epoch in UTC, named `*_timestamp_micro`.
+Python keeps timezone-aware `datetime` values and converts with exact integer
+arithmetic at every persistence and JSON boundary. ISO-8601 is presentation-only
+for Markdown and console output. Queries compare integers directly and never
+wrap the columns in `julianday()` or another date function.
+
+This is an incompatible change for v1 SQLite databases and v1 JSON artifacts.
+The migration that rebuilds timestamp columns is reset-only; a populated
+database is refused before any durable table is rewritten and must follow the
+documented reset procedure. Standalone quality files (`gold-example`,
+`threshold-record`) bump to v2 and convert the v1 ISO `created_at`/`updated_at`
+keys on load. `QualityReport` and `ValidationReport` also bump their wire
+versions because their timestamp keys and values changed.

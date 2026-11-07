@@ -15,10 +15,16 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
-from pipeline.fingerprints import canonical_datetime, sha256_bytes
+from pipeline.fingerprints import sha256_bytes, unix_microseconds
 from pipeline.storage.backfill import canonicalize_persisted_timestamps
 from pipeline.storage.database import Database
 from pipeline.storage.errors import MigrationChecksumError, MigrationError
+from pipeline.storage.timestamp_migration import (
+    _parse_iso_microseconds,
+    convert_timestamp_columns_to_microseconds,
+    normalize_migration_history,
+    require_reset_only_database,
+)
 
 MIGRATION_FILE_PATTERN = re.compile(
     r"^(?P<version>[0-9]{4})_(?P<name>[a-z0-9_]+)\.sql$"
@@ -30,7 +36,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
     version INTEGER PRIMARY KEY,
     name TEXT NOT NULL,
     checksum TEXT NOT NULL,
-    applied_at TEXT NOT NULL
+    applied_timestamp_micro INTEGER NOT NULL
 )
 """
 
@@ -43,7 +49,20 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 # Do not add logic to an applied migration file; add a new migration instead.
 _DATA_MIGRATION_HOOKS: dict[tuple[int, str], Callable[[sqlite3.Connection], None]] = {
     (2, "canonical_timestamps"): canonicalize_persisted_timestamps,
+    # #92 changes the persisted representation, not just names. The SQL file is
+    # a comment-only anchor because exact ISO-8601 -> integer conversion needs
+    # Python; the hook refuses databases with durable rows and points at the
+    # documented reset procedure. See timestamp_migration.py.
+    (3, "timestamp_micros"): convert_timestamp_columns_to_microseconds,
 }
+
+# Migrations in this set destroy and rebuild the schema, so they can only run
+# against an empty database. The check runs as a ``migrate()`` preflight because
+# an earlier pending migration's hook could otherwise mutate durable rows before
+# the guard rejects the run. ``status()`` stays read-only by design.
+_RESET_ONLY_MIGRATIONS: frozenset[tuple[int, str]] = frozenset(
+    {(3, "timestamp_micros")}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +82,7 @@ class AppliedMigration:
     version: int
     name: str
     checksum: str
-    applied_at: str
+    applied_timestamp_micro: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,19 +178,36 @@ class MigrationRunner:
     def _read_applied(self) -> tuple[AppliedMigration, ...]:
         self._ensure_migration_table()
         with self.database.connection() as connection:
-            rows = connection.execute(
-                "SELECT version, name, checksum, applied_at "
-                "FROM schema_migrations ORDER BY version"
-            ).fetchall()
-        return tuple(
-            AppliedMigration(
-                version=int(row[0]),
-                name=str(row[1]),
-                checksum=str(row[2]),
-                applied_at=str(row[3]),
+            try:
+                rows = connection.execute(
+                    "SELECT version, name, checksum, applied_timestamp_micro "
+                    "FROM schema_migrations ORDER BY version"
+                ).fetchall()
+            except sqlite3.OperationalError:
+                # Legacy schema has `applied_at` as TEXT.
+                rows = connection.execute(
+                    "SELECT version, name, checksum, applied_at "
+                    "FROM schema_migrations ORDER BY version"
+                ).fetchall()
+                # Convert ISO-8601 string to integer microseconds.
+                rows = [
+                    (
+                        int(row[0]),
+                        str(row[1]),
+                        str(row[2]),
+                        _parse_iso_microseconds(row[3], table="schema_migrations"),
+                    )
+                    for row in rows
+                ]
+            return tuple(
+                AppliedMigration(
+                    version=int(row[0]),
+                    name=str(row[1]),
+                    checksum=str(row[2]),
+                    applied_timestamp_micro=int(row[3]),
+                )
+                for row in rows
             )
-            for row in rows
-        )
 
     def _validate_applied(self, applied: tuple[AppliedMigration, ...]) -> None:
         """Fail closed when applied history diverges from local migration files.
@@ -225,6 +261,22 @@ class MigrationRunner:
         """Apply every pending migration once and return what changed."""
 
         status = self.status()
+        if any(
+            (migration.version, migration.name) in _RESET_ONLY_MIGRATIONS
+            for migration in status.pending
+        ):
+            # Refuse before applying any pending migration so a populated
+            # database is not partially rewritten on the way to a migration that
+            # can only run empty. See timestamp_migration.py for the reset policy.
+            with self.database.connection() as connection:
+                require_reset_only_database(connection)
+        # A genuine pre-#92 database records history as ``applied_at TEXT``.
+        # Normalize it before applying anything so every history write below
+        # targets ``applied_timestamp_micro``, including the 0002 row that is
+        # recorded before 0003 rebuilds this table. This runs only after the
+        # reset preflight, so a refused populated database is left untouched.
+        with self.database.transaction() as connection:
+            normalize_migration_history(connection)
         applied_now: list[Migration] = []
         for migration in status.pending:
             try:
@@ -260,12 +312,13 @@ class MigrationRunner:
                             ) from error
                     connection.execute(
                         "INSERT INTO schema_migrations "
-                        "(version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
+                        "(version, name, checksum, applied_timestamp_micro) "
+                        "VALUES (?, ?, ?, ?)",
                         (
                             migration.version,
                             migration.name,
                             migration.checksum,
-                            canonical_datetime(datetime.now(UTC)),
+                            unix_microseconds(datetime.now(UTC)),
                         ),
                     )
             except sqlite3.Error as error:

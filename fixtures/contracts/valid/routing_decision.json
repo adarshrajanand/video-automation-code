@@ -10,7 +10,7 @@
     }
   ],
   "capability": "speech_generation",
-  "created_at": "2026-10-21T11:59:00Z",
+  "created_timestamp_micro": 1792583940000000,
   "data_classification": "INTERNAL",
   "fallback_chain": [
     "local_speech_fixture"
@@ -26,7 +26,7 @@
     "ONLY_ELIGIBLE"
   ],
   "routing_decision_id": "route_speech_scene_01",
-  "schema_version": "routing-decision.v1",
+  "schema_version": "routing-decision.v2",
   "usage_context": {
     "month_to_date_minor": 100
   }

@@ -40,10 +40,9 @@
       "default": null,
       "title": "Actual Cost Minor"
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "estimated_cost_minor": {
       "minimum": 0,
@@ -70,7 +69,7 @@
       "type": "integer"
     },
     "schema_version": {
-      "const": "budget-reservation.v1",
+      "const": "budget-reservation.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -84,18 +83,17 @@
     "scope_type": {
       "$ref": "#/$defs/BudgetScopeType"
     },
-    "settled_at": {
+    "settled_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Settled At"
+      "title": "Settled Timestamp Micro"
     },
     "status": {
       "$ref": "#/$defs/BudgetReservationStatus"
@@ -110,9 +108,9 @@
     "estimated_cost_minor",
     "reserved_cost_minor",
     "status",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "BudgetReservation",
   "type": "object",
-  "x-contract-schema-version": "budget-reservation.v1"
+  "x-contract-schema-version": "budget-reservation.v2"
 }

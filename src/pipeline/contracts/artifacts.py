@@ -27,7 +27,7 @@ from pipeline.contracts.vocabularies import (
 class Artifact(Contract):
     """One immutable output version and its exact content hash."""
 
-    schema_version: Literal["artifact.v1"]
+    schema_version: Literal["artifact.v2"]
     artifact_id: OpaqueId
     run_id: OpaqueId
     logical_slot: NonEmptyStr
@@ -44,7 +44,7 @@ class Artifact(Contract):
     config_hash: Sha256Hex
     state: ArtifactState
     retention_class: NonEmptyStr = "intermediate"
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_artifact(self) -> Artifact:
@@ -75,14 +75,14 @@ class ArtifactDependency(Contract):
 class ArtifactPointer(Contract):
     """Selects one artifact version for a logical slot at a point in time."""
 
-    schema_version: Literal["artifact-pointer.v1"]
+    schema_version: Literal["artifact-pointer.v2"]
     pointer_id: OpaqueId
     run_id: OpaqueId
     logical_slot: NonEmptyStr
     artifact_id: OpaqueId
     pointer_type: ArtifactPointerType
     active: StrictBoolean = True
-    updated_at: UTCDateTime
+    updated_timestamp_micro: UTCDateTime
 
 
 class InvalidationRequest(Contract):
@@ -105,11 +105,11 @@ class InvalidationRequest(Contract):
 class InvalidationResult(Contract):
     """Outcome of one invalidation request with disjoint retained artifacts."""
 
-    schema_version: Literal["invalidation-result.v1"]
+    schema_version: Literal["invalidation-result.v2"]
     request_id: OpaqueId
     invalidated_artifact_ids: list[OpaqueId] = Field(min_length=1)
     retained_artifact_ids: list[OpaqueId] = Field(default_factory=list)
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_partition(self) -> InvalidationResult:

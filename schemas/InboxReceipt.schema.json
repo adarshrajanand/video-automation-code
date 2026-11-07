@@ -80,21 +80,20 @@
       "title": "Event Id",
       "type": "string"
     },
-    "processed_at": {
+    "processed_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Processed At"
+      "title": "Processed Timestamp Micro"
     },
     "schema_version": {
-      "const": "inbox-receipt.v1",
+      "const": "inbox-receipt.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -110,5 +109,5 @@
   ],
   "title": "InboxReceipt",
   "type": "object",
-  "x-contract-schema-version": "inbox-receipt.v1"
+  "x-contract-schema-version": "inbox-receipt.v2"
 }

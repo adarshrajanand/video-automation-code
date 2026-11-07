@@ -86,7 +86,7 @@ def test_readiness_accepts_json_context_file(tmp_path: Path) -> None:
                 "run_status": "RUNNING",
                 "stage_instances": [
                     {
-                        "schema_version": "stage-instance.v1",
+                        "schema_version": "stage-instance.v2",
                         "stage_instance_id": "stage_intake_default",
                         "run_id": "run_cli",
                         "node_id": "intake",
@@ -94,8 +94,8 @@ def test_readiness_accepts_json_context_file(tmp_path: Path) -> None:
                         "execution_status": "SUCCEEDED",
                         "acceptance_status": "NOT_REQUIRED",
                         "accepted_output_artifact_ids": ["artifact_intake"],
-                        "created_at": "2026-01-01T00:00:00Z",
-                        "updated_at": "2026-01-01T00:00:00Z",
+                        "created_timestamp_micro": "2026-01-01T00:00:00Z",
+                        "updated_timestamp_micro": "2026-01-01T00:00:00Z",
                     }
                 ],
             }

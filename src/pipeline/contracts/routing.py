@@ -37,7 +37,7 @@ class RoutingContext(Contract):
 class RoutingDecision(Contract):
     """Recorded selection of implementation, provider, model, and fallbacks."""
 
-    schema_version: Literal["routing-decision.v1"]
+    schema_version: Literal["routing-decision.v2"]
     routing_decision_id: OpaqueId
     capability: NonEmptyStr
     implementation: NonEmptyStr
@@ -54,7 +54,7 @@ class RoutingDecision(Contract):
     attempt: PositiveInt
     data_classification: NonEmptyStr
     paid_fallback_authorized: StrictBoolean = False
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_unique_routing_lists(self) -> RoutingDecision:
@@ -104,19 +104,19 @@ class ResourceConstraints(Contract):
 class ResourceAssignment(Contract):
     """Selected placement and worker pool for one workload."""
 
-    schema_version: Literal["resource-assignment.v1"]
+    schema_version: Literal["resource-assignment.v2"]
     assignment_id: OpaqueId
     placement_class: NonEmptyStr
     worker_pool: NonEmptyStr
     implementation_version: NonEmptyStr
     constraints_hash: Sha256Hex
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
 
 class ProviderInvocation(Contract):
     """One external or local provider operation with its idempotency evidence."""
 
-    schema_version: Literal["provider-invocation.v1"]
+    schema_version: Literal["provider-invocation.v2"]
     invocation_id: OpaqueId
     capability_execution_id: OpaqueId
     provider: NonEmptyStr
@@ -124,18 +124,26 @@ class ProviderInvocation(Contract):
     idempotency_key: NonEmptyStr
     request_fingerprint: Sha256Hex
     status: ProviderInvocationStatus
-    started_at: UTCDateTime
-    finished_at: UTCDateTime | None = None
+    started_timestamp_micro: UTCDateTime
+    finished_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_invocation(self) -> ProviderInvocation:
-        if self.finished_at is not None and self.finished_at < self.started_at:
-            raise ValueError("finished_at must not be earlier than started_at")
+        if (
+            self.finished_timestamp_micro is not None
+            and self.finished_timestamp_micro < self.started_timestamp_micro
+        ):
+            raise ValueError(
+                "finished_timestamp_micro must not be earlier than "
+                "started_timestamp_micro"
+            )
         if (
             self.status is ProviderInvocationStatus.STARTED
-            and self.finished_at is not None
+            and self.finished_timestamp_micro is not None
         ):
-            raise ValueError("a started invocation must not have finished_at")
+            raise ValueError(
+                "a started invocation must not have finished_timestamp_micro"
+            )
         return self
 
 

@@ -107,7 +107,7 @@ class QualityCheck(Contract):
 class QualityInputManifest(Contract):
     """Exact artifact versions and hashes checked by one gate/check pair."""
 
-    schema_version: Literal["quality-input-manifest.v1"]
+    schema_version: Literal["quality-input-manifest.v2"]
     manifest_id: OpaqueId
     gate_id: NonEmptyStr
     check_id: OpaqueId
@@ -115,7 +115,7 @@ class QualityInputManifest(Contract):
     target_hashes: dict[OpaqueId, Sha256Hex]
     supporting_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     policy_snapshot_artifact_id: OpaqueId | None = None
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_manifest(self) -> QualityInputManifest:
@@ -154,7 +154,7 @@ class QualityGatePolicy(Contract):
 class QualityEvaluation(Contract):
     """Immutable outcome of one check against exact artifact versions."""
 
-    schema_version: Literal["quality-evaluation.v1"]
+    schema_version: Literal["quality-evaluation.v2"]
     evaluation_id: OpaqueId
     stage_instance_id: OpaqueId | None = None
     logical_item_key: NonEmptyStr | None = None
@@ -177,7 +177,7 @@ class QualityEvaluation(Contract):
     actual_cost_minor: NonNegativeInt | None = None
     provider_invocation_id: OpaqueId | None = None
     latency_ms: NonNegativeInt | None = None
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_evaluation(self) -> QualityEvaluation:
@@ -195,7 +195,7 @@ class QualityEvaluation(Contract):
 class QualityGateResult(Contract):
     """Aggregate gate decision over exact targets and evaluation records."""
 
-    schema_version: Literal["quality-gate-result.v1"]
+    schema_version: Literal["quality-gate-result.v2"]
     quality_gate_result_id: OpaqueId
     gate_id: OpaqueId
     gate_version: NonEmptyStr
@@ -209,8 +209,8 @@ class QualityGateResult(Contract):
     hard_failure_codes: list[FailureCode] = Field(default_factory=list)
     repair_scope: RepairScope | None = None
     policy_version: NonEmptyStr
-    created_at: UTCDateTime
-    completed_at: UTCDateTime | None = None
+    created_timestamp_micro: UTCDateTime
+    completed_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_gate_result(self) -> QualityGateResult:
@@ -225,15 +225,21 @@ class QualityGateResult(Contract):
             values = getattr(self, field_name)
             if len(set(values)) != len(values):
                 raise ValueError(f"{field_name} must not contain duplicates")
-        if self.completed_at is not None and self.completed_at < self.created_at:
-            raise ValueError("completed_at must not be earlier than created_at")
+        if (
+            self.completed_timestamp_micro is not None
+            and self.completed_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "completed_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         return self
 
 
 class RepairPlan(Contract):
     """Policy-approved, targeted replacement of failed artifacts or stages."""
 
-    schema_version: Literal["repair-plan.v1"]
+    schema_version: Literal["repair-plan.v2"]
     repair_plan_id: OpaqueId
     source_gate_result_id: OpaqueId
     reason_codes: list[NonEmptyStr] = Field(min_length=1)
@@ -241,7 +247,7 @@ class RepairPlan(Contract):
     target_stage_instance_ids: list[OpaqueId] = Field(default_factory=list)
     invalidation_scope: RepairInvalidationScope
     max_attempts: PositiveInt
-    created_at: UTCDateTime
+    created_timestamp_micro: UTCDateTime
 
     @model_validator(mode="after")
     def _validate_repair_plan(self) -> RepairPlan:

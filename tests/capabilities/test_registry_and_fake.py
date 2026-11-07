@@ -93,7 +93,7 @@ def base_setup(database: Database) -> dict:
         EffectiveConfigRepository(conn).insert(effective_config)
 
         workflow_run = WorkflowRun(
-            schema_version="workflow-run.v1",
+            schema_version="workflow-run.v2",
             run_id=run_id,
             run_key=f"test_run:{run_id}",
             workflow_id="test_workflow",
@@ -102,31 +102,31 @@ def base_setup(database: Database) -> dict:
             effective_config_hash="0" * 64,
             status=RunStatus.RUNNING,
             content_package_id=deterministic_id("package", run_id),
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         WorkflowRunRepository(conn).insert(workflow_run)
 
         stage_instance = StageInstance(
-            schema_version="stage-instance.v1",
+            schema_version="stage-instance.v2",
             stage_instance_id=stage_instance_id,
             run_id=run_id,
             node_id="test_node",
             logical_item_key="test_item",
             execution_status=StageExecutionStatus.RUNNING,
             acceptance_status="NOT_REQUIRED",
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
+            created_timestamp_micro=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         StageInstanceRepository(conn).insert(stage_instance)
 
         stage_attempt = StageAttempt(
-            schema_version="stage-attempt.v1",
+            schema_version="stage-attempt.v2",
             attempt_id=attempt_id,
             stage_instance_id=stage_instance_id,
             attempt_number=1,
             status=AttemptStatus.RUNNING,
-            started_at=datetime.now(UTC),
+            started_timestamp_micro=datetime.now(UTC),
         )
         StageAttemptRepository(conn).insert(stage_attempt)
 
@@ -145,7 +145,7 @@ def base_routing_decision(base_setup: dict) -> RoutingDecision:
     capability_execution_id = deterministic_id("capexec", base_setup["attempt_id"])
     routing_decision_id = deterministic_id("route", capability_execution_id)
     return RoutingDecision(
-        schema_version="routing-decision.v1",
+        schema_version="routing-decision.v2",
         routing_decision_id=routing_decision_id,
         capability="test",
         implementation="fake",
@@ -162,7 +162,7 @@ def base_routing_decision(base_setup: dict) -> RoutingDecision:
         attempt=1,
         data_classification="PUBLIC",
         paid_fallback_authorized=False,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 

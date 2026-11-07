@@ -311,7 +311,7 @@ def evaluate_gate(
     Returns:
         A QualityGateResult with the aggregate decision and repair scope.
     """
-    created_at = datetime.now(UTC)
+    created_timestamp_micro = datetime.now(UTC)
     evaluation_ids = tuple(e.evaluation_id for e in evaluations)
     required_check_ids = policy.required_check_ids
     hard_failure_codes: list[FailureCode] = []
@@ -326,8 +326,8 @@ def evaluate_gate(
                 decision=GateDecision.FAIL,
                 hard_failure_codes=[FailureCode.QUALITY_GENERIC],
                 repair_scope=None,
-                created_at=created_at,
-                completed_at=datetime.now(UTC),
+                created_timestamp_micro=created_timestamp_micro,
+                completed_timestamp_micro=datetime.now(UTC),
                 stage_instance_id=stage_instance_id,
                 logical_item_key=logical_item_key,
             )
@@ -339,8 +339,8 @@ def evaluate_gate(
                 decision=GateDecision.FAIL,
                 hard_failure_codes=[FailureCode.QUALITY_GENERIC],
                 repair_scope=None,
-                created_at=created_at,
-                completed_at=datetime.now(UTC),
+                created_timestamp_micro=created_timestamp_micro,
+                completed_timestamp_micro=datetime.now(UTC),
                 stage_instance_id=stage_instance_id,
                 logical_item_key=logical_item_key,
             )
@@ -352,8 +352,8 @@ def evaluate_gate(
                 decision=GateDecision.FAIL,
                 hard_failure_codes=[FailureCode.QUALITY_GENERIC],
                 repair_scope=None,
-                created_at=created_at,
-                completed_at=datetime.now(UTC),
+                created_timestamp_micro=created_timestamp_micro,
+                completed_timestamp_micro=datetime.now(UTC),
                 stage_instance_id=stage_instance_id,
                 logical_item_key=logical_item_key,
             )
@@ -365,8 +365,8 @@ def evaluate_gate(
                 decision=GateDecision.FAIL,
                 hard_failure_codes=[FailureCode.QUALITY_GENERIC],
                 repair_scope=None,
-                created_at=created_at,
-                completed_at=datetime.now(UTC),
+                created_timestamp_micro=created_timestamp_micro,
+                completed_timestamp_micro=datetime.now(UTC),
                 stage_instance_id=stage_instance_id,
                 logical_item_key=logical_item_key,
             )
@@ -381,8 +381,8 @@ def evaluate_gate(
                 decision=GateDecision.FAIL,
                 hard_failure_codes=[FailureCode.QUALITY_GENERIC],
                 repair_scope=None,
-                created_at=created_at,
-                completed_at=datetime.now(UTC),
+                created_timestamp_micro=created_timestamp_micro,
+                completed_timestamp_micro=datetime.now(UTC),
                 stage_instance_id=stage_instance_id,
                 logical_item_key=logical_item_key,
             )
@@ -435,8 +435,8 @@ def evaluate_gate(
             decision=GateDecision.FAIL,
             hard_failure_codes=tuple(hard_failure_codes),
             repair_scope=None,
-            created_at=created_at,
-            completed_at=datetime.now(UTC),
+            created_timestamp_micro=created_timestamp_micro,
+            completed_timestamp_micro=datetime.now(UTC),
             stage_instance_id=stage_instance_id,
             logical_item_key=logical_item_key,
         )
@@ -470,8 +470,8 @@ def evaluate_gate(
             decision=GateDecision.HUMAN_REVIEW,
             hard_failure_codes=(),
             repair_scope=None,
-            created_at=created_at,
-            completed_at=datetime.now(UTC),
+            created_timestamp_micro=created_timestamp_micro,
+            completed_timestamp_micro=datetime.now(UTC),
             stage_instance_id=stage_instance_id,
             logical_item_key=logical_item_key,
         )
@@ -491,8 +491,8 @@ def evaluate_gate(
             decision=GateDecision.PASS,
             hard_failure_codes=(),
             repair_scope=None,
-            created_at=created_at,
-            completed_at=datetime.now(UTC),
+            created_timestamp_micro=created_timestamp_micro,
+            completed_timestamp_micro=datetime.now(UTC),
             stage_instance_id=stage_instance_id,
             logical_item_key=logical_item_key,
         )
@@ -534,8 +534,8 @@ def evaluate_gate(
             decision=GateDecision.HUMAN_REVIEW,
             hard_failure_codes=(),
             repair_scope=None,
-            created_at=created_at,
-            completed_at=datetime.now(UTC),
+            created_timestamp_micro=created_timestamp_micro,
+            completed_timestamp_micro=datetime.now(UTC),
             stage_instance_id=stage_instance_id,
             logical_item_key=logical_item_key,
         )
@@ -570,8 +570,8 @@ def evaluate_gate(
         decision=decision,
         hard_failure_codes=(),
         repair_scope=repair_scope if decision is GateDecision.REGENERATE else None,
-        created_at=created_at,
-        completed_at=datetime.now(UTC),
+        created_timestamp_micro=created_timestamp_micro,
+        completed_timestamp_micro=datetime.now(UTC),
         stage_instance_id=stage_instance_id,
         logical_item_key=logical_item_key,
     )
@@ -676,8 +676,8 @@ def _create_gate_result(
     decision: GateDecision,
     hard_failure_codes: tuple[FailureCode, ...],
     repair_scope: RepairScope | None,
-    created_at: datetime,
-    completed_at: datetime,
+    created_timestamp_micro: datetime,
+    completed_timestamp_micro: datetime,
     stage_instance_id: str | None = None,
     logical_item_key: str | None = None,
 ) -> QualityGateResult:
@@ -696,8 +696,8 @@ def _create_gate_result(
         decision: The gate decision.
         hard_failure_codes: Hard failure codes that triggered FAIL.
         repair_scope: Repair scope for REGENERATE decisions.
-        created_at: Timestamp when evaluation started.
-        completed_at: Timestamp when evaluation completed.
+        created_timestamp_micro: Timestamp when evaluation started.
+        completed_timestamp_micro: Timestamp when evaluation completed.
         stage_instance_id: Optional stage instance ID for linking.
         logical_item_key: Optional logical item key for linking.
 
@@ -710,7 +710,7 @@ def _create_gate_result(
         "qgr", policy.gate_id, policy.version, decision.value, eval_id_str
     )
     return QualityGateResult(
-        schema_version="quality-gate-result.v1",
+        schema_version="quality-gate-result.v2",
         quality_gate_result_id=f"qgr_{gate_result_id}",
         gate_id=policy.gate_id,
         gate_version=policy.version,
@@ -724,8 +724,8 @@ def _create_gate_result(
         hard_failure_codes=list(hard_failure_codes),
         repair_scope=repair_scope,
         policy_version=policy.version,
-        created_at=created_at,
-        completed_at=completed_at,
+        created_timestamp_micro=created_timestamp_micro,
+        completed_timestamp_micro=completed_timestamp_micro,
     )
 
 

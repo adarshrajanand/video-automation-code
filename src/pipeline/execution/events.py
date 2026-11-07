@@ -39,45 +39,49 @@ class EventOutbox:
         event: EventEnvelope,
         *,
         outbox_id: str | None = None,
-        available_at: datetime | None = None,
+        available_timestamp_micro: datetime | None = None,
         connection: sqlite3.Connection | None = None,
     ) -> OutboxMessage:
         """Insert one event and one outbox row in the same transaction."""
 
-        available = available_at or self._clock()
+        available = available_timestamp_micro or self._clock()
         if connection is None:
             with self.database.transaction(immediate=True) as transaction:
                 return insert_event_and_outbox(
                     transaction,
                     event,
                     outbox_id=outbox_id,
-                    available_at=available,
+                    available_timestamp_micro=available,
                 )
         return insert_event_and_outbox(
             connection,
             event,
             outbox_id=outbox_id,
-            available_at=available,
+            available_timestamp_micro=available,
         )
 
     def append_many(
         self,
         events: Sequence[EventEnvelope],
         *,
-        available_at: datetime | None = None,
+        available_timestamp_micro: datetime | None = None,
         connection: sqlite3.Connection | None = None,
     ) -> list[OutboxMessage]:
         """Append a batch of events in one transaction."""
 
-        available = available_at or self._clock()
+        available = available_timestamp_micro or self._clock()
         if connection is not None:
             return [
-                self.append(event, available_at=available, connection=connection)
+                self.append(
+                    event, available_timestamp_micro=available, connection=connection
+                )
                 for event in events
             ]
         with self.database.transaction(immediate=True) as transaction:
             return [
-                self.append(event, available_at=available, connection=transaction)
+                self.append(
+                    event, available_timestamp_micro=available, connection=transaction
+                )
                 for event in events
             ]
 

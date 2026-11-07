@@ -27,10 +27,9 @@
       "title": "Content Hash",
       "type": "string"
     },
-    "extracted_at": {
-      "format": "date-time",
-      "title": "Extracted At",
-      "type": "string"
+    "extracted_timestamp_micro": {
+      "title": "Extracted Timestamp Micro",
+      "type": "integer"
     },
     "language": {
       "default": "en",
@@ -44,7 +43,7 @@
       "$ref": "#/$defs/ExtensionObject"
     },
     "schema_version": {
-      "const": "source-snapshot.v1",
+      "const": "source-snapshot.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -75,9 +74,9 @@
     "content",
     "content_hash",
     "token_count",
-    "extracted_at"
+    "extracted_timestamp_micro"
   ],
   "title": "SourceSnapshot",
   "type": "object",
-  "x-contract-schema-version": "source-snapshot.v1"
+  "x-contract-schema-version": "source-snapshot.v2"
 }

@@ -4,33 +4,30 @@
   "additionalProperties": false,
   "description": "Temporary ownership term for one job, fenced by a monotonic token.",
   "properties": {
-    "acquired_at": {
-      "format": "date-time",
-      "title": "Acquired At",
-      "type": "string"
+    "acquired_timestamp_micro": {
+      "title": "Acquired Timestamp Micro",
+      "type": "integer"
     },
-    "expires_at": {
-      "format": "date-time",
-      "title": "Expires At",
-      "type": "string"
+    "expires_timestamp_micro": {
+      "title": "Expires Timestamp Micro",
+      "type": "integer"
     },
     "fencing_token": {
       "minimum": 1,
       "title": "Fencing Token",
       "type": "integer"
     },
-    "heartbeat_at": {
+    "heartbeat_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Heartbeat At"
+      "title": "Heartbeat Timestamp Micro"
     },
     "job_id": {
       "maxLength": 256,
@@ -47,7 +44,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "lease.v1",
+      "const": "lease.v2",
       "title": "Schema Version",
       "type": "string"
     }
@@ -57,10 +54,10 @@
     "job_id",
     "owner_id",
     "fencing_token",
-    "acquired_at",
-    "expires_at"
+    "acquired_timestamp_micro",
+    "expires_timestamp_micro"
   ],
   "title": "Lease",
   "type": "object",
-  "x-contract-schema-version": "lease.v1"
+  "x-contract-schema-version": "lease.v2"
 }

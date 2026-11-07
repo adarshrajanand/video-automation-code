@@ -181,18 +181,17 @@
       "title": "Capability Execution Id",
       "type": "string"
     },
-    "finished_at": {
+    "finished_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Finished At"
+      "title": "Finished Timestamp Micro"
     },
     "idempotency_key": {
       "maxLength": 512,
@@ -314,7 +313,7 @@
       "title": "Rubric Version"
     },
     "schema_version": {
-      "const": "capability-execution.v1",
+      "const": "capability-execution.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -333,18 +332,17 @@
       "default": null,
       "title": "Settings Hash"
     },
-    "started_at": {
+    "started_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Started At"
+      "title": "Started Timestamp Micro"
     },
     "status": {
       "$ref": "#/$defs/CapabilityExecutionStatus"
@@ -379,5 +377,5 @@
   ],
   "title": "CapabilityExecution",
   "type": "object",
-  "x-contract-schema-version": "capability-execution.v1"
+  "x-contract-schema-version": "capability-execution.v2"
 }

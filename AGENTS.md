@@ -26,12 +26,34 @@ unless asked. This format applies to chat and inline PR replies;
 [REVIEW_GUIDELINES.md](REVIEW_GUIDELINES.md) still governs durable `FAQ.md`
 entries.
 
+## Code comments and explainability
+
+Write comments for the reader who has the code but not the conversation that
+produced it. A recurring review finding is that behavior is correct but the
+reasoning is invisible. Treat missing explanation as a defect, not polish.
+
+Add a comment when the code encodes:
+
+- a non-obvious decision, invariant, or tradeoff (“why”, not “what”);
+- a boundary or ownership rule, such as which layer is authoritative;
+- a workaround, SQLite/SQL behavior, or ordering constraint;
+- a migration/checksum/revert rule someone must follow later;
+- a test whose purpose is not obvious from its name, including the regression it
+  guards against.
+
+Prefer a short module docstring plus targeted inline comments over narrating
+each line. Do not restate the code. Keep comments next to the code they explain
+and update them in the same commit as the behavior. When a review answer contains
+durable knowledge, move the reusable part into a code comment or docstring and
+the review-specific part into `FAQ.md`.
+
 ## Non-negotiable boundaries
 
 - The [Local Infrastructure Profile](docs/kb/docs/AI_Video_Pipeline_Local_Infrastructure_Profile.md)
   is the implementation baseline; remote infrastructure is deferred.
-- `docs/` is a separate repository. Make commits from `video-automation-code`
-  only; never commit inside `docs/`.
+- `docs/` is part of this repository. Update canonical documentation and code in
+  the same change, and commit both from `video-automation-code`. Do not treat
+  `docs/` as a separate repository or defer canonical updates to another PR.
 - Preserve unrelated user changes and runtime state. Do not edit applied
   migrations; add a new migration when required.
 - Do not merge PRs or close issues without explicit user approval. Passing

@@ -4,7 +4,9 @@
   "scene_id": "scene_01",
   "description": "Test visual intent",
   "purpose": "INVALID_PURPOSE",
-  "elements": ["element1"],
+  "elements": [
+    "element1"
+  ],
   "overlays": [],
   "provenance_requirements": []
 }

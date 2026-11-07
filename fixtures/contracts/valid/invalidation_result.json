@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-10-21T13:00:00Z",
+  "created_timestamp_micro": 1792587600000000,
   "invalidated_artifact_ids": [
     "artifact_audio_scene_01_v1",
     "artifact_composition_scene_01_v1"
@@ -9,5 +9,5 @@
     "artifact_script_v1",
     "artifact_scene_02_v1"
   ],
-  "schema_version": "invalidation-result.v1"
+  "schema_version": "invalidation-result.v2"
 }

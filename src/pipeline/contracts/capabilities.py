@@ -130,7 +130,7 @@ class CapabilityResult(Contract):
 class CapabilityExecution(Contract):
     """Control-plane lifecycle record for one capability execution."""
 
-    schema_version: Literal["capability-execution.v1"]
+    schema_version: Literal["capability-execution.v2"]
     capability_execution_id: OpaqueId
     attempt_id: OpaqueId
     capability: NonEmptyStr
@@ -147,8 +147,8 @@ class CapabilityExecution(Contract):
     status: CapabilityExecutionStatus
     input_artifact_ids: list[OpaqueId] = Field(default_factory=list)
     output_artifact_ids: list[OpaqueId] = Field(default_factory=list)
-    started_at: UTCDateTime | None = None
-    finished_at: UTCDateTime | None = None
+    started_timestamp_micro: UTCDateTime | None = None
+    finished_timestamp_micro: UTCDateTime | None = None
     normalized_error: NormalizedError | None = None
 
     @model_validator(mode="after")
@@ -158,11 +158,14 @@ class CapabilityExecution(Contract):
             if len(set(values)) != len(values):
                 raise ValueError(f"{field_name} must not contain duplicates")
         if (
-            self.started_at is not None
-            and self.finished_at is not None
-            and self.finished_at < self.started_at
+            self.started_timestamp_micro is not None
+            and self.finished_timestamp_micro is not None
+            and self.finished_timestamp_micro < self.started_timestamp_micro
         ):
-            raise ValueError("finished_at must not be earlier than started_at")
+            raise ValueError(
+                "finished_timestamp_micro must not be earlier than "
+                "started_timestamp_micro"
+            )
         if (
             self.status is CapabilityExecutionStatus.SUCCEEDED
             and self.normalized_error is not None
@@ -183,7 +186,7 @@ class CapabilityExecution(Contract):
 class IdempotencyRecord(Contract):
     """Duplicate-suppression and reconciliation state for one operation key."""
 
-    schema_version: Literal["idempotency-record.v1"]
+    schema_version: Literal["idempotency-record.v2"]
     idempotency_key: NonEmptyStr
     capability: NonEmptyStr
     operation_version: NonEmptyStr
@@ -197,8 +200,8 @@ class IdempotencyRecord(Contract):
     provider_invocation_id: OpaqueId | None = None
     provider_operation_id: NonEmptyStr | None = None
     result_artifact_ids: list[OpaqueId] = Field(default_factory=list)
-    created_at: UTCDateTime
-    completed_at: UTCDateTime | None = None
+    created_timestamp_micro: UTCDateTime
+    completed_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_idempotency_record(self) -> IdempotencyRecord:
@@ -208,15 +211,21 @@ class IdempotencyRecord(Contract):
             raise ValueError("input_artifact_ids must not contain duplicates")
         if len(set(self.required_features)) != len(self.required_features):
             raise ValueError("required_features must not contain duplicates")
-        if self.completed_at is not None and self.completed_at < self.created_at:
-            raise ValueError("completed_at must not be earlier than created_at")
+        if (
+            self.completed_timestamp_micro is not None
+            and self.completed_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "completed_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         return self
 
 
 class BudgetReservation(Contract):
     """Reserved and settled cost at one budget scope."""
 
-    schema_version: Literal["budget-reservation.v1"]
+    schema_version: Literal["budget-reservation.v2"]
     reservation_id: OpaqueId
     scope_type: BudgetScopeType
     scope_id: OpaqueId
@@ -225,13 +234,19 @@ class BudgetReservation(Contract):
     reserved_cost_minor: NonNegativeInt
     actual_cost_minor: NonNegativeInt | None = None
     status: BudgetReservationStatus
-    created_at: UTCDateTime
-    settled_at: UTCDateTime | None = None
+    created_timestamp_micro: UTCDateTime
+    settled_timestamp_micro: UTCDateTime | None = None
 
     @model_validator(mode="after")
     def _validate_reservation(self) -> BudgetReservation:
-        if self.settled_at is not None and self.settled_at < self.created_at:
-            raise ValueError("settled_at must not be earlier than created_at")
+        if (
+            self.settled_timestamp_micro is not None
+            and self.settled_timestamp_micro < self.created_timestamp_micro
+        ):
+            raise ValueError(
+                "settled_timestamp_micro must not be earlier than "
+                "created_timestamp_micro"
+            )
         if (
             self.status is BudgetReservationStatus.SETTLED
             and self.actual_cost_minor is None

@@ -2,7 +2,7 @@
   "attempt_id": "attempt_speech_01",
   "capability": "speech_generation",
   "capability_execution_id": "capexec_speech_scene_01",
-  "finished_at": "2026-10-21T12:01:00Z",
+  "finished_timestamp_micro": 1792584060000000,
   "idempotency_key": "idem_speech_generation_scene_01",
   "implementation_version": "local-speech-fixture.v1",
   "input_artifact_ids": [
@@ -18,9 +18,9 @@
   "resource_assignment_id": "resource_cpu_01",
   "routing_decision_id": "route_speech_scene_01",
   "rubric_version": null,
-  "schema_version": "capability-execution.v1",
+  "schema_version": "capability-execution.v2",
   "settings_hash": "6371ad4f7ce3766cf5ea2ea7327386726ada9be66205f59b2306c2f85cc86a60",
-  "started_at": "2026-10-21T12:00:00Z",
+  "started_timestamp_micro": 1792584000000000,
   "status": "SUCCEEDED",
   "tool_versions": {
     "ffmpeg": "7.0.2"

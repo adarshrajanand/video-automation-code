@@ -98,10 +98,9 @@
       "title": "Claim Ids",
       "type": "array"
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "duration_policy_id": {
       "maxLength": 256,
@@ -153,7 +152,7 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "script.v1",
+      "const": "script.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -211,9 +210,9 @@
     "duration_policy_id",
     "total_estimated_duration_seconds",
     "word_count",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "Script",
   "type": "object",
-  "x-contract-schema-version": "script.v1"
+  "x-contract-schema-version": "script.v2"
 }

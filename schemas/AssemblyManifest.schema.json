@@ -13,10 +13,9 @@
   "additionalProperties": false,
   "description": "Assembly manifest recording ordered chunks and continuity checks.",
   "properties": {
-    "assembled_at": {
-      "format": "date-time",
-      "title": "Assembled At",
-      "type": "string"
+    "assembled_timestamp_micro": {
+      "title": "Assembled Timestamp Micro",
+      "type": "integer"
     },
     "assembler_version": {
       "maxLength": 512,
@@ -118,7 +117,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "assembly-manifest.v1",
+      "const": "assembly-manifest.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -140,9 +139,9 @@
     "output_sha256",
     "output_size_bytes",
     "assembler_version",
-    "assembled_at"
+    "assembled_timestamp_micro"
   ],
   "title": "AssemblyManifest",
   "type": "object",
-  "x-contract-schema-version": "assembly-manifest.v1"
+  "x-contract-schema-version": "assembly-manifest.v2"
 }

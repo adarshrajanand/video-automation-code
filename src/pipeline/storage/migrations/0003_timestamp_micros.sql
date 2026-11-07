@@ -1,0 +1,10 @@
+-- GEN-24 (#92): persist timestamps as integer microseconds.
+--
+-- This file is intentionally comment-only. It is the version/checksum anchor for
+-- migration 0003; the rename and conversion run in the Python hook registered in
+-- pipeline.storage.migrations because SQLite cannot convert ISO-8601 text with
+-- offsets into exact integer microseconds.
+--
+-- The hook refuses databases that contain durable rows. Development databases
+-- must be reset under the documented policy instead of being converted in place.
+-- Applied migrations (0001, 0002) are immutable and are never edited.

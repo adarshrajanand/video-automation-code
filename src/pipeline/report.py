@@ -15,6 +15,7 @@ from pipeline.contracts.quality import QualityGateResult
 from pipeline.contracts.vocabularies import (
     AttemptStatus,
 )
+from pipeline.fingerprints import unix_microseconds
 from pipeline.ids import deterministic_id
 
 if TYPE_CHECKING:
@@ -144,14 +145,18 @@ def _redact_command_argv(argv: list[str]) -> str:
 class ValidationReport:
     """Complete validation report for a workflow run."""
 
-    schema_version: str = "validation-report.v1"
+    schema_version: str = "validation-report.v2"
     report_id: str = field(
         default_factory=lambda: (
             f"vrpt_{deterministic_id('vrpt', str(datetime.now(UTC).timestamp()))}"
         )
     )
     run_id: str = ""
-    generated_at: datetime = field(default_factory=lambda: datetime.now(UTC))
+    # Internal state stays a datetime; the JSON boundary emits integer
+    # microseconds under ``generated_timestamp_micro`` (see ``to_dict``).
+    generated_timestamp_micro: datetime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
 
     # Environment and command info
     command: str = ""
@@ -197,7 +202,7 @@ class ValidationReport:
             f"# Validation Report: {self.run_id}",
             "",
             f"**Report ID:** {self.report_id}",
-            f"**Generated:** {self.generated_at.isoformat()}",
+            f"**Generated:** {self.generated_timestamp_micro.isoformat()}",
             "",
             "---",
             "",
@@ -237,8 +242,8 @@ class ValidationReport:
                         f"(hash: {run.effective_config_hash[:16]}...)"
                     ),
                     f"- **Content Package:** {run.content_package_id}",
-                    f"- **Created:** {run.created_at.isoformat()}",
-                    f"- **Updated:** {run.updated_at.isoformat()}",
+                    f"- **Created:** {run.created_timestamp_micro.isoformat()}",
+                    f"- **Updated:** {run.updated_timestamp_micro.isoformat()}",
                     "",
                 ]
             )
@@ -281,8 +286,16 @@ class ValidationReport:
         )
         for sa in self.stage_attempts:
             worker = sa.worker_id or "N/A"
-            started = sa.started_at.isoformat() if sa.started_at else "N/A"
-            finished = sa.finished_at.isoformat() if sa.finished_at else "N/A"
+            started = (
+                sa.started_timestamp_micro.isoformat()
+                if sa.started_timestamp_micro
+                else "N/A"
+            )
+            finished = (
+                sa.finished_timestamp_micro.isoformat()
+                if sa.finished_timestamp_micro
+                else "N/A"
+            )
             failure = sa.failure_code.value if sa.failure_code else "N/A"
             lines.append(
                 f"| {sa.attempt_id} | {sa.stage_instance_id} | {sa.attempt_number} | "
@@ -395,7 +408,7 @@ class ValidationReport:
                         f"- **Run ID:** {self.run_id}",
                         f"- **Stage Instance:** {qgr.stage_instance_id or 'N/A'}",
                         f"- **Evaluations:** {len(qgr.evaluation_ids)}",
-                        f"- **Created:** {qgr.created_at.isoformat()}",
+                        f"- **Created:** {qgr.created_timestamp_micro.isoformat()}",
                         "",
                     ]
                 )
@@ -452,8 +465,8 @@ class ValidationReport:
         )
         for si_id, timing in self.stage_timings.items():
             node = timing.get("node_id", "")
-            started = timing.get("started_at", "N/A")
-            finished = timing.get("finished_at", "N/A")
+            started = timing.get("started_timestamp_micro", "N/A")
+            finished = timing.get("finished_timestamp_micro", "N/A")
             duration = timing.get("duration_seconds", "N/A")
             lines.append(f"| {si_id} | {node} | {started} | {finished} | {duration} |")
         lines.append("")
@@ -538,7 +551,9 @@ class ValidationReport:
             "schema_version": self.schema_version,
             "report_id": self.report_id,
             "run_id": self.run_id,
-            "generated_at": self.generated_at.isoformat(),
+            "generated_timestamp_micro": unix_microseconds(
+                self.generated_timestamp_micro
+            ),
             "command": self.command,
             "environment": self.environment,
             "python_version": self.python_version,
@@ -677,18 +692,32 @@ class ValidationReportGenerator:
             ]
             if attempts:
                 started = min(
-                    (a.started_at for a in attempts if a.started_at), default=None
+                    (
+                        a.started_timestamp_micro
+                        for a in attempts
+                        if a.started_timestamp_micro
+                    ),
+                    default=None,
                 )
                 finished = max(
-                    (a.finished_at for a in attempts if a.finished_at), default=None
+                    (
+                        a.finished_timestamp_micro
+                        for a in attempts
+                        if a.finished_timestamp_micro
+                    ),
+                    default=None,
                 )
                 duration = None
                 if started and finished:
                     duration = (finished - started).total_seconds()
                 report.stage_timings[si.stage_instance_id] = {
                     "node_id": si.node_id,
-                    "started_at": started.isoformat() if started else None,
-                    "finished_at": finished.isoformat() if finished else None,
+                    "started_timestamp_micro": unix_microseconds(started)
+                    if started
+                    else None,
+                    "finished_timestamp_micro": unix_microseconds(finished)
+                    if finished
+                    else None,
                     "duration_seconds": duration,
                 }
 
@@ -852,12 +881,14 @@ class QualityReportGenerator:
 
             rid = deterministic_id("qrpt", str(run_ids), str(gate_ids))
             return {
-                "schema_version": "quality-report.v1",
+                "schema_version": "quality-report.v2",
                 "report_id": f"qrpt_{rid}",
                 "run_ids": run_ids or [],
                 "gate_ids": gate_ids or [],
-                "period_start": period_start.isoformat() if period_start else None,
-                "period_end": period_end.isoformat() if period_end else None,
+                "period_start": unix_microseconds(period_start)
+                if period_start
+                else None,
+                "period_end": unix_microseconds(period_end) if period_end else None,
                 "total_gates": len(gate_results),
                 "pass_count": sum(
                     1 for g in gate_results if g.decision.value == "PASS"

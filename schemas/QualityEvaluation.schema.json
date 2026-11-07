@@ -192,10 +192,9 @@
       ],
       "default": null
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "dimensions": {
       "items": {
@@ -329,7 +328,7 @@
       "title": "Scene Id"
     },
     "schema_version": {
-      "const": "quality-evaluation.v1",
+      "const": "quality-evaluation.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -402,9 +401,9 @@
     "evaluator",
     "evaluator_version",
     "outcome",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "QualityEvaluation",
   "type": "object",
-  "x-contract-schema-version": "quality-evaluation.v1"
+  "x-contract-schema-version": "quality-evaluation.v2"
 }

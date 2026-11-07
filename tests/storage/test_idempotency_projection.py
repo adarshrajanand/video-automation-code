@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from enum import Enum
 
 from pipeline.contracts.capabilities import IdempotencyRecord
-from pipeline.fingerprints import canonical_datetime, canonical_json
+from pipeline.fingerprints import canonical_json, unix_microseconds
 from pipeline.storage import Database, IdempotencyRecordRepository
 
 
@@ -37,7 +37,7 @@ def _assert_projection_matches(record: IdempotencyRecord, columns, row) -> None:
         elif isinstance(expected, Enum):
             assert actual == expected.value
         elif isinstance(expected, datetime):
-            assert actual == canonical_datetime(expected)
+            assert actual == unix_microseconds(expected)
         else:
             assert actual == expected
 
@@ -52,8 +52,12 @@ def _changed_record(records, suffix: str) -> IdempotencyRecord:
             "provider_invocation_id": f"inv_{suffix}",
             "provider_operation_id": f"op_{suffix}",
             "result_artifact_ids": [f"artifact_out_{suffix}"],
-            "created_at": datetime(2026, 10, 21, 9, 0, 0, 123456, tzinfo=UTC),
-            "completed_at": datetime(2026, 10, 21, 9, 0, 1, 654321, tzinfo=UTC),
+            "created_timestamp_micro": datetime(
+                2026, 10, 21, 9, 0, 0, 123456, tzinfo=UTC
+            ),
+            "completed_timestamp_micro": datetime(
+                2026, 10, 21, 9, 0, 1, 654321, tzinfo=UTC
+            ),
         }
     )
 
@@ -66,8 +70,8 @@ def test_idempotency_insert_projects_every_ddl_column(database, records) -> None
 
     columns, row = _projection_row(database, record.idempotency_key)
     _assert_projection_matches(record, columns, row)
-    assert row["created_at"] == "2026-10-21T09:00:00.123456Z"
-    assert row["completed_at"] == "2026-10-21T09:00:01.654321Z"
+    assert row["created_timestamp_micro"] == 1_792_573_200_123_456
+    assert row["completed_timestamp_micro"] == 1_792_573_201_654_321
     with database.connection() as connection:
         assert (
             IdempotencyRecordRepository(connection).get(record.idempotency_key)
@@ -84,7 +88,7 @@ def test_idempotency_update_reprojects_every_ddl_column(database, records) -> No
             "required_features": ["translated"],
             "locale": "fr-CA",
             "result_artifact_ids": ["artifact_out_child"],
-            "completed_at": datetime(2026, 10, 21, 9, 0, 2, tzinfo=UTC),
+            "completed_timestamp_micro": datetime(2026, 10, 21, 9, 0, 2, tzinfo=UTC),
         }
     )
 

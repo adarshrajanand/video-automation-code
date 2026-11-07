@@ -46,10 +46,9 @@
       "title": "Config Hash",
       "type": "string"
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "input_artifact_ids": {
       "items": {
@@ -116,7 +115,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "artifact.v1",
+      "const": "artifact.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -162,9 +161,9 @@
     "producer_version",
     "config_hash",
     "state",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "Artifact",
   "type": "object",
-  "x-contract-schema-version": "artifact.v1"
+  "x-contract-schema-version": "artifact.v2"
 }

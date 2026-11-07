@@ -4,10 +4,9 @@
   "additionalProperties": false,
   "description": "Outcome of one invalidation request with disjoint retained artifacts.",
   "properties": {
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "invalidated_artifact_ids": {
       "items": {
@@ -38,7 +37,7 @@
       "type": "array"
     },
     "schema_version": {
-      "const": "invalidation-result.v1",
+      "const": "invalidation-result.v2",
       "title": "Schema Version",
       "type": "string"
     }
@@ -47,9 +46,9 @@
     "schema_version",
     "request_id",
     "invalidated_artifact_ids",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "InvalidationResult",
   "type": "object",
-  "x-contract-schema-version": "invalidation-result.v1"
+  "x-contract-schema-version": "invalidation-result.v2"
 }

@@ -15,9 +15,17 @@ from pipeline.contracts.base import (
     UTCDateTime,
 )
 from pipeline.contracts.vocabularies import EvaluationKind
+from pipeline.fingerprints import datetime_from_unix_microseconds, unix_microseconds
+from pipeline.quality.legacy import microseconds_from_legacy_iso
 
 if TYPE_CHECKING:
     pass
+
+# v2 encodes timestamps as integer microseconds under ``*_timestamp_micro``;
+# v1 files used ISO text under ``created_at``/``updated_at``. ``from_dict``
+# upgrades v1 so existing saved thresholds keep loading (review 4501750689).
+THRESHOLD_RECORD_SCHEMA_VERSION = "threshold-record.v2"
+THRESHOLD_RECORD_LEGACY_VERSIONS = frozenset({"threshold-record.v1"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,7 +36,7 @@ class ThresholdRecord:
     blind spots, and recalibration triggers.
     """
 
-    schema_version: str = "threshold-record.v1"
+    schema_version: str = THRESHOLD_RECORD_SCHEMA_VERSION
     threshold_id: str = field(default_factory=lambda: f"thr_{uuid.uuid4().hex[:12]}")
     gate_id: NonEmptyStr = ""
     check_id: OpaqueId = ""
@@ -59,8 +67,12 @@ class ThresholdRecord:
     # Version tracking
     rubric_version: NonEmptyStr | None = None
     estimator_version: NonEmptyStr = "1.0.0"
-    created_at: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
-    updated_at: UTCDateTime = field(default_factory=lambda: datetime.now(UTC))
+    created_timestamp_micro: UTCDateTime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
+    updated_timestamp_micro: UTCDateTime = field(
+        default_factory=lambda: datetime.now(UTC)
+    )
 
     def __post_init__(self) -> None:
         if not (0.0 <= self.review_threshold <= self.pass_threshold <= 1.0):
@@ -108,21 +120,39 @@ class ThresholdRecord:
             "min_samples_for_recalibration": self.min_samples_for_recalibration,
             "rubric_version": self.rubric_version,
             "estimator_version": self.estimator_version,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
+            "created_timestamp_micro": unix_microseconds(self.created_timestamp_micro),
+            "updated_timestamp_micro": unix_microseconds(self.updated_timestamp_micro),
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> ThresholdRecord:
-        """Deserialize from dictionary."""
+        """Deserialize from dictionary, upgrading a v1 file if needed."""
+
         data = data.copy()
+        version = str(data.get("schema_version", "threshold-record.v1"))
+        if version in THRESHOLD_RECORD_LEGACY_VERSIONS:
+            for legacy, current in (
+                ("created_at", "created_timestamp_micro"),
+                ("updated_at", "updated_timestamp_micro"),
+            ):
+                if current not in data and legacy in data:
+                    data[current] = microseconds_from_legacy_iso(
+                        data.pop(legacy), field_name=legacy
+                    )
+            data["schema_version"] = THRESHOLD_RECORD_SCHEMA_VERSION
+        elif version != THRESHOLD_RECORD_SCHEMA_VERSION:
+            raise ValueError(
+                f"unsupported threshold record schema_version {version!r}; "
+                f"expected {THRESHOLD_RECORD_SCHEMA_VERSION}. Regenerate the file "
+                "with the current release instead of editing it by hand."
+            )
         data["evaluation_kind"] = EvaluationKind(data["evaluation_kind"])
         data["confidence_interval"] = tuple(data["confidence_interval"])
-        data["created_at"] = datetime.fromisoformat(
-            data["created_at"].replace("Z", "+00:00")
+        data["created_timestamp_micro"] = datetime_from_unix_microseconds(
+            data["created_timestamp_micro"]
         )
-        data["updated_at"] = datetime.fromisoformat(
-            data["updated_at"].replace("Z", "+00:00")
+        data["updated_timestamp_micro"] = datetime_from_unix_microseconds(
+            data["updated_timestamp_micro"]
         )
         return cls(**data)
 
@@ -190,7 +220,7 @@ class ThresholdRegistry:
             current,
             pass_threshold=new_pass,
             review_threshold=new_review,
-            updated_at=datetime.now(UTC),
+            updated_timestamp_micro=datetime.now(UTC),
         )
         self._thresholds[key] = updated
         return updated

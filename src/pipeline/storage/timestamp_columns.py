@@ -8,9 +8,10 @@ full serialized Pydantic contract and the source of truth for the record.
 
 A **projection column** is a SQL column that duplicates one payload field for
 querying: filtering, ordering, uniqueness, and ``NOT NULL`` enforcement. For
-example ``workflow_runs.created_at`` is the SQL projection of the
-``WorkflowRun.created_at`` field that also appears in the row's payload. The
-write path writes both copies; they can drift if a direct SQL writer or an old
+example ``workflow_runs.created_timestamp_micro`` is the SQL projection of the
+``WorkflowRun.created_timestamp_micro`` field that also appears in the row's
+payload. The write path writes both copies; they can drift if a direct SQL
+writer or an old
 migration touches only one. Backfill and validation exist because of that
 duplication.
 
@@ -36,15 +37,15 @@ Adding a timestamp column
    applies every migration to a fresh temporary database, then fails if the
    registry and the migrated schema disagree.
 
-Validation treats columns ending in ``_at`` or ``_timestamp_micro`` as
-timestamp-like. That suffix check is a test-time completeness guard for new
-columns; migration/backfill behavior is driven by this registry, not by the
-suffix. A registered column may use any name because the explicit entry is
-authoritative. Treat those two suffixes as reserved for timestamps: a
-non-timestamp column that happens to end in ``_at`` will fail validation and
-should be renamed rather than silently ignored. Registering means adding an
-explicit entry with format and nullability; it is not a way to silence the
-check.
+Every current column ends in ``_timestamp_micro`` and stores INTEGER
+microseconds. Validation also treats the legacy ``_at`` suffix as timestamp-like:
+it is a test-time completeness guard, not a migration rule. No ``_at`` column
+should exist in the post-#92 schema, so seeing one means either an unregistered
+column or an old-style name that was missed. The suffix check is only a guard;
+migration and backfill behavior is driven by this registry, not by the name. A
+registered column may use any name because the explicit entry is authoritative.
+Registering means adding an explicit entry with format and nullability; it is not
+a way to silence the check.
 
 Generated columns are enumerated with ``PRAGMA table_xinfo`` so they cannot hide
 from validation. A generated column is a real table column whose value SQLite
@@ -115,8 +116,8 @@ class TimestampColumn:
         return _DECLARED_TYPES[self.format]
 
 
-def _iso(*, nullable: bool = False) -> TimestampColumn:
-    return TimestampColumn(TimestampFormat.ISO8601_TEXT, nullable=nullable)
+def _micro(*, nullable: bool = False) -> TimestampColumn:
+    return TimestampColumn(TimestampFormat.UNIX_MICROSECONDS, nullable=nullable)
 
 
 # Single source of truth for every SQL timestamp column in the migrated schema.
@@ -124,105 +125,108 @@ def _iso(*, nullable: bool = False) -> TimestampColumn:
 # registry is easy to compare with the migration files.
 TIMESTAMP_COLUMNS: dict[str, dict[str, TimestampColumn]] = {
     "artifact_invalidation_results": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "artifact_pointers": {
-        "updated_at": _iso(),
+        "updated_timestamp_micro": _micro(),
     },
     "artifacts": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "budget_reservations": {
-        "created_at": _iso(),
-        "settled_at": _iso(nullable=True),
+        "created_timestamp_micro": _micro(),
+        "settled_timestamp_micro": _micro(nullable=True),
     },
     "capability_executions": {
-        "started_at": _iso(nullable=True),
-        "finished_at": _iso(nullable=True),
+        "started_timestamp_micro": _micro(nullable=True),
+        "finished_timestamp_micro": _micro(nullable=True),
     },
     "human_review_decisions": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "human_reviews": {
-        "created_at": _iso(),
-        "resolved_at": _iso(nullable=True),
+        "created_timestamp_micro": _micro(),
+        "resolved_timestamp_micro": _micro(nullable=True),
     },
     "idempotency_records": {
-        "created_at": _iso(),
-        "completed_at": _iso(nullable=True),
+        "created_timestamp_micro": _micro(),
+        "completed_timestamp_micro": _micro(nullable=True),
     },
     "inbox_receipts": {
-        "processed_at": _iso(nullable=True),
+        "processed_timestamp_micro": _micro(nullable=True),
     },
     "input_manifests": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "jobs": {
-        "available_at": _iso(),
-        "lease_expires_at": _iso(nullable=True),
+        "available_timestamp_micro": _micro(),
+        "lease_expires_timestamp_micro": _micro(nullable=True),
     },
     "leases": {
-        "acquired_at": _iso(),
-        "expires_at": _iso(),
-        "heartbeat_at": _iso(nullable=True),
+        "acquired_timestamp_micro": _micro(),
+        "expires_timestamp_micro": _micro(),
+        "heartbeat_timestamp_micro": _micro(nullable=True),
     },
     "outbox_messages": {
-        "available_at": _iso(),
-        "claimed_at": _iso(nullable=True),
-        "lease_expires_at": _iso(nullable=True),
-        "delivered_at": _iso(nullable=True),
+        "available_timestamp_micro": _micro(),
+        "claimed_timestamp_micro": _micro(nullable=True),
+        "lease_expires_timestamp_micro": _micro(nullable=True),
+        "delivered_timestamp_micro": _micro(nullable=True),
     },
     "provider_invocations": {
-        "started_at": _iso(),
-        "finished_at": _iso(nullable=True),
+        "started_timestamp_micro": _micro(),
+        "finished_timestamp_micro": _micro(nullable=True),
     },
     "publication_attempts": {
-        "started_at": _iso(nullable=True),
-        "finished_at": _iso(nullable=True),
+        "started_timestamp_micro": _micro(nullable=True),
+        "finished_timestamp_micro": _micro(nullable=True),
     },
     "quality_evaluations": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "quality_gate_results": {
-        "created_at": _iso(),
-        "completed_at": _iso(nullable=True),
+        "created_timestamp_micro": _micro(),
+        "completed_timestamp_micro": _micro(nullable=True),
     },
     "quality_input_manifests": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "recovery_decisions": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "repair_plans": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "routing_decisions": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "schema_migrations": {
-        "applied_at": _iso(),
+        "applied_timestamp_micro": _micro(),
     },
     "stage_attempts": {
-        "lease_expires_at": _iso(nullable=True),
-        "started_at": _iso(nullable=True),
-        "finished_at": _iso(nullable=True),
+        "lease_expires_timestamp_micro": _micro(nullable=True),
+        "started_timestamp_micro": _micro(nullable=True),
+        "finished_timestamp_micro": _micro(nullable=True),
     },
     "stage_instances": {
-        "created_at": _iso(),
-        "updated_at": _iso(nullable=True),
+        "created_timestamp_micro": _micro(),
+        "updated_timestamp_micro": _micro(nullable=True),
     },
     "usage_records": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "workflow_events": {
-        "created_at": _iso(),
+        "created_timestamp_micro": _micro(),
     },
     "workflow_runs": {
-        "created_at": _iso(),
-        "updated_at": _iso(nullable=True),
+        "created_timestamp_micro": _micro(),
+        "updated_timestamp_micro": _micro(nullable=True),
     },
 }
 
+# The legacy ``_at`` suffix stays in this guard deliberately. After #92 no
+# current column uses it, so an ``_at`` column is either a missed rename or a new
+# timestamp that was never registered. Both should fail the schema test.
 _TIMESTAMP_LIKE_NAME = re.compile(r"(?:_at|_timestamp_micro)$")
 
 

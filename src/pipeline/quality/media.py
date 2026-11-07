@@ -268,7 +268,7 @@ def _evaluate_decode_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -287,7 +287,7 @@ def _evaluate_decode_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -337,7 +337,7 @@ def _evaluate_profile_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -356,7 +356,7 @@ def _evaluate_profile_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -409,7 +409,7 @@ def _evaluate_timeline_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -428,7 +428,7 @@ def _evaluate_timeline_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -479,7 +479,7 @@ def _evaluate_assembly_integrity_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -498,7 +498,7 @@ def _evaluate_assembly_integrity_real(
         actual_cost_minor=12,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -535,7 +535,7 @@ def _evaluate_av_drift_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -554,7 +554,7 @@ def _evaluate_av_drift_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -593,7 +593,7 @@ def _evaluate_av_sync_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -612,7 +612,7 @@ def _evaluate_av_sync_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -661,7 +661,7 @@ def _evaluate_short_integrity_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -680,5 +680,5 @@ def _evaluate_short_integrity_real(
         actual_cost_minor=8,
         provider_invocation_id=None,
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )

@@ -41,10 +41,9 @@
           "title": "Correlation Id",
           "type": "string"
         },
-        "created_at": {
-          "format": "date-time",
-          "title": "Created At",
-          "type": "string"
+        "created_timestamp_micro": {
+          "title": "Created Timestamp Micro",
+          "type": "integer"
         },
         "event_id": {
           "maxLength": 256,
@@ -82,7 +81,7 @@
           "title": "Run Id"
         },
         "schema_version": {
-          "const": "event-envelope.v1",
+          "const": "event-envelope.v2",
           "title": "Schema Version",
           "type": "string"
         },
@@ -108,7 +107,7 @@
         "event_type",
         "correlation_id",
         "payload_schema_version",
-        "created_at"
+        "created_timestamp_micro"
       ],
       "title": "EventEnvelope",
       "type": "object"
@@ -164,23 +163,9 @@
   "additionalProperties": false,
   "description": "Delivery state for one committed event, claimed with a lease.",
   "properties": {
-    "available_at": {
-      "format": "date-time",
-      "title": "Available At",
-      "type": "string"
-    },
-    "claimed_at": {
-      "anyOf": [
-        {
-          "format": "date-time",
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Claimed At"
+    "available_timestamp_micro": {
+      "title": "Available Timestamp Micro",
+      "type": "integer"
     },
     "claimed_by": {
       "anyOf": [
@@ -197,18 +182,29 @@
       "default": null,
       "title": "Claimed By"
     },
-    "delivered_at": {
+    "claimed_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Delivered At"
+      "title": "Claimed Timestamp Micro"
+    },
+    "delivered_timestamp_micro": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Delivered Timestamp Micro"
     },
     "delivery_attempts": {
       "default": 0,
@@ -226,18 +222,17 @@
       "title": "Event Id",
       "type": "string"
     },
-    "lease_expires_at": {
+    "lease_expires_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Lease Expires At"
+      "title": "Lease Expires Timestamp Micro"
     },
     "outbox_id": {
       "maxLength": 256,
@@ -247,7 +242,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "outbox-message.v1",
+      "const": "outbox-message.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -261,9 +256,9 @@
     "event_id",
     "event",
     "status",
-    "available_at"
+    "available_timestamp_micro"
   ],
   "title": "OutboxMessage",
   "type": "object",
-  "x-contract-schema-version": "outbox-message.v1"
+  "x-contract-schema-version": "outbox-message.v2"
 }

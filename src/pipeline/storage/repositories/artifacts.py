@@ -26,7 +26,7 @@ class ArtifactRepository(SqliteRepository[Artifact]):
         "config_hash",
         "state",
         "retention_class",
-        "created_at",
+        "created_timestamp_micro",
     )
     order_by = ("run_id", "logical_slot", "version", "artifact_id")
 
@@ -63,7 +63,7 @@ class ArtifactRepository(SqliteRepository[Artifact]):
     def list_by_sha256(self, sha256: str) -> list[Artifact]:
         rows = self.connection.execute(
             "SELECT payload FROM artifacts WHERE sha256 = ? "
-            "ORDER BY created_at, artifact_id",
+            "ORDER BY created_timestamp_micro, artifact_id",
             (sha256,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -108,7 +108,7 @@ class ArtifactPointerRepository(SqliteRepository[ArtifactPointer]):
         "artifact_id",
         "pointer_type",
         "active",
-        "updated_at",
+        "updated_timestamp_micro",
     )
     order_by = ("run_id", "logical_slot", "pointer_type", "pointer_id")
 
@@ -178,7 +178,10 @@ class ArtifactPointerRepository(SqliteRepository[ArtifactPointer]):
                     "activate() requires a new pointer record, not the active one"
                 )
             deactivated = active_pointer.model_copy(
-                update={"active": False, "updated_at": pointer.updated_at}
+                update={
+                    "active": False,
+                    "updated_timestamp_micro": pointer.updated_timestamp_micro,
+                }
             )
             self.update(deactivated)
         return self.insert(pointer)

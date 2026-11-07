@@ -336,7 +336,7 @@ def _evaluate_claim_evidence_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -355,7 +355,7 @@ def _evaluate_claim_evidence_real(
         actual_cost_minor=45,
         provider_invocation_id=f"inv_{uuid.uuid4().hex[:12]}",
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -475,7 +475,7 @@ def _evaluate_editorial_clarity_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -494,7 +494,7 @@ def _evaluate_editorial_clarity_real(
         actual_cost_minor=42,
         provider_invocation_id=f"inv_{uuid.uuid4().hex[:12]}",
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )
 
 
@@ -589,7 +589,7 @@ def _evaluate_visual_intent_coherence_real(
     latency_ms = int((datetime.now(UTC) - started).total_seconds() * 1000)
 
     return QualityEvaluation(
-        schema_version="quality-evaluation.v1",
+        schema_version="quality-evaluation.v2",
         evaluation_id=f"eval_{uuid.uuid4().hex[:12]}",
         target_artifact_ids=manifest.target_artifact_ids,
         target_hashes=manifest.target_hashes,
@@ -608,5 +608,5 @@ def _evaluate_visual_intent_coherence_real(
         actual_cost_minor=38,
         provider_invocation_id=f"inv_{uuid.uuid4().hex[:12]}",
         latency_ms=latency_ms,
-        created_at=datetime.now(UTC),
+        created_timestamp_micro=datetime.now(UTC),
     )

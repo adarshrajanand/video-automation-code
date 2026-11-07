@@ -29,9 +29,9 @@ class QualityEvaluationRepository(SqliteRepository[QualityEvaluation]):
         "gate_id",
         "check_id",
         "outcome",
-        "created_at",
+        "created_timestamp_micro",
     )
-    order_by = ("created_at", "evaluation_id")
+    order_by = ("created_timestamp_micro", "evaluation_id")
 
     def list_for_stage_instance(
         self, stage_instance_id: str
@@ -39,7 +39,8 @@ class QualityEvaluationRepository(SqliteRepository[QualityEvaluation]):
         """List evaluations for a stage instance."""
         rows = self.connection.execute(
             "SELECT payload FROM quality_evaluations "
-            "WHERE stage_instance_id = ? ORDER BY created_at, evaluation_id",
+            "WHERE stage_instance_id = ? "
+            "ORDER BY created_timestamp_micro, evaluation_id",
             (stage_instance_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -52,13 +53,13 @@ class QualityEvaluationRepository(SqliteRepository[QualityEvaluation]):
             rows = self.connection.execute(
                 "SELECT payload FROM quality_evaluations "
                 "WHERE gate_id = ? AND stage_instance_id = ? "
-                "ORDER BY created_at, evaluation_id",
+                "ORDER BY created_timestamp_micro, evaluation_id",
                 (gate_id, stage_instance_id),
             ).fetchall()
         else:
             rows = self.connection.execute(
                 "SELECT payload FROM quality_evaluations "
-                "WHERE gate_id = ? ORDER BY created_at, evaluation_id",
+                "WHERE gate_id = ? ORDER BY created_timestamp_micro, evaluation_id",
                 (gate_id,),
             ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -68,7 +69,7 @@ class QualityEvaluationRepository(SqliteRepository[QualityEvaluation]):
         rows = self.connection.execute(
             "SELECT qe.payload FROM quality_evaluations qe "
             "JOIN stage_instances si ON qe.stage_instance_id = si.stage_instance_id "
-            "WHERE si.run_id = ? ORDER BY qe.created_at, qe.evaluation_id",
+            "WHERE si.run_id = ? ORDER BY qe.created_timestamp_micro, qe.evaluation_id",
             (run_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -86,10 +87,10 @@ class QualityGateResultRepository(SqliteRepository[QualityGateResult]):
         "logical_item_key",
         "decision",
         "policy_version",
-        "created_at",
-        "completed_at",
+        "created_timestamp_micro",
+        "completed_timestamp_micro",
     )
-    order_by = ("created_at", "quality_gate_result_id")
+    order_by = ("created_timestamp_micro", "quality_gate_result_id")
 
     def list_for_stage_instance(
         self, stage_instance_id: str
@@ -97,7 +98,8 @@ class QualityGateResultRepository(SqliteRepository[QualityGateResult]):
         """List gate results for a stage instance."""
         rows = self.connection.execute(
             "SELECT payload FROM quality_gate_results "
-            "WHERE stage_instance_id = ? ORDER BY created_at, quality_gate_result_id",
+            "WHERE stage_instance_id = ? "
+            "ORDER BY created_timestamp_micro, quality_gate_result_id",
             (stage_instance_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -110,13 +112,14 @@ class QualityGateResultRepository(SqliteRepository[QualityGateResult]):
             rows = self.connection.execute(
                 "SELECT payload FROM quality_gate_results "
                 "WHERE gate_id = ? AND stage_instance_id = ? "
-                "ORDER BY created_at, quality_gate_result_id",
+                "ORDER BY created_timestamp_micro, quality_gate_result_id",
                 (gate_id, stage_instance_id),
             ).fetchall()
         else:
             rows = self.connection.execute(
                 "SELECT payload FROM quality_gate_results "
-                "WHERE gate_id = ? ORDER BY created_at, quality_gate_result_id",
+                "WHERE gate_id = ? "
+                "ORDER BY created_timestamp_micro, quality_gate_result_id",
                 (gate_id,),
             ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -125,8 +128,10 @@ class QualityGateResultRepository(SqliteRepository[QualityGateResult]):
         """List gate results for a workflow run (joins via stage_instances)."""
         rows = self.connection.execute(
             "SELECT qgr.payload FROM quality_gate_results qgr "
-            "JOIN stage_instances si ON qgr.stage_instance_id = si.stage_instance_id "
-            "WHERE si.run_id = ? ORDER BY qgr.created_at, qgr.quality_gate_result_id",
+            "JOIN stage_instances si "
+            "ON qgr.stage_instance_id = si.stage_instance_id "
+            "WHERE si.run_id = ? "
+            "ORDER BY qgr.created_timestamp_micro, qgr.quality_gate_result_id",
             (run_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -140,9 +145,9 @@ class QualityInputManifestRepository(SqliteRepository[QualityInputManifest]):
         "manifest_id",
         "gate_id",
         "check_id",
-        "created_at",
+        "created_timestamp_micro",
     )
-    order_by = ("created_at", "manifest_id")
+    order_by = ("created_timestamp_micro", "manifest_id")
 
     def list_for_gate(
         self, gate_id: str, check_id: str | None = None
@@ -151,13 +156,14 @@ class QualityInputManifestRepository(SqliteRepository[QualityInputManifest]):
         if check_id:
             rows = self.connection.execute(
                 "SELECT payload FROM quality_input_manifests "
-                "WHERE gate_id = ? AND check_id = ? ORDER BY created_at, manifest_id",
+                "WHERE gate_id = ? AND check_id = ? "
+                "ORDER BY created_timestamp_micro, manifest_id",
                 (gate_id, check_id),
             ).fetchall()
         else:
             rows = self.connection.execute(
                 "SELECT payload FROM quality_input_manifests "
-                "WHERE gate_id = ? ORDER BY created_at, manifest_id",
+                "WHERE gate_id = ? ORDER BY created_timestamp_micro, manifest_id",
                 (gate_id,),
             ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -171,15 +177,16 @@ class RepairPlanRepository(SqliteRepository[RepairPlan]):
         "repair_plan_id",
         "source_gate_result_id",
         "invalidation_scope",
-        "created_at",
+        "created_timestamp_micro",
     )
-    order_by = ("created_at", "repair_plan_id")
+    order_by = ("created_timestamp_micro", "repair_plan_id")
 
     def list_for_source(self, source_gate_result_id: str) -> list[RepairPlan]:
         """List repair plans for a source gate result."""
         rows = self.connection.execute(
             "SELECT payload FROM repair_plans "
-            "WHERE source_gate_result_id = ? ORDER BY created_at, repair_plan_id",
+            "WHERE source_gate_result_id = ? "
+            "ORDER BY created_timestamp_micro, repair_plan_id",
             (source_gate_result_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]
@@ -189,7 +196,7 @@ class RepairPlanRepository(SqliteRepository[RepairPlan]):
         rows = self.connection.execute(
             "SELECT payload FROM repair_plans "
             "WHERE ? IN (SELECT value FROM json_each(target_stage_instance_ids)) "
-            "ORDER BY created_at, repair_plan_id",
+            "ORDER BY created_timestamp_micro, repair_plan_id",
             (stage_instance_id,),
         ).fetchall()
         return [self.model.model_validate_json(row[0]) for row in rows]

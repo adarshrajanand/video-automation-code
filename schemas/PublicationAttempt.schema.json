@@ -175,18 +175,17 @@
       "default": null,
       "title": "External Publication Id"
     },
-    "finished_at": {
+    "finished_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Finished At"
+      "title": "Finished Timestamp Micro"
     },
     "normalized_error": {
       "anyOf": [
@@ -229,22 +228,21 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "publication-attempt.v1",
+      "const": "publication-attempt.v2",
       "title": "Schema Version",
       "type": "string"
     },
-    "started_at": {
+    "started_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "title": "Started At"
+      "title": "Started Timestamp Micro"
     },
     "status": {
       "$ref": "#/$defs/PublicationStatus"
@@ -258,5 +256,5 @@
   ],
   "title": "PublicationAttempt",
   "type": "object",
-  "x-contract-schema-version": "publication-attempt.v1"
+  "x-contract-schema-version": "publication-attempt.v2"
 }

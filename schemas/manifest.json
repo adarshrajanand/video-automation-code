@@ -15,8 +15,8 @@
     {
       "model": "Artifact",
       "schema_file": "Artifact.schema.json",
-      "schema_version": "artifact.v1",
-      "sha256": "f2deb7d5dd5793b6a4d28e51271fcbf4da105bf36184d7957b17dce08dc4c27f"
+      "schema_version": "artifact.v2",
+      "sha256": "86150122633d8eff8d697731c769980e146ddd014e0eabdfbe5e05418183031f"
     },
     {
       "model": "ArtifactDependency",
@@ -27,8 +27,8 @@
     {
       "model": "ArtifactPointer",
       "schema_file": "ArtifactPointer.schema.json",
-      "schema_version": "artifact-pointer.v1",
-      "sha256": "23715b4840b6afffab02fa485ef54254f42add83f93b8d8231b9b58cae4d0393"
+      "schema_version": "artifact-pointer.v2",
+      "sha256": "422ccaf6372caee05b80933bd1ecb66c4f6346de828b2bf6fca35abcc06ad7b5"
     },
     {
       "model": "AssemblyInputPayload",
@@ -39,8 +39,8 @@
     {
       "model": "AssemblyManifest",
       "schema_file": "AssemblyManifest.schema.json",
-      "schema_version": "assembly-manifest.v1",
-      "sha256": "1bfef308f0a666789a3790e63a26c89fc8e11737a795819e608ab8de4a051fc3"
+      "schema_version": "assembly-manifest.v2",
+      "sha256": "fe7ab1fb24bb3ced08bc0ab53813422a07c69bf2577a2cf50db1a37db37b1e4e"
     },
     {
       "model": "AssemblyOutputPayload",
@@ -75,14 +75,14 @@
     {
       "model": "BudgetReservation",
       "schema_file": "BudgetReservation.schema.json",
-      "schema_version": "budget-reservation.v1",
-      "sha256": "af9e1358404edfb25be2b164d6a8407c32f902ec8c541e85cbc7c30a9ce202bf"
+      "schema_version": "budget-reservation.v2",
+      "sha256": "19ec5e1c7502b46b8f38ea16df6d7d6bba3b063e7a858acc87345d7d238186ef"
     },
     {
       "model": "CapabilityExecution",
       "schema_file": "CapabilityExecution.schema.json",
-      "schema_version": "capability-execution.v1",
-      "sha256": "7ae98a391da4cd0cca4a198bf7b5816354b96656d96e109ee12c7115c05d040b"
+      "schema_version": "capability-execution.v2",
+      "sha256": "4e250c3b5820d90da7f3a08d7079bf3ec09d04c400779806b4799a8d1cfb073b"
     },
     {
       "model": "CapabilityRequest",
@@ -231,8 +231,8 @@
     {
       "model": "EventEnvelope",
       "schema_file": "EventEnvelope.schema.json",
-      "schema_version": "event-envelope.v1",
-      "sha256": "e46c1d36c2a09590b34cf403f174a301c5a561383b4ca5d1af4900fb7cc8e60b"
+      "schema_version": "event-envelope.v2",
+      "sha256": "07b19b86cc921aa79325c3801a9b99fd1b654880a9d868d8d2b8fd4a0555fbbd"
     },
     {
       "model": "Evidence",
@@ -249,32 +249,32 @@
     {
       "model": "HumanReview",
       "schema_file": "HumanReview.schema.json",
-      "schema_version": "human-review.v1",
-      "sha256": "b601019013375471ef7d830bc2c8b3e0f83a2926fdfa2ba7cdac057599ebdced"
+      "schema_version": "human-review.v2",
+      "sha256": "d0fd5904dabd1430852f9effd67df370c9ed673bf0651810f3542a48ded34f22"
     },
     {
       "model": "HumanReviewDecision",
       "schema_file": "HumanReviewDecision.schema.json",
-      "schema_version": "human-review-decision.v1",
-      "sha256": "da64fe0cf7514c71294096ecd974e8be083c9a519729d304d5e6de99cca58352"
+      "schema_version": "human-review-decision.v2",
+      "sha256": "be807562cb8eda862e0a8dc06f8bbcad15de7bd921fb93f0e66d3b9faaa581e8"
     },
     {
       "model": "IdempotencyRecord",
       "schema_file": "IdempotencyRecord.schema.json",
-      "schema_version": "idempotency-record.v1",
-      "sha256": "7865d9b1455747557dbb34732ccec062d9dfc28898dc510381c9fdf59cd86553"
+      "schema_version": "idempotency-record.v2",
+      "sha256": "468d2ccde04a8f2587511301767d45678fea98e166a5bedde076d6e2391943e1"
     },
     {
       "model": "InboxReceipt",
       "schema_file": "InboxReceipt.schema.json",
-      "schema_version": "inbox-receipt.v1",
-      "sha256": "2ef9e391efcf01a90eaed8ec6f18f6436cc69877df59acf737093046e0b4d641"
+      "schema_version": "inbox-receipt.v2",
+      "sha256": "7af79f6daa7a676dfd8328cc92526b51d00d963c1fbc2b969ef5578064b435a7"
     },
     {
       "model": "InputManifest",
       "schema_file": "InputManifest.schema.json",
-      "schema_version": "input-manifest.v1",
-      "sha256": "3ff721e39a64b2043e9b4f12d6d51e6749e0830dece33d5d18a1151c96132226"
+      "schema_version": "input-manifest.v2",
+      "sha256": "cb349c126ce3f8a345ae4e5ea2269f272705f0ffb0947a866eea87544d08842f"
     },
     {
       "model": "InputSelector",
@@ -291,14 +291,14 @@
     {
       "model": "InvalidationResult",
       "schema_file": "InvalidationResult.schema.json",
-      "schema_version": "invalidation-result.v1",
-      "sha256": "021ca78660d013656e28f8bdb1577933bb21867fc20edca18cbd6e5245892559"
+      "schema_version": "invalidation-result.v2",
+      "sha256": "7d8451c62aa09ccda0b260bbb17c637b4fa6c8d9e3472166fdd4a30f0039aa9d"
     },
     {
       "model": "Job",
       "schema_file": "Job.schema.json",
-      "schema_version": "job.v1",
-      "sha256": "cbcb5d0ae02990ec041c6a08bdca39181347ce9682d045e134c9027cb74eab80"
+      "schema_version": "job.v2",
+      "sha256": "02a93ec8653c319ec873cc01d7c50a83a1fe6ff4fa5ce8f51caabc724beecc1b"
     },
     {
       "model": "LayerInstance",
@@ -309,8 +309,8 @@
     {
       "model": "Lease",
       "schema_file": "Lease.schema.json",
-      "schema_version": "lease.v1",
-      "sha256": "3d06ac040e4d0bec13110d0fed5bec09c80d0a30fc7d89bd244dea7492799477"
+      "schema_version": "lease.v2",
+      "sha256": "55b13d99d54854b1a713d49d9b7f05aa51f4021a82fc2492e30b694e1ca39721"
     },
     {
       "model": "NormalizedError",
@@ -321,20 +321,20 @@
     {
       "model": "OutboxMessage",
       "schema_file": "OutboxMessage.schema.json",
-      "schema_version": "outbox-message.v1",
-      "sha256": "ccded8f671749a372ee11402921933f8c02a62387c3b84d53bfe8713ef7b58b0"
+      "schema_version": "outbox-message.v2",
+      "sha256": "3854d33604bef420f8fbe3bb64b33df6f1781d62e561f4ad256beced3d17c012"
     },
     {
       "model": "ProviderInvocation",
       "schema_file": "ProviderInvocation.schema.json",
-      "schema_version": "provider-invocation.v1",
-      "sha256": "c73b5f45e6b1e7cbe44e318129355238ad6f0007a08bb4464517d6d19878f040"
+      "schema_version": "provider-invocation.v2",
+      "sha256": "17943efa4a3400b26b72a7b5bbe120a0c52b45f928b739d4f0ae0b442b374182"
     },
     {
       "model": "PublicationAttempt",
       "schema_file": "PublicationAttempt.schema.json",
-      "schema_version": "publication-attempt.v1",
-      "sha256": "5de68ad306bd5d2dee76ef00fc288d208995851dbcf8bcd656b9c28ad2dba871"
+      "schema_version": "publication-attempt.v2",
+      "sha256": "63d34e3b01f1060201375d0c0e6abddb4507745dda64ef8d9afe2f1ee09a0038"
     },
     {
       "model": "PublicationRequest",
@@ -351,8 +351,8 @@
     {
       "model": "QualityEvaluation",
       "schema_file": "QualityEvaluation.schema.json",
-      "schema_version": "quality-evaluation.v1",
-      "sha256": "8239a3e94f9d4b8dc5b608f338c84a780ff05a3672b43853336e06b94d7ab0ea"
+      "schema_version": "quality-evaluation.v2",
+      "sha256": "22d4f19be31e7167c6ebccd4fd1411f6a04cb80d504339fb11e00729c35ee60d"
     },
     {
       "model": "QualityGatePolicy",
@@ -363,20 +363,20 @@
     {
       "model": "QualityGateResult",
       "schema_file": "QualityGateResult.schema.json",
-      "schema_version": "quality-gate-result.v1",
-      "sha256": "9633929ed3e038551f241f1d5d2e6bd06078bcfd72e45322704657f3295cd94f"
+      "schema_version": "quality-gate-result.v2",
+      "sha256": "b8b48c8b8a269d1ec34923df9b8d1180e9df026d1e8d3127d64e66bab86ea841"
     },
     {
       "model": "QualityInputManifest",
       "schema_file": "QualityInputManifest.schema.json",
-      "schema_version": "quality-input-manifest.v1",
-      "sha256": "a305e96be5520cdfb7f6a54e312adfe91070e0a765628c368960fc20661459eb"
+      "schema_version": "quality-input-manifest.v2",
+      "sha256": "f52b0075c05ba85d6cd08d9cf2910f9d74bea3a6c96af75cedb6de9685e61676"
     },
     {
       "model": "RecoveryDecision",
       "schema_file": "RecoveryDecision.schema.json",
-      "schema_version": "recovery-decision.v1",
-      "sha256": "811869065e581e570bd3b987f5110185b9bea72c46e58e6c0f7914d71b03537f"
+      "schema_version": "recovery-decision.v2",
+      "sha256": "db512ccb208c8f783188477ed3da75f603905c67701eaf619ce3faeb5a7211be"
     },
     {
       "model": "RecoveryPolicy",
@@ -387,8 +387,8 @@
     {
       "model": "RenderChunkManifest",
       "schema_file": "RenderChunkManifest.schema.json",
-      "schema_version": "render-chunk-manifest.v1",
-      "sha256": "370f7c544681fb42fb1a9048b2f18d6489d137d32deb69a78785ecf5ad7f47f0"
+      "schema_version": "render-chunk-manifest.v2",
+      "sha256": "29c27644542bef16d1b42d1f6c7fba1c3f7bf08a256e8e2deda51d2a0703684f"
     },
     {
       "model": "RenderProfile",
@@ -411,8 +411,8 @@
     {
       "model": "RepairPlan",
       "schema_file": "RepairPlan.schema.json",
-      "schema_version": "repair-plan.v1",
-      "sha256": "3f64c30f6412e224aceb4d340b9d0e64585c1006c39458df176c8cb6d6961634"
+      "schema_version": "repair-plan.v2",
+      "sha256": "228548f62e23b91f18122576e93db7ffd4d828a6936aab35222e46990e3f74e0"
     },
     {
       "model": "ResearchInputPayload",
@@ -435,8 +435,8 @@
     {
       "model": "ResourceAssignment",
       "schema_file": "ResourceAssignment.schema.json",
-      "schema_version": "resource-assignment.v1",
-      "sha256": "e144ab76a0f329604c08d959bb8bd08300d9dd8643430b7310c1c673bf19c005"
+      "schema_version": "resource-assignment.v2",
+      "sha256": "de92d8fc68b0339069fe3cdd5051a9563a79957880555e79a6306d394289f6d0"
     },
     {
       "model": "ResourceConstraints",
@@ -459,8 +459,8 @@
     {
       "model": "RoutingDecision",
       "schema_file": "RoutingDecision.schema.json",
-      "schema_version": "routing-decision.v1",
-      "sha256": "bfc5e52c3beccc681b274f021066e7bf0a901e391b34c635a714c9e139eeada8"
+      "schema_version": "routing-decision.v2",
+      "sha256": "80237400d1a479ab2c024c5636ff9adc18b1a0c688ea607ed67b5c01b4edffd3"
     },
     {
       "model": "RunCreateRequest",
@@ -483,8 +483,8 @@
     {
       "model": "Script",
       "schema_file": "Script.schema.json",
-      "schema_version": "script.v1",
-      "sha256": "f7f303333d98ff803773720015aa35abfa1c137013b547c7aa0bdf2068cb0420"
+      "schema_version": "script.v2",
+      "sha256": "eb1e7e66718086ac8da0e226195c2b4d88feefc69b7209ce1746b2ee1adc04e6"
     },
     {
       "model": "ScriptGenerationInputPayload",
@@ -537,14 +537,14 @@
     {
       "model": "SourceRef",
       "schema_file": "SourceRef.schema.json",
-      "schema_version": "source-ref.v1",
-      "sha256": "a6bc9697603fecbf95c653acf04ddce1e04ff9a3e954bc32074ce1b66bc5d070"
+      "schema_version": "source-ref.v2",
+      "sha256": "df2bf83f04a31e4680308861c4e0a1161ea94b5c36006e9ea350659a225065b4"
     },
     {
       "model": "SourceSnapshot",
       "schema_file": "SourceSnapshot.schema.json",
-      "schema_version": "source-snapshot.v1",
-      "sha256": "32f9ce9177274859dec4d517999f33b22db9f992348eb2467507897d97f4a03f"
+      "schema_version": "source-snapshot.v2",
+      "sha256": "313e6e2a89e19d01d473fe69fb2f6714a6225b6564c33247b932eba5c29861c0"
     },
     {
       "model": "SpeechGenerationInputPayload",
@@ -567,14 +567,14 @@
     {
       "model": "StageAttempt",
       "schema_file": "StageAttempt.schema.json",
-      "schema_version": "stage-attempt.v1",
-      "sha256": "a7893c38708afdf5bb4817ce555f06eb6572d1ef2c0b4f45cbd2fd44b6b18bba"
+      "schema_version": "stage-attempt.v2",
+      "sha256": "99e2578d65b4abc14f118ce6da1b58bb71e796a789f750e6596f53bc2e8c4475"
     },
     {
       "model": "StageInstance",
       "schema_file": "StageInstance.schema.json",
-      "schema_version": "stage-instance.v1",
-      "sha256": "ed5088ae2cded654ec32576a082c6a5805877d749134d35cf72ee36de7f85ff1"
+      "schema_version": "stage-instance.v2",
+      "sha256": "b10a83e666adeb9ea307a08e597742c4074ae1c49692ff54b6349994284f531a"
     },
     {
       "model": "StageNode",
@@ -639,8 +639,8 @@
     {
       "model": "WorkflowRun",
       "schema_file": "WorkflowRun.schema.json",
-      "schema_version": "workflow-run.v1",
-      "sha256": "8e91ca5d5930d49a4150bcf1c6fd4e5357d43bfbb9936d47d52b7f03424d5e25"
+      "schema_version": "workflow-run.v2",
+      "sha256": "6d95771458d63be4d692e400a3e55c9b592bf17174a270936228ad5a15eb12c6"
     },
     {
       "model": "WorkloadRequirements",

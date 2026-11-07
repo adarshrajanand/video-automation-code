@@ -18,10 +18,9 @@
       "title": "Constraints Hash",
       "type": "string"
     },
-    "created_at": {
-      "format": "date-time",
-      "title": "Created At",
-      "type": "string"
+    "created_timestamp_micro": {
+      "title": "Created Timestamp Micro",
+      "type": "integer"
     },
     "implementation_version": {
       "maxLength": 512,
@@ -38,7 +37,7 @@
       "type": "string"
     },
     "schema_version": {
-      "const": "resource-assignment.v1",
+      "const": "resource-assignment.v2",
       "title": "Schema Version",
       "type": "string"
     },
@@ -57,9 +56,9 @@
     "worker_pool",
     "implementation_version",
     "constraints_hash",
-    "created_at"
+    "created_timestamp_micro"
   ],
   "title": "ResourceAssignment",
   "type": "object",
-  "x-contract-schema-version": "resource-assignment.v1"
+  "x-contract-schema-version": "resource-assignment.v2"
 }

@@ -1,9 +1,9 @@
 {
-  "acquired_at": "2026-10-21T12:00:00Z",
-  "expires_at": "2026-10-21T12:05:00Z",
+  "acquired_timestamp_micro": 1792584000000000,
+  "expires_timestamp_micro": 1792584300000000,
   "fencing_token": 7,
-  "heartbeat_at": "2026-10-21T12:02:00Z",
+  "heartbeat_timestamp_micro": 1792584120000000,
   "job_id": "job_speech_scene_01",
   "owner_id": "worker_local_01",
-  "schema_version": "lease.v1"
+  "schema_version": "lease.v2"
 }

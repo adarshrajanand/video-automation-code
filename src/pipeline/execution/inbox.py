@@ -118,11 +118,11 @@ class InboxConsumer:
                 # Cannot downgrade PROCESSED to IGNORED
                 return existing
             receipt = InboxReceipt(
-                schema_version="inbox-receipt.v1",
+                schema_version="inbox-receipt.v2",
                 consumer_id=consumer_id,
                 event_id=event.event_id,
                 status=InboxStatus.IGNORED,
-                processed_at=now,
+                processed_timestamp_micro=now,
             )
             if existing is None:
                 return repository.insert(receipt)
@@ -157,7 +157,7 @@ class InboxConsumer:
         if existing is None:
             repository.insert(
                 InboxReceipt(
-                    schema_version="inbox-receipt.v1",
+                    schema_version="inbox-receipt.v2",
                     consumer_id=consumer_id,
                     event_id=event.event_id,
                     status=InboxStatus.RECEIVED,
@@ -166,7 +166,7 @@ class InboxConsumer:
         elif existing.status is InboxStatus.FAILED:
             repository.update(
                 InboxReceipt(
-                    schema_version="inbox-receipt.v1",
+                    schema_version="inbox-receipt.v2",
                     consumer_id=consumer_id,
                     event_id=event.event_id,
                     status=InboxStatus.RECEIVED,
@@ -175,11 +175,11 @@ class InboxConsumer:
 
         value = effect(connection, event)
         processed = InboxReceipt(
-            schema_version="inbox-receipt.v1",
+            schema_version="inbox-receipt.v2",
             consumer_id=consumer_id,
             event_id=event.event_id,
             status=InboxStatus.PROCESSED,
-            processed_at=now,
+            processed_timestamp_micro=now,
         )
         repository.update(processed)
         return InboxProcessResult(
@@ -203,7 +203,7 @@ class InboxConsumer:
         repository = InboxReceiptRepository(connection)
         existing = repository.get_receipt(consumer_id, event.event_id)
         failed = InboxReceipt(
-            schema_version="inbox-receipt.v1",
+            schema_version="inbox-receipt.v2",
             consumer_id=consumer_id,
             event_id=event.event_id,
             status=InboxStatus.FAILED,

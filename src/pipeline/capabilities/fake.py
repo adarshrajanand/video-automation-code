@@ -105,8 +105,12 @@ class FakeCapabilityProvider:
 
         # Create capability execution record
         execution_id = request.capability_execution_id
-        started_at = __import__("datetime").datetime.now(__import__("datetime").UTC)
-        finished_at = __import__("datetime").datetime.now(__import__("datetime").UTC)
+        started_timestamp_micro = __import__("datetime").datetime.now(
+            __import__("datetime").UTC
+        )
+        finished_timestamp_micro = __import__("datetime").datetime.now(
+            __import__("datetime").UTC
+        )
 
         # Handle exception-raising outcomes
         if outcome.raise_exception:
@@ -145,7 +149,7 @@ class FakeCapabilityProvider:
 
         # Build CapabilityExecution
         capability_execution = CapabilityExecution(
-            schema_version="capability-execution.v1",
+            schema_version="capability-execution.v2",
             capability_execution_id=execution_id,
             attempt_id=input_data.context.attempt_id,
             capability=request.capability,
@@ -166,15 +170,15 @@ class FakeCapabilityProvider:
             status=CapabilityExecutionStatus(outcome.status),
             input_artifact_ids=request.input_artifact_ids,
             output_artifact_ids=artifact_ids,
-            started_at=started_at,
-            finished_at=finished_at,
+            started_timestamp_micro=started_timestamp_micro,
+            finished_timestamp_micro=finished_timestamp_micro,
             normalized_error=normalized_error,
         )
 
         # Build ProviderInvocation
         invocation_id = deterministic_id("inv", execution_id)
         provider_invocation = ProviderInvocation(
-            schema_version="provider-invocation.v1",
+            schema_version="provider-invocation.v2",
             invocation_id=invocation_id,
             capability_execution_id=execution_id,
             provider=input_data.routing_decision.provider,
@@ -184,8 +188,10 @@ class FakeCapabilityProvider:
             idempotency_key=request.idempotency_key,
             request_fingerprint=fingerprint,
             status=ProviderInvocationStatus(outcome.status),
-            started_at=started_at,
-            finished_at=finished_at if outcome.status != "UNKNOWN" else None,
+            started_timestamp_micro=started_timestamp_micro,
+            finished_timestamp_micro=finished_timestamp_micro
+            if outcome.status != "UNKNOWN"
+            else None,
         )
 
         # Build CapabilityResult
