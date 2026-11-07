@@ -16,7 +16,7 @@
       "model": "Artifact",
       "schema_file": "Artifact.schema.json",
       "schema_version": "artifact.v2",
-      "sha256": "2df0391ef7a4d8f26bf88218aca4e59a8b324627f3baa730d681a5ad9a083a5d"
+      "sha256": "86150122633d8eff8d697731c769980e146ddd014e0eabdfbe5e05418183031f"
     },
     {
       "model": "ArtifactDependency",
@@ -28,7 +28,7 @@
       "model": "ArtifactPointer",
       "schema_file": "ArtifactPointer.schema.json",
       "schema_version": "artifact-pointer.v2",
-      "sha256": "50bff70df24b537511cc588760094209f172368aefead90368e673f46c778719"
+      "sha256": "422ccaf6372caee05b80933bd1ecb66c4f6346de828b2bf6fca35abcc06ad7b5"
     },
     {
       "model": "AssemblyInputPayload",
@@ -40,7 +40,7 @@
       "model": "AssemblyManifest",
       "schema_file": "AssemblyManifest.schema.json",
       "schema_version": "assembly-manifest.v2",
-      "sha256": "4d6ba97b1f10c1a296e5f45c9e20d72c3d4ff80f2623d3e5df4d921972ace22f"
+      "sha256": "fe7ab1fb24bb3ced08bc0ab53813422a07c69bf2577a2cf50db1a37db37b1e4e"
     },
     {
       "model": "AssemblyOutputPayload",
@@ -76,13 +76,13 @@
       "model": "BudgetReservation",
       "schema_file": "BudgetReservation.schema.json",
       "schema_version": "budget-reservation.v2",
-      "sha256": "5c76f2c36f977feaf3364234b5523777ebcdbdf58c943c64d3414e6614b32805"
+      "sha256": "19ec5e1c7502b46b8f38ea16df6d7d6bba3b063e7a858acc87345d7d238186ef"
     },
     {
       "model": "CapabilityExecution",
       "schema_file": "CapabilityExecution.schema.json",
       "schema_version": "capability-execution.v2",
-      "sha256": "29e5653c484e372cd4321b04b0b56b5900987398ad1dfa4c0a2232c569f0dcfc"
+      "sha256": "4e250c3b5820d90da7f3a08d7079bf3ec09d04c400779806b4799a8d1cfb073b"
     },
     {
       "model": "CapabilityRequest",
@@ -232,7 +232,7 @@
       "model": "EventEnvelope",
       "schema_file": "EventEnvelope.schema.json",
       "schema_version": "event-envelope.v2",
-      "sha256": "f69ffdad260261d03b064c8bf3194fa79a17f52b18d196a82be5a5916a21e6d2"
+      "sha256": "07b19b86cc921aa79325c3801a9b99fd1b654880a9d868d8d2b8fd4a0555fbbd"
     },
     {
       "model": "Evidence",
@@ -250,31 +250,31 @@
       "model": "HumanReview",
       "schema_file": "HumanReview.schema.json",
       "schema_version": "human-review.v2",
-      "sha256": "5616b0068abdb0b69387d5c78bbc60eecd25cc5059ca9adeb2847d93a12f7aea"
+      "sha256": "d0fd5904dabd1430852f9effd67df370c9ed673bf0651810f3542a48ded34f22"
     },
     {
       "model": "HumanReviewDecision",
       "schema_file": "HumanReviewDecision.schema.json",
       "schema_version": "human-review-decision.v2",
-      "sha256": "0946a78901509d6fddbfb2230251df9d7d00b6429135581ce4bd84f6a2473ca9"
+      "sha256": "be807562cb8eda862e0a8dc06f8bbcad15de7bd921fb93f0e66d3b9faaa581e8"
     },
     {
       "model": "IdempotencyRecord",
       "schema_file": "IdempotencyRecord.schema.json",
       "schema_version": "idempotency-record.v2",
-      "sha256": "d6ff96fa451d8d391595df4804a3743687eb2e1c50070d84c936fb37d0ba7520"
+      "sha256": "468d2ccde04a8f2587511301767d45678fea98e166a5bedde076d6e2391943e1"
     },
     {
       "model": "InboxReceipt",
       "schema_file": "InboxReceipt.schema.json",
       "schema_version": "inbox-receipt.v2",
-      "sha256": "1508ec3485a09b144af51688857ba7a4b97f147478dbff5c410c54ea60ec3f19"
+      "sha256": "7af79f6daa7a676dfd8328cc92526b51d00d963c1fbc2b969ef5578064b435a7"
     },
     {
       "model": "InputManifest",
       "schema_file": "InputManifest.schema.json",
       "schema_version": "input-manifest.v2",
-      "sha256": "5c8a3fb47aff6629254578fee51d82f0b18986cbe81c39a2acb71e3551708b30"
+      "sha256": "cb349c126ce3f8a345ae4e5ea2269f272705f0ffb0947a866eea87544d08842f"
     },
     {
       "model": "InputSelector",
@@ -292,13 +292,13 @@
       "model": "InvalidationResult",
       "schema_file": "InvalidationResult.schema.json",
       "schema_version": "invalidation-result.v2",
-      "sha256": "f3f7ad457e52b756a48f088ac00d667ddfba9e5cefd5a3993c3bdb662d964590"
+      "sha256": "7d8451c62aa09ccda0b260bbb17c637b4fa6c8d9e3472166fdd4a30f0039aa9d"
     },
     {
       "model": "Job",
       "schema_file": "Job.schema.json",
       "schema_version": "job.v2",
-      "sha256": "8789e92c7e2523ff22814afee62efcf26e2149675da498cc7e57de5295050321"
+      "sha256": "02a93ec8653c319ec873cc01d7c50a83a1fe6ff4fa5ce8f51caabc724beecc1b"
     },
     {
       "model": "LayerInstance",
@@ -310,7 +310,7 @@
       "model": "Lease",
       "schema_file": "Lease.schema.json",
       "schema_version": "lease.v2",
-      "sha256": "0687e66461954ff7d921096916fec0fce1ec45276432f1ff3b0cec23a4201474"
+      "sha256": "55b13d99d54854b1a713d49d9b7f05aa51f4021a82fc2492e30b694e1ca39721"
     },
     {
       "model": "NormalizedError",
@@ -322,19 +322,19 @@
       "model": "OutboxMessage",
       "schema_file": "OutboxMessage.schema.json",
       "schema_version": "outbox-message.v2",
-      "sha256": "0a193ae3a15de6e5f327c3177abbfabfe1ab57ba8e5966478cc34a2e7443d835"
+      "sha256": "3854d33604bef420f8fbe3bb64b33df6f1781d62e561f4ad256beced3d17c012"
     },
     {
       "model": "ProviderInvocation",
       "schema_file": "ProviderInvocation.schema.json",
       "schema_version": "provider-invocation.v2",
-      "sha256": "845bbfe3dd984d0f019d9cf50fa91b301427e66a8f5c6696d949107fe8d82585"
+      "sha256": "17943efa4a3400b26b72a7b5bbe120a0c52b45f928b739d4f0ae0b442b374182"
     },
     {
       "model": "PublicationAttempt",
       "schema_file": "PublicationAttempt.schema.json",
       "schema_version": "publication-attempt.v2",
-      "sha256": "7f94ce4212998c4342e9d8a803bf0cb50bcf5ad1d2d63ab83d7c141e4ad7b5bb"
+      "sha256": "63d34e3b01f1060201375d0c0e6abddb4507745dda64ef8d9afe2f1ee09a0038"
     },
     {
       "model": "PublicationRequest",
@@ -352,7 +352,7 @@
       "model": "QualityEvaluation",
       "schema_file": "QualityEvaluation.schema.json",
       "schema_version": "quality-evaluation.v2",
-      "sha256": "498a468a403c4b09ef497f419c3810c85639dc9d337cfdb22e27698ddc413af1"
+      "sha256": "22d4f19be31e7167c6ebccd4fd1411f6a04cb80d504339fb11e00729c35ee60d"
     },
     {
       "model": "QualityGatePolicy",
@@ -364,19 +364,19 @@
       "model": "QualityGateResult",
       "schema_file": "QualityGateResult.schema.json",
       "schema_version": "quality-gate-result.v2",
-      "sha256": "db7c2b0649e73f152733caabda13df2c511a5a7caf56fd1974c244dedece9fa1"
+      "sha256": "b8b48c8b8a269d1ec34923df9b8d1180e9df026d1e8d3127d64e66bab86ea841"
     },
     {
       "model": "QualityInputManifest",
       "schema_file": "QualityInputManifest.schema.json",
       "schema_version": "quality-input-manifest.v2",
-      "sha256": "efd79fc78e21f24d1263a2a6790fc2b9bd7bda48973f988f90982b81b0b7a827"
+      "sha256": "f52b0075c05ba85d6cd08d9cf2910f9d74bea3a6c96af75cedb6de9685e61676"
     },
     {
       "model": "RecoveryDecision",
       "schema_file": "RecoveryDecision.schema.json",
       "schema_version": "recovery-decision.v2",
-      "sha256": "20ea191c1acf8fd111f53c353eababde316af11a7560ca3e28674908661f1ffc"
+      "sha256": "db512ccb208c8f783188477ed3da75f603905c67701eaf619ce3faeb5a7211be"
     },
     {
       "model": "RecoveryPolicy",
@@ -388,7 +388,7 @@
       "model": "RenderChunkManifest",
       "schema_file": "RenderChunkManifest.schema.json",
       "schema_version": "render-chunk-manifest.v2",
-      "sha256": "bf4d14577213f9e3e12573bb8f023f46db4f352ed1697add4c558448bc0221ee"
+      "sha256": "29c27644542bef16d1b42d1f6c7fba1c3f7bf08a256e8e2deda51d2a0703684f"
     },
     {
       "model": "RenderProfile",
@@ -412,7 +412,7 @@
       "model": "RepairPlan",
       "schema_file": "RepairPlan.schema.json",
       "schema_version": "repair-plan.v2",
-      "sha256": "7242a5dcdeded030976c1dbe8c48516e22873ee57c6bbcaed12812cfdf60c721"
+      "sha256": "228548f62e23b91f18122576e93db7ffd4d828a6936aab35222e46990e3f74e0"
     },
     {
       "model": "ResearchInputPayload",
@@ -436,7 +436,7 @@
       "model": "ResourceAssignment",
       "schema_file": "ResourceAssignment.schema.json",
       "schema_version": "resource-assignment.v2",
-      "sha256": "8adf445f754e2fa4eba8379c9fa9da7fcfb8141453ce980c741932b9fd33a22d"
+      "sha256": "de92d8fc68b0339069fe3cdd5051a9563a79957880555e79a6306d394289f6d0"
     },
     {
       "model": "ResourceConstraints",
@@ -460,7 +460,7 @@
       "model": "RoutingDecision",
       "schema_file": "RoutingDecision.schema.json",
       "schema_version": "routing-decision.v2",
-      "sha256": "e88def07aab816922aed1770e691163b75096d050dab3c7bb1ab45a581847e33"
+      "sha256": "80237400d1a479ab2c024c5636ff9adc18b1a0c688ea607ed67b5c01b4edffd3"
     },
     {
       "model": "RunCreateRequest",
@@ -484,7 +484,7 @@
       "model": "Script",
       "schema_file": "Script.schema.json",
       "schema_version": "script.v2",
-      "sha256": "3069caba13daa8f55e613b0decab9d585c5b24b09a14e9c5d7cf14722b9fbf47"
+      "sha256": "eb1e7e66718086ac8da0e226195c2b4d88feefc69b7209ce1746b2ee1adc04e6"
     },
     {
       "model": "ScriptGenerationInputPayload",
@@ -538,13 +538,13 @@
       "model": "SourceRef",
       "schema_file": "SourceRef.schema.json",
       "schema_version": "source-ref.v2",
-      "sha256": "68bc259628483210e890be77ab2f89610f609fe07cca50034d9370858b35e68b"
+      "sha256": "df2bf83f04a31e4680308861c4e0a1161ea94b5c36006e9ea350659a225065b4"
     },
     {
       "model": "SourceSnapshot",
       "schema_file": "SourceSnapshot.schema.json",
       "schema_version": "source-snapshot.v2",
-      "sha256": "ac1c71f170eb84b601bf25c4a0084edccc9d3198a28be8ff488a72a21cc679d8"
+      "sha256": "313e6e2a89e19d01d473fe69fb2f6714a6225b6564c33247b932eba5c29861c0"
     },
     {
       "model": "SpeechGenerationInputPayload",
@@ -568,13 +568,13 @@
       "model": "StageAttempt",
       "schema_file": "StageAttempt.schema.json",
       "schema_version": "stage-attempt.v2",
-      "sha256": "b869a7d5ac28b34d4eebfe7fc53441b073a5808c0132d1398f55285fd7a91d55"
+      "sha256": "99e2578d65b4abc14f118ce6da1b58bb71e796a789f750e6596f53bc2e8c4475"
     },
     {
       "model": "StageInstance",
       "schema_file": "StageInstance.schema.json",
       "schema_version": "stage-instance.v2",
-      "sha256": "698941fa55f0be8eca76fb36dec8b9143daa1efff8328a376085f3f0899a35c1"
+      "sha256": "b10a83e666adeb9ea307a08e597742c4074ae1c49692ff54b6349994284f531a"
     },
     {
       "model": "StageNode",
@@ -640,7 +640,7 @@
       "model": "WorkflowRun",
       "schema_file": "WorkflowRun.schema.json",
       "schema_version": "workflow-run.v2",
-      "sha256": "b9d12bf95075be3128d70791e26c169ac4186eee20d4cf7efaf7d5c3545a7dd9"
+      "sha256": "6d95771458d63be4d692e400a3e55c9b592bf17174a270936228ad5a15eb12c6"
     },
     {
       "model": "WorkloadRequirements",

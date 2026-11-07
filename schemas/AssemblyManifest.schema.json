@@ -14,9 +14,8 @@
   "description": "Assembly manifest recording ordered chunks and continuity checks.",
   "properties": {
     "assembled_timestamp_micro": {
-      "format": "date-time",
       "title": "Assembled Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "assembler_version": {
       "maxLength": 512,

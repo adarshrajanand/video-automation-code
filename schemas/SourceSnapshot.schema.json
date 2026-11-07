@@ -28,9 +28,8 @@
       "type": "string"
     },
     "extracted_timestamp_micro": {
-      "format": "date-time",
       "title": "Extracted Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "language": {
       "default": "en",

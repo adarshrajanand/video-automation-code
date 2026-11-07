@@ -36,9 +36,8 @@
       "type": "string"
     },
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "data_classification": {
       "maxLength": 512,

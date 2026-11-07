@@ -5,9 +5,8 @@
   "description": "Outcome of one invalidation request with disjoint retained artifacts.",
   "properties": {
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "invalidated_artifact_ids": {
       "items": {

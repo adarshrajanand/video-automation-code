@@ -26,9 +26,8 @@
       "type": "string"
     },
     "available_timestamp_micro": {
-      "format": "date-time",
       "title": "Available Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "claimed_by": {
       "anyOf": [
@@ -81,8 +80,7 @@
     "lease_expires_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"

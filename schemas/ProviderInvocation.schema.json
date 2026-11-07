@@ -26,8 +26,7 @@
     "finished_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
@@ -85,9 +84,8 @@
       "type": "string"
     },
     "started_timestamp_micro": {
-      "format": "date-time",
       "title": "Started Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "status": {
       "$ref": "#/$defs/ProviderInvocationStatus"

@@ -55,8 +55,7 @@
     "published_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"
@@ -66,9 +65,8 @@
       "title": "Published Timestamp Micro"
     },
     "retrieved_timestamp_micro": {
-      "format": "date-time",
       "title": "Retrieved Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "schema_version": {
       "const": "source-ref.v2",

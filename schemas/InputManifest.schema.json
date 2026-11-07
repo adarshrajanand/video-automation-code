@@ -10,9 +10,8 @@
       "type": "boolean"
     },
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "expected_artifact_slots": {
       "items": {

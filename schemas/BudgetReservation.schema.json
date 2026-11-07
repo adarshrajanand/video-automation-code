@@ -41,9 +41,8 @@
       "title": "Actual Cost Minor"
     },
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "estimated_cost_minor": {
       "minimum": 0,
@@ -87,8 +86,7 @@
     "settled_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"

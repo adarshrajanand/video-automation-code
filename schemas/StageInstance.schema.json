@@ -66,9 +66,8 @@
       "title": "Active Attempt Id"
     },
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "execution_status": {
       "$ref": "#/$defs/StageExecutionStatus"
@@ -154,8 +153,7 @@
     "updated_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"

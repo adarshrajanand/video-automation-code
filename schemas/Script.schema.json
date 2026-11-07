@@ -99,9 +99,8 @@
       "type": "array"
     },
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "duration_policy_id": {
       "maxLength": 256,

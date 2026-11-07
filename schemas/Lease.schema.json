@@ -5,14 +5,12 @@
   "description": "Temporary ownership term for one job, fenced by a monotonic token.",
   "properties": {
     "acquired_timestamp_micro": {
-      "format": "date-time",
       "title": "Acquired Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "expires_timestamp_micro": {
-      "format": "date-time",
       "title": "Expires Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "fencing_token": {
       "minimum": 1,
@@ -22,8 +20,7 @@
     "heartbeat_timestamp_micro": {
       "anyOf": [
         {
-          "format": "date-time",
-          "type": "string"
+          "type": "integer"
         },
         {
           "type": "null"

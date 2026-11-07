@@ -17,9 +17,8 @@
   "description": "Policy-approved, targeted replacement of failed artifacts or stages.",
   "properties": {
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "invalidation_scope": {
       "$ref": "#/$defs/RepairInvalidationScope"

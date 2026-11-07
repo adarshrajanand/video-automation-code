@@ -193,9 +193,8 @@
       "default": null
     },
     "created_timestamp_micro": {
-      "format": "date-time",
       "title": "Created Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "dimensions": {
       "items": {

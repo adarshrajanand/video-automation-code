@@ -77,9 +77,8 @@
       "type": "string"
     },
     "render_finished_timestamp_micro": {
-      "format": "date-time",
       "title": "Render Finished Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "render_profile_id": {
       "maxLength": 256,
@@ -89,9 +88,8 @@
       "type": "string"
     },
     "render_started_timestamp_micro": {
-      "format": "date-time",
       "title": "Render Started Timestamp Micro",
-      "type": "string"
+      "type": "integer"
     },
     "renderer_version": {
       "maxLength": 512,
