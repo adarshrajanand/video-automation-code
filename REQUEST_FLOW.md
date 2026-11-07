@@ -9,7 +9,7 @@
 > 4. **What do the actual values look like?**
 >
 > **What this is not:** the canonical product specification. The canonical
-> documents live in `docs/kb/docs/` (a separate repository). If this atlas and
+> documents live in `docs/kb/docs/` in this repository. If this atlas and
 > a canonical document disagree, the canonical document wins.
 >
 > **Code baseline:** branch `fv-11-report`, commit `dcfeb0b` (FV-01 through

@@ -13,7 +13,9 @@
 5. `dict[str, Any]` is permitted only for explicitly extensible metadata, not for core state transitions.
 6. Mutable defaults use `Field(default_factory=...)`.
 7. IDs are opaque strings; code must not parse semantic meaning from an ID.
-8. Timestamps are UTC and serialized as ISO-8601.
+8. Persistent timestamps are UTC instants serialized as signed 64-bit integer
+   microseconds since the Unix epoch (`*_timestamp_micro`). ISO-8601 text is a
+   human-readable presentation only. See §1.2.
 9. Monetary amounts use decimal-safe representation or integer minor units; never binary floating point for accounting decisions.
 10. Secrets and raw sensitive payloads are excluded from persisted fingerprints and ordinary logs.
 
@@ -72,7 +74,7 @@ Unless a model-specific table says otherwise, use these conventions:
 | `*_hash`, `sha256`, `content_hash` | Fingerprint of bytes or canonical serialized content | The model must state what was hashed; equal hashes mean equal addressed content under that procedure |
 | `config_hash`, `settings_hash` | Fingerprint of configuration/settings | Look up the corresponding snapshot or configuration record; do not treat it as media content identity |
 | `request_fingerprint`, `payload_fingerprint` | Fingerprint used for duplicate suppression or request comparison | `request_fingerprint` covers behavior-affecting request inputs; `payload_fingerprint` is the payload-only subset |
-| `*_at` | UTC instant | Parse as an ISO-8601 timestamp, not a duration |
+| `*_timestamp_micro` | UTC instant | Signed 64-bit integer microseconds since the Unix epoch; never ISO text or a duration |
 | `*_seconds`, `*_milliseconds`, `*_bytes`, `*_minor` | Explicit unit-bearing scalar | The suffix is part of the contract; monetary `*_minor` values also need a currency policy |
 | `start_frame`, `end_frame` | Media interval boundaries | Use the render profile's timebase; intervals are half-open: `[start_frame, end_frame)` |
 | `status` | Lifecycle of the record or execution | The owning subsystem controls transitions |
@@ -80,6 +82,34 @@ Unless a model-specific table says otherwise, use these conventions:
 | `outcome` | Result of one check/evaluator | It does not by itself unlock downstream workflow |
 | `decision` | Aggregate policy, recovery, or human action | It is the control-plane result derived from evidence |
 | `null` / `[]` / `{}` | Unknown/not applicable, known empty collection, known empty mapping | Persisted records must not use omission to mean a fourth hidden state |
+
+### 1.2 Timestamp representation
+
+This rule applies at every persistence and JSON boundary: SQLite columns, JSON
+payloads, contract `model_dump(mode="json")`, and exported JSON Schema.
+
+- **Name:** every persistent timestamp field ends in `*_timestamp_micro`.
+- **Value:** a signed 64-bit integer count of microseconds since
+  `1970-01-01T00:00:00Z`. Values before the epoch are negative. Never use
+  floating-point seconds, Julian-day numbers, or SQL date functions on these
+  columns.
+- **Internal Python:** contracts keep timezone-aware UTC `datetime` values in
+  Python mode and convert at the boundary. Naive datetimes are invalid.
+- **Presentation only:** ISO-8601 text is allowed in Markdown reports and
+  console output, never in a durable or interoperable payload.
+- **Supported range:** SQLite `INTEGER` is signed 64-bit. The practical range is
+  bounded by Python `datetime`: `0001-01-01T00:00:00Z` through
+  `9999-12-31T23:59:59.999999Z`, represented exactly.
+- **Ordering and expiry:** compare and order integers directly
+  (`available_timestamp_micro <= ?`), never by wrapping the column in a date
+  conversion function.
+
+Timestamp changes are incompatible with v1 wire payloads. The SQLite migration
+that rebuilds timestamp columns is reset-only: a populated database must follow
+the documented reset procedure rather than be converted in place. Standalone
+quality JSON such as `gold-example` and `threshold-record` bumps its schema
+version and converts v1 ISO `created_at`/`updated_at` keys on load. See
+ADR-025 in the [Decision Log](AI_Video_Pipeline_Decisions.md).
 
 ### InputSelector: selecting upstream records
 
@@ -125,9 +155,9 @@ provider invocation, or a user lock.
 | `job_id` | The claimable `Job` record temporarily owned by the worker | Join to `Job.job_id`; only one active lease should exist for a job |
 | `owner_id` | Stable worker-process or worker-instance identity | Compare with the claimant on commit; it is not a user ID or provider ID |
 | `fencing_token` | Monotonically increasing ownership term for that job | Compare-and-set it on every heartbeat/result commit; a stale token must be rejected. It is a concurrency token, not the lease's record ID |
-| `acquired_at` | UTC time at which ownership was granted | Audit the beginning of this lease term |
-| `heartbeat_at` | UTC time of the last heartbeat accepted by the control plane | Use it for expiry/reclamation decisions; it is not merely the time a worker attempted a heartbeat |
-| `expires_at` | Authoritative UTC deadline after the last successful renewal | A lease is valid only before this deadline and while the owner/token match |
+| `acquired_timestamp_micro` | UTC time at which ownership was granted | Audit the beginning of this lease term |
+| `heartbeat_timestamp_micro` | UTC time of the last heartbeat accepted by the control plane | Use it for expiry/reclamation decisions; it is not merely the time a worker attempted a heartbeat |
+| `expires_timestamp_micro` | Authoritative UTC deadline after the last successful renewal | A lease is valid only before this deadline and while the owner/token match |
 
 With the current illustrative shape, the lease term can be looked up by
 `(job_id, fencing_token)`, while the active term is found by `job_id`. The
@@ -135,7 +165,7 @@ current shape does not include a `lease_id`, `status`, or release timestamp. If
 lease history must be independently addressed after a job has had many lease
 terms, add an opaque `lease_id` and explicit lifecycle fields before
 implementation; do not pretend that `owner_id` is a durable lease identity.
-Likewise, `Job.claimed_by` and `Job.lease_expires_at` should be treated as
+Likewise, `Job.claimed_by` and `Job.lease_expires_timestamp_micro` should be treated as
 read-only projections of the active lease if they are retained, not as a second
 source of ownership truth.
 
@@ -158,7 +188,7 @@ names alone are easy to misread.
 | `StageAttempt.worker_id` | Worker that executed or claimed the attempt | Operational attribution only; ownership validity comes from the lease/fencing check |
 | `StageAttempt.failure_code` | Registered reason for failed execution | Resolve against `registries/failure_codes.yaml`; do not use free-form recovery strings |
 | `Job.idempotency_key` | Stable key for one logical delivery operation | Unique lookup that makes duplicate triggers/deliveries harmless |
-| `Job.available_at` | Earliest time the dispatcher may offer the job | A future value means delayed retry/defer, not a missing job |
+| `Job.available_timestamp_micro` | Earliest time the dispatcher may offer the job | A future value means delayed retry/defer, not a missing job |
 | `Job.delivery_count` | Number of delivery/claim attempts by the dispatcher | Transport evidence; not the same as provider or quality attempt counts |
 | `CapabilityRequest.payload_fingerprint` | Fingerprint of the capability payload being requested | Compare requests without logging sensitive payloads; keep distinct from full request fingerprint |
 | `CapabilityRequest.idempotency_key` | Duplicate-suppression key for the external-capability operation | Join to `IdempotencyRecord` and any `ProviderInvocation` |
@@ -273,8 +303,8 @@ class MetadataContract(Contract):
 
 
 class UTCRecord(Contract):
-    created_at: datetime
-    updated_at: datetime | None = None
+    created_timestamp_micro: datetime
+    updated_timestamp_micro: datetime | None = None
 
 
 class FailureCode(StrEnum):
@@ -500,8 +530,8 @@ class WorkflowRun(Contract):
     effective_config_hash: str
     status: RunStatus
     content_package_id: str
-    created_at: datetime
-    updated_at: datetime
+    created_timestamp_micro: datetime
+    updated_timestamp_micro: datetime
 
 
 class RunCreateRequest(Contract):
@@ -527,8 +557,8 @@ class StageInstance(Contract):
     expected_input_manifest_id: str | None = None
     active_attempt_id: str | None = None
     accepted_output_artifact_ids: list[str] = Field(default_factory=list)
-    created_at: datetime
-    updated_at: datetime
+    created_timestamp_micro: datetime
+    updated_timestamp_micro: datetime
 
 
 class StageAttempt(Contract):
@@ -541,9 +571,9 @@ class StageAttempt(Contract):
     input_artifact_ids: list[str] = Field(default_factory=list)
     output_artifact_ids: list[str] = Field(default_factory=list)
     worker_id: str | None = None
-    lease_expires_at: datetime | None = None
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
+    lease_expires_timestamp_micro: datetime | None = None
+    started_timestamp_micro: datetime | None = None
+    finished_timestamp_micro: datetime | None = None
     failure_code: FailureCode | None = None
     failure_message: str | None = None
 
@@ -556,7 +586,7 @@ class InputManifest(Contract):
     resolved_artifact_ids: list[str] = Field(default_factory=list)
     expected_count: int | None = None
     complete: bool = False
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class RetryPolicy(Contract):
@@ -611,9 +641,9 @@ class Job(Contract):
     queue_name: str
     status: Literal["READY", "CLAIMED", "ACKED", "RETRY", "DEAD_LETTER", "CANCELLED"]
     idempotency_key: str
-    available_at: datetime
+    available_timestamp_micro: datetime
     claimed_by: str | None = None
-    lease_expires_at: datetime | None = None
+    lease_expires_timestamp_micro: datetime | None = None
     delivery_count: int = 0
 
 
@@ -626,11 +656,11 @@ class Lease(Contract):
     # Monotonic per-job ownership term used to fence stale workers.
     fencing_token: int
     # UTC time when the control plane granted this ownership term.
-    acquired_at: datetime
+    acquired_timestamp_micro: datetime
     # Absolute UTC deadline after the last successful renewal.
-    expires_at: datetime
+    expires_timestamp_micro: datetime
     # UTC time of the last heartbeat accepted by the control plane.
-    heartbeat_at: datetime | None = None
+    heartbeat_timestamp_micro: datetime | None = None
 ```
 
 Claiming must use an atomic compare-and-set or transactionally locked update. A worker must verify that it still owns the lease before committing a result.
@@ -714,8 +744,8 @@ class CapabilityExecution(Contract):
     status: Literal["PENDING", "RUNNING", "SUCCEEDED", "FAILED", "UNKNOWN"]
     input_artifact_ids: list[str] = Field(default_factory=list)
     output_artifact_ids: list[str] = Field(default_factory=list)
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
+    started_timestamp_micro: datetime | None = None
+    finished_timestamp_micro: datetime | None = None
     normalized_error: NormalizedError | None = None
 
 
@@ -730,8 +760,8 @@ class IdempotencyRecord(Contract):
     provider_invocation_id: str | None = None
     provider_operation_id: str | None = None
     result_artifact_ids: list[str] = Field(default_factory=list)
-    created_at: datetime
-    completed_at: datetime | None = None
+    created_timestamp_micro: datetime
+    completed_timestamp_micro: datetime | None = None
 
 
 class BudgetReservation(Contract):
@@ -744,8 +774,8 @@ class BudgetReservation(Contract):
     reserved_cost_minor: int
     actual_cost_minor: int | None = None
     status: Literal["RESERVED", "SETTLED", "RELEASED", "UNKNOWN"]
-    created_at: datetime
-    settled_at: datetime | None = None
+    created_timestamp_micro: datetime
+    settled_timestamp_micro: datetime | None = None
 ```
 
 ## 8. Routing and provider contracts
@@ -780,7 +810,7 @@ class RoutingDecision(Contract):
     attempt: int
     data_classification: str
     paid_fallback_authorized: bool = False
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class WorkloadRequirements(Contract):
@@ -808,7 +838,7 @@ class ResourceAssignment(Contract):
     worker_pool: str
     implementation_version: str
     constraints_hash: str
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class ProviderInvocation(Contract):
@@ -820,8 +850,8 @@ class ProviderInvocation(Contract):
     idempotency_key: str
     request_fingerprint: str
     status: Literal["STARTED", "SUCCEEDED", "FAILED", "UNKNOWN"]
-    started_at: datetime
-    finished_at: datetime | None = None
+    started_timestamp_micro: datetime
+    finished_timestamp_micro: datetime | None = None
 ```
 
 ## 9. Artifact contracts
@@ -853,7 +883,7 @@ class Artifact(Contract):
     config_hash: str
     state: ArtifactState
     retention_class: str = "intermediate"
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class ArtifactDependency(Contract):
@@ -871,7 +901,7 @@ class ArtifactPointer(Contract):
     artifact_id: str
     pointer_type: Literal["CURRENT", "ACCEPTED", "PUBLISHED"]
     active: bool = True
-    updated_at: datetime
+    updated_timestamp_micro: datetime
 
 
 class InvalidationRequest(Contract):
@@ -888,7 +918,7 @@ class InvalidationResult(Contract):
     request_id: str
     invalidated_artifact_ids: list[str]
     retained_artifact_ids: list[str]
-    created_at: datetime
+    created_timestamp_micro: datetime
 ```
 
 The physical URI may change during storage migration. The logical artifact ID, hash, dependencies, and provenance remain stable.
@@ -948,7 +978,7 @@ class QualityInputManifest(Contract):
     target_hashes: dict[str, str]
     supporting_artifact_ids: list[str] = Field(default_factory=list)
     policy_snapshot_artifact_id: str | None = None
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class QualityGatePolicy(Contract):
@@ -987,7 +1017,7 @@ class QualityEvaluation(Contract):
     actual_cost_minor: int | None = None
     provider_invocation_id: str | None = None
     latency_ms: int | None = None
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class QualityGateResult(Contract):
@@ -1005,8 +1035,8 @@ class QualityGateResult(Contract):
     hard_failure_codes: list[str] = Field(default_factory=list)
     repair_scope: str | None = None
     policy_version: str
-    created_at: datetime
-    completed_at: datetime | None = None
+    created_timestamp_micro: datetime
+    completed_timestamp_micro: datetime | None = None
 
 
 class RepairPlan(Contract):
@@ -1018,7 +1048,7 @@ class RepairPlan(Contract):
     target_stage_instance_ids: list[str]
     invalidation_scope: Literal["ARTIFACT", "SCENE", "SUBGRAPH", "WORKFLOW"]
     max_attempts: int
-    created_at: datetime
+    created_timestamp_micro: datetime
 ```
 
 Scores are evidence, not universal probabilities. Gate policy must define hard failures, thresholds, escalation, and aggregation separately.
@@ -1037,8 +1067,8 @@ class HumanReview(Contract):
     reason_codes: list[str] = Field(default_factory=list)
     requested_action: str
     status: Literal["OPEN", "ASSIGNED", "RESOLVED", "EXPIRED", "CANCELLED"]
-    created_at: datetime
-    resolved_at: datetime | None = None
+    created_timestamp_micro: datetime
+    resolved_timestamp_micro: datetime | None = None
 
 
 class HumanReviewDecision(Contract):
@@ -1053,7 +1083,7 @@ class HumanReviewDecision(Contract):
     comments: str | None = None
     reviewer: str
     target_hashes: dict[str, str] = Field(default_factory=dict)
-    created_at: datetime
+    created_timestamp_micro: datetime
 ```
 
 ### 11.1 Publishing boundary
@@ -1083,8 +1113,8 @@ class PublicationAttempt(Contract):
     external_publication_id: str | None = None
     provider_operation_id: str | None = None
     normalized_error: NormalizedError | None = None
-    started_at: datetime | None = None
-    finished_at: datetime | None = None
+    started_timestamp_micro: datetime | None = None
+    finished_timestamp_micro: datetime | None = None
 ```
 
 ## 12. Recovery and event contracts
@@ -1106,7 +1136,7 @@ class RecoveryDecision(Contract):
     target_stage_instance_ids: list[str] = Field(default_factory=list)
     target_artifact_ids: list[str] = Field(default_factory=list)
     reason_codes: list[str] = Field(default_factory=list)
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class EventEnvelope(Contract):
@@ -1120,7 +1150,7 @@ class EventEnvelope(Contract):
     causation_id: str | None = None
     payload_schema_version: str
     payload: dict[str, Any] = Field(default_factory=dict)
-    created_at: datetime
+    created_timestamp_micro: datetime
 
 
 class OutboxMessage(Contract):
@@ -1130,11 +1160,11 @@ class OutboxMessage(Contract):
     event: EventEnvelope
     status: Literal["PENDING", "CLAIMED", "DELIVERED", "FAILED"]
     delivery_attempts: int = 0
-    available_at: datetime
+    available_timestamp_micro: datetime
     claimed_by: str | None = None
-    claimed_at: datetime | None = None
-    lease_expires_at: datetime | None = None
-    delivered_at: datetime | None = None
+    claimed_timestamp_micro: datetime | None = None
+    lease_expires_timestamp_micro: datetime | None = None
+    delivered_timestamp_micro: datetime | None = None
 
 
 class InboxReceipt(Contract):
@@ -1142,7 +1172,7 @@ class InboxReceipt(Contract):
     consumer_id: str
     event_id: str
     status: Literal["RECEIVED", "PROCESSED", "IGNORED", "FAILED"]
-    processed_at: datetime | None = None
+    processed_timestamp_micro: datetime | None = None
     error_code: str | None = None
 ```
 
@@ -1253,7 +1283,7 @@ class ProductionIdea(Contract):
     audience: str
     promise: str
     locale: str
-    selected_at: datetime | None = None
+    selected_timestamp_micro: datetime | None = None
 
 
 class ContentPackage(Contract):
@@ -1318,7 +1348,7 @@ class AssetProvenance(Contract):
     provider_id: str | None = None
     provider_asset_id: str | None = None
     source_url: str | None = None
-    retrieved_at: datetime | None = None
+    retrieved_timestamp_micro: datetime | None = None
     content_hash: str
     license_type: str | None = None
     license_url: str | None = None
@@ -1553,7 +1583,7 @@ class SourceRef(Contract):
     source_id: str
     uri: str
     source_type: str
-    retrieved_at: datetime
+    retrieved_timestamp_micro: datetime
     content_hash: str | None = None
     snapshot_artifact_id: str | None = None
     authority_class: str | None = None
@@ -1564,11 +1594,11 @@ class SourceSnapshot(Contract):
     snapshot_id: str
     source_id: str
     snapshot_artifact_id: str
-    retrieved_at: datetime
+    retrieved_timestamp_micro: datetime
     content_hash: str
     retrieval_method: str
     freshness_class: str | None = None
-    expires_at: datetime | None = None
+    expires_timestamp_micro: datetime | None = None
 
 
 class Evidence(Contract):
@@ -1695,15 +1725,15 @@ Recommended indexes:
 
 ```text
 stage_instances(run_id, status)
-jobs(status, available_at)
-jobs(lease_expires_at)
+jobs(status, available_timestamp_micro)
+jobs(lease_expires_timestamp_micro)
 budget_reservations(scope_type, scope_id, status)
 artifacts(run_id, logical_slot, state)
 artifact_pointers(run_id, logical_slot, pointer_type, active)
 artifact_dependencies(parent_artifact_id)
 artifact_dependencies(child_artifact_id)
-human_reviews(status, created_at)
-outbox_messages(status, available_at)
+human_reviews(status, created_timestamp_micro)
+outbox_messages(status, available_timestamp_micro)
 ```
 
 ## 15. Fingerprints and idempotency

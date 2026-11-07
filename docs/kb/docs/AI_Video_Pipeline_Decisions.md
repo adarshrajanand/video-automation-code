@@ -334,6 +334,33 @@ and promotion criteria. The deferred target details are captured in the
 document. Cloud providers, queue vendors, database hosting, container
 orchestration, and exact resource placement remain deferred.
 
+## ADR-025 — Persist timestamps as signed integer microseconds
+
+**Status:** `ACCEPTED`
+
+**Decision:** Every persisted and JSON-serialized timestamp is a signed 64-bit
+integer count of microseconds since the Unix epoch in UTC, named
+`*_timestamp_micro`. Python contracts keep timezone-aware `datetime` values
+internally and convert with exact integer arithmetic at the boundary. ISO-8601
+text is limited to human-readable reports and console output. Ordering,
+availability, lease-expiry, and outbox queries compare integers directly.
+
+**Why:** ISO-8601 strings preserve microsecond ordering only accidentally and
+encourage lossy float conversion, SQL date-function misuse, and ambiguous
+timezone offsets. Integer microseconds give exact round-trips, a single unit,
+portable comparison, and a representation that SQLite and JSON Schema can
+describe without format-specific parsing. The signed range also supports
+pre-epoch values consistently.
+
+**Consequence:** The representation change is incompatible with v1 SQLite
+databases and v1 wire payloads. The timestamp migration is reset-only; populated
+databases are refused before any durable rewrite and must be recreated under the
+documented reset procedure. Standalone JSON artifacts bump their schema versions
+and convert v1 `created_at`/`updated_at` ISO keys on load. Export JSON Schema in
+serialization mode so timestamp fields advertise `integer`, matching
+`model_dump(mode="json")`. Human-readable documents and console output may still
+format the same instants as ISO-8601.
+
 ## Deferred decisions
 
 The following are intentionally not selected yet:

@@ -863,7 +863,7 @@ reproduction script/sample so readers can regenerate it. See `PR5-20`.
 #### **Q: Should extension recipes be added to `AGENTS.md`?**
 
 **A:** Agreed. The extension recipes are useful agent guidance. Add them to
-`docs/AGENTS.md` (the separate docs repository) or the README later. See
+`docs/AGENTS.md` or the README later. See
 `PR5-19`.
 
 **Source:** PR #5 review, `REQUEST_FLOW.md` L1964, comment `4444649412`.

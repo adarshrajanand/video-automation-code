@@ -51,8 +51,9 @@ the review-specific part into `FAQ.md`.
 
 - The [Local Infrastructure Profile](docs/kb/docs/AI_Video_Pipeline_Local_Infrastructure_Profile.md)
   is the implementation baseline; remote infrastructure is deferred.
-- `docs/` is a separate repository. Make commits from `video-automation-code`
-  only; never commit inside `docs/`.
+- `docs/` is part of this repository. Update canonical documentation and code in
+  the same change, and commit both from `video-automation-code`. Do not treat
+  `docs/` as a separate repository or defer canonical updates to another PR.
 - Preserve unrelated user changes and runtime state. Do not edit applied
   migrations; add a new migration when required.
 - Do not merge PRs or close issues without explicit user approval. Passing
